@@ -293,7 +293,7 @@ export function useTicket(userRole = "") {
     return ticketSeries
       .map((s) => ({
         ...s,
-        pcs: (parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0),
+        pcs: (parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0) + 1,
       }))
       .filter((s) => s.pcs > 0)
       .sort((a, b) => (parseInt(a.start_no) || 0) - (parseInt(b.start_no) || 0));

@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Denomination, Requisition, TicketSeries
-from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, DenominationSerializer, RequisitionSerializer, TicketSeriesSerializer
+from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Denomination, Requisition, TicketSeries, RoamingLog
+from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, DenominationSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
 
 
 class CurrentUserView(APIView):
@@ -77,6 +77,14 @@ class RequisitionViewSet(viewsets.ModelViewSet):
 class TicketSeriesViewSet(viewsets.ModelViewSet):
     queryset = TicketSeries.objects.all()
     serializer_class = TicketSeriesSerializer
+
+
+class RoamingLogViewSet(viewsets.ModelViewSet):
+    queryset = RoamingLog.objects.all()
+    serializer_class = RoamingLogSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(recorded_by=self.request.user)
 
 
 class RemittanceBatchViewSet(viewsets.ModelViewSet):

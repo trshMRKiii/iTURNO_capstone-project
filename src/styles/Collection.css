@@ -193,6 +193,46 @@
   transform: translateY(0);
 }
 
+/* ── Tabs ── */
+.col-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-page);
+  padding: 0 4px;
+  gap: 0;
+}
+
+.col-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.col-tab:hover {
+  color: var(--text-primary);
+}
+
+.col-tab--active {
+  color: var(--navy);
+  border-bottom-color: var(--navy);
+}
+
+.dark .col-tab--active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
 /* ── Log card header ── */
 .col-log-header {
   display: flex;

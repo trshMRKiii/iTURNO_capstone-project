@@ -9,6 +9,7 @@ import {
 import VehicleModal from "../../../lib/vehicle/vehicleModal";
 
 import React, { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import "../../../styles/Vehicle.css";
 
 function Vehicle() {
@@ -387,15 +388,19 @@ function Vehicle() {
                 />
               </Field>
 
-              <Field label="QR Code">
-                <input
-                  type="text"
-                  className="veh-input"
-                  placeholder="e.g. QR-2026-001"
-                  value={form.qr_code}
-                  onChange={(e) => setForm({ ...form, qr_code: e.target.value })}
-                />
-              </Field>
+              {editing && form.qr_code && (
+                <Field label="Vehicle QR Code">
+                  <div className="veh-qr-display">
+                    <QRCodeSVG
+                      value={form.qr_code}
+                      size={160}
+                      level="H"
+                      includeMargin
+                    />
+                    <span className="veh-qr-label">{form.qr_code}</span>
+                  </div>
+                </Field>
+              )}
 
               <Field label="Status">
                 <select

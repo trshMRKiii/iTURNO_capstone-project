@@ -12,6 +12,7 @@ from .viewsets import (
     RequisitionViewSet,
     TicketSeriesViewSet,
     RemittanceBatchViewSet,
+    RoamingLogViewSet,
 )
 
 from .reports import (

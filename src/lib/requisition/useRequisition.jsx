@@ -107,7 +107,7 @@ export function useRequisition() {
         const pcs = qty * 1000;
         const startNo = parseInt(updated.start_no) || 0;
         if (qty > 0 && startNo > 0) {
-          updated.end_no = String(startNo + pcs);
+          updated.end_no = String(startNo + pcs - 1);
         }
         updated.total_value = (price * pcs).toFixed(2);
       }

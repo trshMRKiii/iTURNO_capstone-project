@@ -250,13 +250,18 @@ export function useVehicle() {
     if (!confirmed) return;
 
     try {
+      const plate = form.plate_number.replace(/\s+/g, "").toUpperCase();
+      const qrCode = editing
+        ? form.qr_code
+        : `QR-${plate}-${Date.now().toString(36).toUpperCase()}`;
+
       const payload = {
         plate_number: form.plate_number,
         route: routeId,
         transportation_id: form.transportation_id || null,
         franchise_number: form.franchise_number,
         operator_address: form.operator_address,
-        qr_code: form.qr_code,
+        qr_code: qrCode,
         status: form.status,
         active_driver: form.active_driver || null,
       };

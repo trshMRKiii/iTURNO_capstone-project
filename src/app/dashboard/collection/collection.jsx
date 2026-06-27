@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   useCollection,
   formatTime,
@@ -6,6 +6,7 @@ import {
 } from "../../../lib/collection/useCollection";
 import { OperationsService } from "../../../lib/operations-service";
 import { useShifts } from "../../../lib/useShifts";
+import { apiService } from "../../../lib/api-service";
 import "../../../styles/Collection.css";
 
 function Collection({ userRole }) {
@@ -31,11 +32,81 @@ function Collection({ userRole }) {
     isBatchVerifiable,
   } = useCollection(shifts);
 
+  const [activeTab, setActiveTab] = useState("collection");
   const [currentPage, setCurrentPage] = useState(1);
   const [isUnverifiedModalOpen, setIsUnverifiedModalOpen] = useState(false);
   const [confirmingBatchKey, setConfirmingBatchKey] = useState(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [editingShifts, setEditingShifts] = useState({});
+
+  const [roamingLogs, setRoamingLogs] = useState([]);
+  const [roamingLoading, setRoamingLoading] = useState(false);
+  const [roamingPage, setRoamingPage] = useState(1);
+  const [roamingSearch, setRoamingSearch] = useState("");
+  const [isRoamingModalOpen, setIsRoamingModalOpen] = useState(false);
+  const [roamingForm, setRoamingForm] = useState({ vehicle: "", driver: "", notes: "" });
+  const [roamingSubmitting, setRoamingSubmitting] = useState(false);
+  const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+
+  const fetchRoamingLogs = useCallback(async () => {
+    try {
+      setRoamingLoading(true);
+      const data = await apiService.getRoamingLogs();
+      setRoamingLogs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to fetch roaming logs", err);
+    } finally {
+      setRoamingLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "roaming") {
+      fetchRoamingLogs();
+    }
+  }, [activeTab, fetchRoamingLogs]);
+
+  const handleOpenRoamingModal = async () => {
+    try {
+      const [v, d] = await Promise.all([apiService.getVehicles(), apiService.getDrivers()]);
+      setVehicles(Array.isArray(v) ? v : []);
+      setDrivers(Array.isArray(d) ? d : []);
+    } catch (err) {
+      console.error("Failed to load vehicles/drivers", err);
+    }
+    setRoamingForm({ vehicle: "", driver: "", notes: "" });
+    setIsRoamingModalOpen(true);
+  };
+
+  const handleSubmitRoaming = async () => {
+    if (!roamingForm.vehicle) return;
+    try {
+      setRoamingSubmitting(true);
+      await apiService.createRoamingLog({
+        vehicle: Number(roamingForm.vehicle),
+        driver: roamingForm.driver ? Number(roamingForm.driver) : null,
+        notes: roamingForm.notes,
+      });
+      setIsRoamingModalOpen(false);
+      fetchRoamingLogs();
+    } catch (err) {
+      console.error("Failed to create roaming log", err);
+    } finally {
+      setRoamingSubmitting(false);
+    }
+  };
+
+  const filteredRoamingLogs = roamingLogs.filter((log) => {
+    const term = roamingSearch.toLowerCase();
+    return (
+      (log.vehicle_plate || "").toLowerCase().includes(term) ||
+      (log.driver_name || "").toLowerCase().includes(term) ||
+      (log.recorded_by_name || "").toLowerCase().includes(term) ||
+      (log.notes || "").toLowerCase().includes(term)
+    );
+  });
+
   const rowsPerPage = 15;
   const unverifiedTickets = tickets.filter(
     (t) => !t.is_verified && t.status !== "CANCELLED",
@@ -228,193 +299,325 @@ function Collection({ userRole }) {
           )}
         </div>
 
-        {/* ── Right: Collection Log ── */}
+        {/* ── Right: Tabbed Logs ── */}
         <div className="col-card col-log-card">
-          <div className="col-card-header col-card-header--color col-log-header">
-            <div>
-              <span className="col-card-title">Collection Log</span>
-              <p className="col-card-desc">
-                Recent collections and verification status
-              </p>
-            </div>
-            <div className="col-search-wrap">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="col-search-icon"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
+          {/* Tab bar */}
+          <div className="col-tabs">
+            <button
+              className={`col-tab ${activeTab === "collection" ? "col-tab--active" : ""}`}
+              onClick={() => { setActiveTab("collection"); setCurrentPage(1); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
               </svg>
-              <input
-                className="col-search"
-                placeholder="Search tickets…"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+              Collection Log
+            </button>
+            <button
+              className={`col-tab ${activeTab === "roaming" ? "col-tab--active" : ""}`}
+              onClick={() => { setActiveTab("roaming"); setRoamingPage(1); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              Roaming Vehicle Log
+            </button>
           </div>
 
-          <div className="col-table-wrap">
-            <table className="col-table">
-              <thead>
-                <tr>
-                  {[
-                    "Ticket ID",
-                    "Batch",
-                    "Time",
-                    "Vehicle",
-                    "Driver",
-                    "Verified",
-                  ].map((h) => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="col-table-state">
-                      <div className="col-loading-dots">
-                        <div />
-                        <div />
-                        <div />
-                      </div>
-                    </td>
-                  </tr>
-                ) : error ? (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="col-table-state col-table-state--error"
-                    >
-                      Error: {error}
-                    </td>
-                  </tr>
-                ) : filteredTickets.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="col-table-state">
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        opacity="0.3"
-                      >
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                      <span>No records found</span>
-                    </td>
-                  </tr>
-                ) : (
-                  currentTickets.map((ticket) => {
-                    const effectiveBatch =
-                      OperationsService.getEffectiveBatchName(ticket, shifts);
-                    return (
-                      <tr
-                        key={ticket.id}
-                        className={`col-table-row ${ticket.is_late ? "col-table-row--late" : ""}`}
-                      >
-                        <td>
-                          <span className="col-id-badge">#{ticket.id}</span>
-                        </td>
-                        <td>
-                          <div className="col-batch-cell">
-                            <span className="col-batch-name">
-                              {effectiveBatch}
-                            </span>
-                            {ticket.is_late && (
-                              <span className="col-late-tag">
-                                <svg
-                                  width="10"
-                                  height="10"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                >
-                                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                                  <path d="M12 9v4" />
-                                  <path d="M12 17h.01" />
-                                </svg>
-                                Late
-                              </span>
-                            )}
+          {/* ── Collection Log Tab ── */}
+          {activeTab === "collection" && (
+            <>
+              <div className="col-card-header col-card-header--color col-log-header">
+                <div>
+                  <span className="col-card-title">Collection Log</span>
+                  <p className="col-card-desc">
+                    Recent collections and verification status
+                  </p>
+                </div>
+                <div className="col-search-wrap">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="col-search-icon"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input
+                    className="col-search"
+                    placeholder="Search tickets…"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="col-table-wrap">
+                <table className="col-table">
+                  <thead>
+                    <tr>
+                      {[
+                        "Ticket ID",
+                        "Batch",
+                        "Time",
+                        "Vehicle",
+                        "Driver",
+                        "Verified",
+                      ].map((h) => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="6" className="col-table-state">
+                          <div className="col-loading-dots">
+                            <div />
+                            <div />
+                            <div />
                           </div>
                         </td>
-                        <td className="col-td-time">
-                          {formatTime(ticket.issued_at)}
-                        </td>
-                        <td>
-                          {ticket.vehicle?.plate_number ? (
-                            <span className="col-plate">
-                              {ticket.vehicle.plate_number}
-                            </span>
-                          ) : (
-                            <span className="col-na">N/A</span>
-                          )}
-                        </td>
-                        <td className="col-td-name">
-                          {ticket.driver?.name || (
-                            <span className="col-na">N/A</span>
-                          )}
-                        </td>
-                        <td>
-                          <span
-                            className={`col-verified ${
-                              ticket.status === "CANCELLED"
-                                ? "col-verified--cancelled"
-                                : ticket.is_verified
-                                  ? "col-verified--yes"
-                                  : "col-verified--pending"
-                            }`}
-                          >
-                            {ticket.status === "CANCELLED"
-                              ? "✗ Cancelled"
-                              : ticket.is_verified
-                                ? "✓ Verified"
-                                : "○ Pending"}
-                          </span>
+                      </tr>
+                    ) : error ? (
+                      <tr>
+                        <td
+                          colSpan="6"
+                          className="col-table-state col-table-state--error"
+                        >
+                          Error: {error}
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {filteredTickets.length > rowsPerPage && (
-            <div className="col-pagination">
-              <span className="col-pagination-info">
-                Page {currentPage} of {totalPages}
-              </span>
-              <div className="col-pagination-btns">
-                <button
-                  className="col-page-btn"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                >
-                  ← Prev
-                </button>
-                <button
-                  className="col-page-btn"
-                  disabled={endIndex >= filteredTickets.length}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                >
-                  Next →
-                </button>
+                    ) : filteredTickets.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="col-table-state">
+                          <svg
+                            width="32"
+                            height="32"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            opacity="0.3"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                          </svg>
+                          <span>No records found</span>
+                        </td>
+                      </tr>
+                    ) : (
+                      currentTickets.map((ticket) => {
+                        const effectiveBatch =
+                          OperationsService.getEffectiveBatchName(ticket, shifts);
+                        return (
+                          <tr
+                            key={ticket.id}
+                            className={`col-table-row ${ticket.is_late ? "col-table-row--late" : ""}`}
+                          >
+                            <td>
+                              <span className="col-id-badge">#{ticket.id}</span>
+                            </td>
+                            <td>
+                              <div className="col-batch-cell">
+                                <span className="col-batch-name">
+                                  {effectiveBatch}
+                                </span>
+                                {ticket.is_late && (
+                                  <span className="col-late-tag">
+                                    <svg
+                                      width="10"
+                                      height="10"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                    >
+                                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                                      <path d="M12 9v4" />
+                                      <path d="M12 17h.01" />
+                                    </svg>
+                                    Late
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="col-td-time">
+                              {formatTime(ticket.issued_at)}
+                            </td>
+                            <td>
+                              {ticket.vehicle?.plate_number ? (
+                                <span className="col-plate">
+                                  {ticket.vehicle.plate_number}
+                                </span>
+                              ) : (
+                                <span className="col-na">N/A</span>
+                              )}
+                            </td>
+                            <td className="col-td-name">
+                              {ticket.driver?.name || (
+                                <span className="col-na">N/A</span>
+                              )}
+                            </td>
+                            <td>
+                              <span
+                                className={`col-verified ${
+                                  ticket.status === "CANCELLED"
+                                    ? "col-verified--cancelled"
+                                    : ticket.is_verified
+                                      ? "col-verified--yes"
+                                      : "col-verified--pending"
+                                }`}
+                              >
+                                {ticket.status === "CANCELLED"
+                                  ? "✗ Cancelled"
+                                  : ticket.is_verified
+                                    ? "✓ Verified"
+                                    : "○ Pending"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
-            </div>
+
+              {filteredTickets.length > rowsPerPage && (
+                <div className="col-pagination">
+                  <span className="col-pagination-info">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="col-pagination-btns">
+                    <button
+                      className="col-page-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => p - 1)}
+                    >
+                      ← Prev
+                    </button>
+                    <button
+                      className="col-page-btn"
+                      disabled={endIndex >= filteredTickets.length}
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
+
+          {/* ── Roaming Vehicle Log Tab ── */}
+          {activeTab === "roaming" && (() => {
+            const roamingStart = (roamingPage - 1) * rowsPerPage;
+            const roamingEnd = roamingStart + rowsPerPage;
+            const currentRoaming = filteredRoamingLogs.slice(roamingStart, roamingEnd);
+            const roamingTotalPages = Math.ceil(filteredRoamingLogs.length / rowsPerPage);
+            return (
+              <>
+                <div className="col-card-header col-card-header--color col-log-header">
+                  <div>
+                    <span className="col-card-title">Roaming Vehicle Log</span>
+                    <p className="col-card-desc">
+                      Vehicles that entered the terminal to unload passengers
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <div className="col-search-wrap">
+                      <svg
+                        width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2" className="col-search-icon"
+                      >
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.3-4.3" />
+                      </svg>
+                      <input
+                        className="col-search"
+                        placeholder="Search logs…"
+                        value={roamingSearch}
+                        onChange={(e) => setRoamingSearch(e.target.value)}
+                      />
+                    </div>
+                    <button className="col-action-btn" onClick={handleOpenRoamingModal}>
+                      + Record
+                    </button>
+                  </div>
+                </div>
+
+                <div className="col-table-wrap">
+                  <table className="col-table">
+                    <thead>
+                      <tr>
+                        {["#", "Vehicle", "Driver", "Recorded By", "Time", "Notes"].map((h) => (
+                          <th key={h}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {roamingLoading ? (
+                        <tr>
+                          <td colSpan="6" className="col-table-state">
+                            <div className="col-loading-dots"><div /><div /><div /></div>
+                          </td>
+                        </tr>
+                      ) : currentRoaming.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="col-table-state">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
+                              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                              <circle cx="12" cy="10" r="3" />
+                            </svg>
+                            <span>No roaming records found</span>
+                          </td>
+                        </tr>
+                      ) : (
+                        currentRoaming.map((log) => (
+                          <tr key={log.id} className="col-table-row">
+                            <td><span className="col-id-badge">#{log.id}</span></td>
+                            <td>
+                              {log.vehicle_plate ? (
+                                <span className="col-plate">{log.vehicle_plate}</span>
+                              ) : (
+                                <span className="col-na">N/A</span>
+                              )}
+                            </td>
+                            <td className="col-td-name">{log.driver_name || <span className="col-na">N/A</span>}</td>
+                            <td className="col-td-name">{log.recorded_by_name || <span className="col-na">N/A</span>}</td>
+                            <td className="col-td-time">{formatTime(log.recorded_at)}</td>
+                            <td><span className="col-na">{log.notes || "—"}</span></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {filteredRoamingLogs.length > rowsPerPage && (
+                  <div className="col-pagination">
+                    <span className="col-pagination-info">
+                      Page {roamingPage} of {roamingTotalPages}
+                    </span>
+                    <div className="col-pagination-btns">
+                      <button className="col-page-btn" disabled={roamingPage === 1} onClick={() => setRoamingPage((p) => p - 1)}>
+                        ← Prev
+                      </button>
+                      <button className="col-page-btn" disabled={roamingEnd >= filteredRoamingLogs.length} onClick={() => setRoamingPage((p) => p + 1)}>
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -789,6 +992,85 @@ function Collection({ userRole }) {
                   <polyline points="7 3 7 8 15 8" />
                 </svg>
                 Save Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isRoamingModalOpen && (
+        <div className="col-sched-overlay" onClick={() => setIsRoamingModalOpen(false)}>
+          <div className="col-sched-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="col-sched-modal-header">
+              <div className="col-sched-modal-header-left">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2">
+                  <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <h2 className="col-sched-modal-title">Record Roaming Vehicle</h2>
+              </div>
+              <button type="button" className="col-sched-modal-close" onClick={() => setIsRoamingModalOpen(false)} aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="col-sched-modal-body">
+              <div className="col-sched-batch-block">
+                <div className="col-sched-field">
+                  <label className="col-sched-label">Vehicle *</label>
+                  <select
+                    className="col-sched-input"
+                    style={{ paddingLeft: 12 }}
+                    value={roamingForm.vehicle}
+                    onChange={(e) => setRoamingForm((f) => ({ ...f, vehicle: e.target.value }))}
+                  >
+                    <option value="">Select vehicle…</option>
+                    {vehicles.filter((v) => !v.is_archived).map((v) => (
+                      <option key={v.id} value={v.id}>{v.plate_number}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-sched-field" style={{ marginTop: 12 }}>
+                  <label className="col-sched-label">Driver (optional)</label>
+                  <select
+                    className="col-sched-input"
+                    style={{ paddingLeft: 12 }}
+                    value={roamingForm.driver}
+                    onChange={(e) => setRoamingForm((f) => ({ ...f, driver: e.target.value }))}
+                  >
+                    <option value="">Select driver…</option>
+                    {drivers.filter((d) => !d.is_archived).map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-sched-field" style={{ marginTop: 12 }}>
+                  <label className="col-sched-label">Notes (optional)</label>
+                  <input
+                    className="col-sched-input"
+                    style={{ paddingLeft: 12 }}
+                    placeholder="e.g. Unloading passengers only"
+                    value={roamingForm.notes}
+                    onChange={(e) => setRoamingForm((f) => ({ ...f, notes: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="col-sched-modal-footer">
+              <button type="button" className="col-sched-modal-btn col-sched-modal-btn--cancel" onClick={() => setIsRoamingModalOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="col-sched-modal-btn col-sched-modal-btn--submit"
+                onClick={handleSubmitRoaming}
+                disabled={!roamingForm.vehicle || roamingSubmitting}
+              >
+                {roamingSubmitting ? "Saving…" : "Save Record"}
               </button>
             </div>
           </div>

@@ -86,7 +86,7 @@ const CreateBatchForm = ({ onClose, onSave }) => {
         (sum, t) => sum + Number(t.collection_amount || 0), 0
       );
       const totalStock = matchingSeries.reduce(
-        (sum, s) => sum + ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0)), 0
+        (sum, s) => sum + ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0) + 1), 0
       );
 
       updated[index].from = totalStock;
@@ -127,7 +127,10 @@ const CreateBatchForm = ({ onClose, onSave }) => {
     0
   );
 
+  const amountsMismatch = totalRemittances !== totalCollections;
+
   const handleSave = () => {
+    if (amountsMismatch) return;
     const payload = {
       id: batchId,
       issued_at: dateIssued,
@@ -350,7 +353,7 @@ const CreateBatchForm = ({ onClose, onSave }) => {
             </div>
             <div className="rem-summary-card">
               <div className="rem-summary-label">Ending Balance</div>
-              <div className="rem-summary-value">₱{endingBalance.toLocaleString()}</div>
+              <div className="rem-summary-value">{endingBalance.toLocaleString()}</div>
             </div>
           </div>
 
@@ -368,11 +371,27 @@ const CreateBatchForm = ({ onClose, onSave }) => {
           </div>
 
           {/* Footer */}
+          {amountsMismatch && (
+            <div className="rem-alert" style={{ marginBottom: 12 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              Total Deposits (₱{totalRemittances.toLocaleString()}) does not match Total Collections (₱{totalCollections.toLocaleString()}). Amounts must match to save.
+            </div>
+          )}
           <div className="rem-modal-footer">
             <button type="button" className="rem-modal-btn rem-modal-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="button" className="rem-modal-btn rem-modal-btn--submit" onClick={handleSave}>
+            <button
+              type="button"
+              className="rem-modal-btn rem-modal-btn--submit"
+              onClick={handleSave}
+              disabled={amountsMismatch}
+              style={amountsMismatch ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+            >
               Save Batch
             </button>
           </div>

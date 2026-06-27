@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Denomination, Requisition, TicketSeries
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Denomination, Requisition, TicketSeries, RoamingLog
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -212,6 +212,23 @@ class RequisitionSerializer(serializers.ModelSerializer):
             'ticket_series', 'created_at', 'updated_at',
         ]
 
+
+class RoamingLogSerializer(serializers.ModelSerializer):
+    vehicle_plate = serializers.CharField(source='vehicle.plate_number', read_only=True)
+    driver_name = serializers.SerializerMethodField()
+    recorded_by_name = serializers.CharField(source='recorded_by.username', read_only=True, allow_null=True)
+
+    class Meta:
+        model = RoamingLog
+        fields = ['id', 'vehicle', 'vehicle_plate', 'driver', 'driver_name', 'recorded_by', 'recorded_by_name', 'notes', 'recorded_at']
+        extra_kwargs = {
+            'recorded_by': {'read_only': True},
+        }
+
+    def get_driver_name(self, obj):
+        if obj.driver:
+            return f"{obj.driver.last_name}, {obj.driver.first_name}".strip()
+        return None
 
 class RemittanceBatchSerializer(serializers.ModelSerializer):
     collections = CollectionSerializer(many=True)

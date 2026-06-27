@@ -309,6 +309,14 @@ export const apiService = {
     return this.delete(`/denominations/${id}/`);
   },
 
+  getRoamingLogs() {
+    return this.get("/roaming-logs/");
+  },
+
+  createRoamingLog(data) {
+    return this.post("/roaming-logs/", data);
+  },
+
 };
 
 //login
