@@ -263,7 +263,7 @@ function Ticket({ userRole }) {
             <table className="ticket-table">
               <thead>
                 <tr>
-                  {["Ticket ID", "Vehicle", "Driver", "Series", "Time", "Status"].map(
+                  {["Ticket ID", "Plate Number", "Driver", "Issued By", "Time", "Status"].map(
                     (h) => (
                       <th key={h}>{h}</th>
                     ),
@@ -317,12 +317,8 @@ function Ticket({ userRole }) {
                           <span className="ticket-na">N/A</span>
                         )}
                       </td>
-                      <td>
-                        {t.series ? (
-                          <span className="ticket-plate">
-                            {t.series.ticket_form_label || t.series.series_no || "—"}
-                          </span>
-                        ) : (
+                      <td className="ticket-td-name">
+                        {t.active_user_name || (
                           <span className="ticket-na">N/A</span>
                         )}
                       </td>

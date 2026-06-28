@@ -3,6 +3,10 @@ import { useRequisition } from "../../../lib/requisition/useRequisition";
 import RequisitionFormModal from "../../../lib/requisition/RequisitionFormModal";
 import "../../../styles/requisition.css";
 
+function formatCurrency(val) {
+  return "₱" + Number(val || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function Requisition() {
   const {
     requisitions,
@@ -22,23 +26,12 @@ function Requisition() {
     inventory,
   } = useRequisition();
 
-  const [denomFilter, setDenomFilter] = useState("ALL");
   const [expandedId, setExpandedId] = useState(null);
 
   const toggleExpand = (id) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
   const denomOptions = Object.keys(inventory.byDenomination);
-
-  const filteredStock =
-    denomFilter === "ALL"
-      ? inventory.allStock
-      : inventory.byDenomination[denomFilter]?.series || [];
-
-  const filteredSummary =
-    denomFilter === "ALL"
-      ? { totalQty: inventory.totalStock, totalValue: inventory.totalValue }
-      : inventory.byDenomination[denomFilter] || { totalQty: 0, totalValue: 0 };
 
   return (
     <div className="req-page">
@@ -92,9 +85,10 @@ function Requisition() {
                 {inventory.totalStock.toLocaleString()} tickets
               </span>
               <span className="req-inv-card-sub">
-                ₱{inventory.totalValue.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                {formatCurrency(inventory.totalValue)}
               </span>
             </div>
+
             <div className="req-inv-card">
               <span className="req-inv-card-label">Active Series</span>
               {inventory.activeSeries ? (
@@ -108,25 +102,7 @@ function Requisition() {
                 <span className="req-inv-card-value req-inv-card-value--none">No active series</span>
               )}
             </div>
-            {denomOptions.map((denom) => {
-              const d = inventory.byDenomination[denom];
-              return (
-                <div
-                  key={denom}
-                  className={`req-inv-card ${d.totalQty > 0 ? "req-inv-card--ok" : "req-inv-card--empty"}`}
-                >
-                  <span className="req-inv-card-label">{denom}</span>
-                  <span className="req-inv-card-value">
-                    {d.totalQty.toLocaleString()} pcs
-                  </span>
-                  <span className="req-inv-card-sub">
-                    {d.totalQty > 0
-                      ? `₱${d.totalValue.toLocaleString("en-PH", { minimumFractionDigits: 2 })} · ${d.series.length} series`
-                      : "Out of stock"}
-                  </span>
-                </div>
-              );
-            })}
+
             {inventory.stockLevel !== "normal" && (
               <div className={`req-inv-card ${inventory.stockLevel === "low" ? "req-inv-card--alert" : "req-inv-card--ok"}`}>
                 <span className="req-inv-card-label">Stock Alert</span>
@@ -153,83 +129,118 @@ function Requisition() {
             )}
           </div>
 
-          {/* Ticket Stock Ledger */}
+          {/* Section A – Collections / Ticket Stock */}
           <div className="req-table-wrap">
-            <div className="req-ledger-header">
-              <h3 className="req-section-heading">Ticket Stock (Oldest First)</h3>
-              <div className="req-filter-wrap">
-                <select
-                  className="req-filter-select"
-                  value={denomFilter}
-                  onChange={(e) => setDenomFilter(e.target.value)}
-                >
-                  <option value="ALL">All Ticket Forms</option>
-                  {denomOptions.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="req-report-section-header">
+              <h3 className="req-report-section-label">A. COLLECTIONS</h3>
+              <span className="req-report-section-sub">1. For Collectors</span>
             </div>
-
-            {filteredStock.length > 0 ? (
-              <>
-                <table className="req-table">
-                  <thead>
-                    <tr>
-                      <th>Priority</th>
-                      <th>Series No.</th>
-                      <th>Ticket Form</th>
-                      <th>Pad / Box</th>
-                      <th>QTY (Pad/Box)</th>
-                      <th>Pieces</th>
-                      <th className="text-right">Value</th>
+            <table className="req-table">
+              <thead>
+                <tr>
+                  <th>Type (Form No.)</th>
+                  <th className="text-right">From</th>
+                  <th className="text-right">To</th>
+                  <th className="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inventory.allStock.length > 0 ? (
+                  inventory.allStock.map((ts) => (
+                    <tr key={ts.id}>
+                      <td>{ts.ticket_form_label || "—"}</td>
+                      <td className="text-right">{Number(ts.start_no || 0).toLocaleString()}</td>
+                      <td className="text-right">{Number(ts.end_no || 0).toLocaleString()}</td>
+                      <td className="text-right">{formatCurrency(ts.current_value)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStock.map((ts, idx) => (
-                      <tr key={ts.id} className={idx === 0 ? "req-row--active" : ""}>
-                        <td>
-                          {idx === 0 ? (
-                            <span className="req-priority req-priority--current">Selling</span>
-                          ) : (
-                            <span className="req-priority req-priority--queued">#{idx + 1}</span>
-                          )}
-                        </td>
-                        <td>{ts.series_no}</td>
-                        <td>{ts.ticket_form_label || "—"}</td>
-                        <td>{ts.pad_no || "—"} / {ts.box_no || "—"}</td>
-                        <td>{ts.qty}</td>
-                        <td>{ts.pcs.toLocaleString()}</td>
-                        <td className="text-right">
-                          ₱{parseFloat(ts.total_value).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="req-table-footer">
-                      <td colSpan={5} className="text-right">Total</td>
-                      <td>{filteredSummary.totalQty.toLocaleString()}</td>
-                      <td className="text-right">
-                        ₱{filteredSummary.totalValue.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </>
-            ) : (
-              <div className="req-empty" style={{ padding: "30px 20px" }}>
-                <p className="req-empty-title">
-                  {denomFilter === "ALL" ? "No ticket stock" : `No ${denomFilter} tickets in stock`}
-                </p>
-                <p className="req-empty-text">Click "+ New Requisition" to add stock</p>
-              </div>
-            )}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "30px 16px" }}>
+                      No ticket stock — click "+ New Requisition" to add stock
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              {inventory.allStock.length > 0 && (
+                <tfoot>
+                  <tr className="req-table-footer">
+                    <td><strong>TOTAL</strong></td>
+                    <td className="text-right">
+                      <strong>
+                        {inventory.allStock.length > 0
+                          ? Number(inventory.allStock[0].start_no || 0).toLocaleString()
+                          : "—"}
+                      </strong>
+                    </td>
+                    <td className="text-right">
+                      <strong>
+                        {inventory.allStock.length > 0
+                          ? Number(inventory.allStock[inventory.allStock.length - 1].end_no || 0).toLocaleString()
+                          : "—"}
+                      </strong>
+                    </td>
+                    <td className="text-right">
+                      <strong>{formatCurrency(inventory.totalValue)}</strong>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
           </div>
 
-          {/* Requisition Receipts */}
+          {/* Section B – Remittances / Deposits by Denomination */}
+          <div className="req-table-wrap" style={{ marginTop: 20 }}>
+            <div className="req-report-section-header">
+              <h3 className="req-report-section-label">B. REMITTANCES / DEPOSITS</h3>
+            </div>
+            <table className="req-table">
+              <thead>
+                <tr>
+                  <th>Den.</th>
+                  <th className="text-right">Quantity</th>
+                  <th className="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {denomOptions.length > 0 ? (
+                  denomOptions.map((denom) => {
+                    const d = inventory.byDenomination[denom];
+                    return (
+                      <tr key={denom}>
+                        <td>{denom}</td>
+                        <td className="text-right">{d.totalQty.toLocaleString()}</td>
+                        <td className="text-right">{formatCurrency(d.totalValue)}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "30px 16px" }}>
+                      No denominations in stock
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              {denomOptions.length > 0 && (
+                <tfoot>
+                  <tr className="req-table-footer">
+                    <td><strong>TOTAL</strong></td>
+                    <td className="text-right">
+                      <strong>{inventory.totalStock.toLocaleString()}</strong>
+                    </td>
+                    <td className="text-right">
+                      <strong>{formatCurrency(inventory.totalValue)}</strong>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+
+          {/* Stocking Receipts */}
           {requisitions.length > 0 && (
-            <div className="req-table-wrap">
+            <div className="req-table-wrap" style={{ marginTop: 20 }}>
               <h3 className="req-section-heading">Stocking Receipts</h3>
               <table className="req-table">
                 <thead>
@@ -259,9 +270,7 @@ function Requisition() {
                         <td>{req.requested_by_name}</td>
                         <td>{req.ticket_series?.length || 0} series</td>
                         <td className="text-right">
-                          ₱{parseFloat(req.total_value).toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                          })}
+                          {formatCurrency(req.total_value)}
                         </td>
                       </tr>
 
@@ -289,7 +298,7 @@ function Requisition() {
                                       <td>{ts.pad_no || "—"}</td>
                                       <td>{ts.box_no || "—"}</td>
                                       <td>{ts.qty}</td>
-                                      <td>₱{parseFloat(ts.total_value).toFixed(2)}</td>
+                                      <td>{formatCurrency(ts.total_value)}</td>
                                     </tr>
                                   ))}
                                 </tbody>

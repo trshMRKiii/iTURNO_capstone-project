@@ -107,9 +107,14 @@ class TicketSerializer(serializers.ModelSerializer):
     series = TicketSeriesBriefSerializer(read_only=True)
     series_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     active_user = serializers.StringRelatedField(read_only=True)
-    active_user_name = serializers.CharField(
-        source='active_user.username', read_only=True, required=False, allow_null=True
-    )
+    active_user_name = serializers.SerializerMethodField()
+
+    def get_active_user_name(self, obj):
+        user = obj.active_user
+        if not user:
+            return None
+        full = f"{user.first_name} {user.last_name}".strip()
+        return full or user.username
     route_name = serializers.ReadOnlyField()
 
     class Meta:
@@ -201,8 +206,22 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
 
 class RequisitionSerializer(serializers.ModelSerializer):
     ticket_series = TicketSeriesSerializer(many=True, read_only=True)
-    requested_by_name = serializers.CharField(source='requested_by.username', read_only=True)
-    approved_by_name = serializers.CharField(source='approved_by.username', read_only=True, allow_null=True)
+    requested_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+
+    def get_requested_by_name(self, obj):
+        user = obj.requested_by
+        if user:
+            full = f"{user.first_name} {user.last_name}".strip()
+            return full if full else user.username
+        return None
+
+    def get_approved_by_name(self, obj):
+        user = obj.approved_by
+        if user:
+            full = f"{user.first_name} {user.last_name}".strip()
+            return full if full else user.username
+        return None
 
     class Meta:
         model = Requisition
@@ -216,7 +235,7 @@ class RequisitionSerializer(serializers.ModelSerializer):
 class RoamingLogSerializer(serializers.ModelSerializer):
     vehicle_plate = serializers.CharField(source='vehicle.plate_number', read_only=True)
     driver_name = serializers.SerializerMethodField()
-    recorded_by_name = serializers.CharField(source='recorded_by.username', read_only=True, allow_null=True)
+    recorded_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = RoamingLog
@@ -224,6 +243,13 @@ class RoamingLogSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'recorded_by': {'read_only': True},
         }
+
+    def get_recorded_by_name(self, obj):
+        user = obj.recorded_by
+        if not user:
+            return None
+        full = f"{user.first_name} {user.last_name}".strip()
+        return full or user.username
 
     def get_driver_name(self, obj):
         if obj.driver:
@@ -233,7 +259,14 @@ class RoamingLogSerializer(serializers.ModelSerializer):
 class RemittanceBatchSerializer(serializers.ModelSerializer):
     collections = CollectionSerializer(many=True)
     deposits = DepositSerializer(many=True)
+    issued_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = RemittanceBatch
         fields = "__all__"
+
+    def get_issued_by_name(self, obj):
+        if obj.issued_by:
+            full = f"{obj.issued_by.first_name} {obj.issued_by.last_name}".strip()
+            return full or obj.issued_by.username
+        return ""

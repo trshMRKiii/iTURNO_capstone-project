@@ -367,6 +367,7 @@ function Collection({ userRole }) {
                         "Time",
                         "Vehicle",
                         "Driver",
+                        "Issued By",
                         "Verified",
                       ].map((h) => (
                         <th key={h}>{h}</th>
@@ -376,7 +377,7 @@ function Collection({ userRole }) {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="6" className="col-table-state">
+                        <td colSpan="7" className="col-table-state">
                           <div className="col-loading-dots">
                             <div />
                             <div />
@@ -387,7 +388,7 @@ function Collection({ userRole }) {
                     ) : error ? (
                       <tr>
                         <td
-                          colSpan="6"
+                          colSpan="7"
                           className="col-table-state col-table-state--error"
                         >
                           Error: {error}
@@ -395,7 +396,7 @@ function Collection({ userRole }) {
                       </tr>
                     ) : filteredTickets.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="col-table-state">
+                        <td colSpan="7" className="col-table-state">
                           <svg
                             width="32"
                             height="32"
@@ -461,6 +462,11 @@ function Collection({ userRole }) {
                             </td>
                             <td className="col-td-name">
                               {ticket.driver?.name || (
+                                <span className="col-na">N/A</span>
+                              )}
+                            </td>
+                            <td className="col-td-name">
+                              {ticket.active_user_name || (
                                 <span className="col-na">N/A</span>
                               )}
                             </td>

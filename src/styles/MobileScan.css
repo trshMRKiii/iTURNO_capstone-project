@@ -1,0 +1,370 @@
+/* ── Mobile Scan Page ── */
+.ms-page {
+  min-height: 100dvh;
+  padding: 16px;
+  background: var(--color-bg, #f5f7fa);
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.ms-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60dvh;
+  font-size: 1.1rem;
+  color: #6b7280;
+}
+
+.ms-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.ms-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.ms-subtitle {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 4px 0 0;
+}
+
+/* ── Alerts ── */
+.ms-alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.ms-alert--success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.ms-alert--error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* ── Card ── */
+.ms-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* ── QR Reader ── */
+.ms-qr-reader {
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.ms-qr-reader video {
+  border-radius: 10px;
+}
+
+.ms-qr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.ms-scan-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* ── Buttons ── */
+.ms-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.ms-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-btn--primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.ms-btn--primary:active:not(:disabled) {
+  background: #1d4ed8;
+  transform: scale(0.98);
+}
+
+.ms-btn--roam {
+  background: #f59e0b;
+}
+
+.ms-btn--roam:active:not(:disabled) {
+  background: #d97706;
+}
+
+.ms-btn--outline {
+  background: transparent;
+  border: 1.5px solid #d1d5db;
+  color: #374151;
+}
+
+.ms-btn--lg {
+  padding: 14px 20px;
+  font-size: 1.05rem;
+  margin-top: 8px;
+}
+
+/* ── Vehicle Info ── */
+.ms-vehicle-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 12px;
+}
+
+.ms-plate {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 0.5px;
+}
+
+.ms-route {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.ms-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ms-status--available {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.ms-status--dispatched {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.ms-status--queued {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ms-status--maintenance {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Form Fields ── */
+.ms-field {
+  margin-bottom: 12px;
+}
+
+.ms-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.ms-select {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: #1e293b;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.ms-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.ms-fee {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+/* ── Radio Group ── */
+.ms-radio-group {
+  display: flex;
+  gap: 8px;
+}
+
+.ms-radio {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #374151;
+  transition: all 0.15s;
+}
+
+.ms-radio input {
+  display: none;
+}
+
+.ms-radio-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.15s;
+}
+
+.ms-radio--active {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.ms-radio--active .ms-radio-dot {
+  border-color: #2563eb;
+}
+
+.ms-radio--active .ms-radio-dot::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+/* ── Driver Badge ── */
+.ms-driver-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #166534;
+}
+
+.ms-driver-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #166534;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* ── Dark mode ── */
+.dark .ms-page {
+  background: #0f172a;
+}
+
+.dark .ms-title {
+  color: #f1f5f9;
+}
+
+.dark .ms-subtitle {
+  color: #94a3b8;
+}
+
+.dark .ms-card {
+  background: #1e293b;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark .ms-plate {
+  color: #f1f5f9;
+}
+
+.dark .ms-route {
+  color: #94a3b8;
+}
+
+.dark .ms-select {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+.dark .ms-radio {
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.dark .ms-radio--active {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+.dark .ms-btn--outline {
+  border-color: #475569;
+  color: #e2e8f0;
+}

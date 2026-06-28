@@ -9,6 +9,7 @@ const STATUS_COLORS = {
   COLLECTED: "#22c55e",
   CANCELLED: "#ef4444",
   RETURNED: "#8b5cf6",
+  ROAMING: "#f97316",
 };
 
 function VehicleModal({ vehicle, onClose }) {
@@ -20,13 +21,27 @@ function VehicleModal({ vehicle, onClose }) {
   useEffect(() => {
     if (!vehicle) return;
     setLoading(true);
-    apiService
-      .getTickets()
-      .then((data) => {
-        const vehicleTickets = data
+    Promise.all([apiService.getTickets(), apiService.getRoamingLogs()])
+      .then(([ticketData, roamingData]) => {
+        const vehicleTickets = (ticketData || [])
           .filter((t) => t.vehicle_id === vehicle.id || t.vehicle?.id === vehicle.id)
-          .sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at));
-        setTickets(vehicleTickets);
+          .map((t) => ({ ...t, _date: t.issued_at }));
+
+        const vehicleRoaming = (roamingData || [])
+          .filter((r) => r.vehicle === vehicle.id)
+          .map((r) => ({
+            id: `R-${r.id}`,
+            _date: r.recorded_at,
+            issued_at: r.recorded_at,
+            driver: { name: r.driver_name || null },
+            status: "ROAMING",
+            collection_amount: null,
+            notes: r.notes,
+          }));
+
+        const combined = [...vehicleTickets, ...vehicleRoaming]
+          .sort((a, b) => new Date(b._date) - new Date(a._date));
+        setTickets(combined);
       })
       .catch(() => setTickets([]))
       .finally(() => setLoading(false));
@@ -106,7 +121,7 @@ function VehicleModal({ vehicle, onClose }) {
             />
           </div>
           <div className="veh-ledger-pills">
-            {["ALL", "ISSUED", "DISPATCHED", "COLLECTED", "CANCELLED", "RETURNED"].map((s) => (
+            {["ALL", "COLLECTED", "CANCELLED", "ROAMING"].map((s) => (
               <button
                 key={s}
                 className={`veh-ledger-pill ${filter === s ? "veh-ledger-pill--active" : ""}`}
@@ -137,9 +152,6 @@ function VehicleModal({ vehicle, onClose }) {
               {/* Summary bar */}
               <div className="veh-ledger-summary">
                 <span>{filtered.length} ticket{filtered.length !== 1 ? "s" : ""}</span>
-                <span className="veh-ledger-total">
-                  ₱{totalAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                </span>
               </div>
 
               <div className="veh-table-wrap" style={{ maxHeight: 420, overflowY: "auto" }}>

@@ -4,6 +4,24 @@ function formatCurrency(val) {
   return "₱" + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function getCollectionFields(c) {
+  const ticketFormNo = c.ticket_form_no || c.ticketFormNo || "";
+  const from = Number(c.from_no || c.from || 0);
+  const amount = Number(c.amount || 0);
+  const to = from - amount;
+  return { ticketFormNo, from, to, amount };
+}
+
+function getDepositFields(d) {
+  const depositAmount = Number(d.deposit_amount || d.depositAmount || 0);
+  return {
+    type: d.type || "bill",
+    denomination: d.denomination || 0,
+    quantity: Number(d.quantity || 0),
+    depositAmount,
+  };
+}
+
 function generateCSVRows(batch) {
   const rows = [];
   const add = (...cols) => rows.push(cols.map(c => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","));
@@ -12,55 +30,55 @@ function generateCSVRows(batch) {
   add("CITY GOVERNMENT OF SAN FERNANDO, LA UNION");
   add("");
   add("FUND:", "GENERAL FUND", "", "Date:", batch.issued_at || "");
-  add("Name of Accountable Officer:", batch.issued_by || "", "", "Report No.:", batch.id || "");
+  add("Name of Accountable Officer:", batch.issued_by_name || "", "", "Report No.:", batch.id || "");
   add("");
 
   // Section A - Collections
   add("A. COLLECTIONS");
   add("1. For Collectors");
-  add("Type (Form No.)", "Cash Tickets From", "Cash Tickets To", "Amount");
-  const collections = batch.collections || [];
+  add("Type (Form No.)", "From", "To", "Amount");
+  const collections = (batch.collections || []).map(getCollectionFields);
   collections.forEach(c => {
-    add(c.ticketFormNo || "", c.from || "", Number(c.from || 0) - Number(c.amount || 0), c.amount || 0);
+    add(c.ticketFormNo, c.from, c.to, c.amount);
   });
-  const totalCollections = collections.reduce((s, c) => s + Number(c.amount || 0), 0);
-  add("TOTAL", "", "", totalCollections);
+  const totalCollections = collections.reduce((s, c) => s + c.amount, 0);
+  const totalFrom = collections.reduce((s, c) => s + c.from, 0);
+  const totalTo = collections.reduce((s, c) => s + c.to, 0);
+  add("TOTAL", totalFrom, totalTo, totalCollections);
   add("");
 
   // Section B - Remittances/Deposits
   add("B. REMITTANCES/DEPOSITS");
-  add("Accountable Officer/Bank", "Reference Den.", "Quantity", "Amount");
-  const deposits = batch.deposits || [];
+  add("Den.", "Quantity", "Amount");
+  const deposits = (batch.deposits || []).map(getDepositFields);
   deposits.forEach(d => {
     const label = d.type === "coin" ? "Coins" : d.denomination;
-    add(batch.issued_by || "", label, d.quantity || 0, d.depositAmount || 0);
+    add(label, d.quantity, d.depositAmount);
   });
-  const totalDeposits = deposits.reduce((s, d) => s + Number(d.depositAmount || 0), 0);
-  add("TOTAL DEPOSITS", "", "", totalDeposits);
+  const totalDeposits = deposits.reduce((s, d) => s + d.depositAmount, 0);
+  add("TOTAL DEPOSITS", "", totalDeposits);
   add("");
 
   // Section C - Accountability for Accountable Forms
   add("C. ACCOUNTABILITY FOR ACCOUNTABLE FORMS");
   add("Name of Form & No.", "Beg. Bal Qty", "Beg. From", "Beg. To", "Receipt Qty", "Rec. From", "Rec. To", "Issued Qty", "Iss. From", "Iss. To", "End Qty", "End From", "End To");
   collections.forEach(c => {
-    const endBal = Number(c.from || 0) - Number(c.amount || 0);
-    add(c.ticketFormNo || "", c.from || 0, "", "", "", "", "", c.amount || 0, "", "", endBal, "", "");
+    add(c.ticketFormNo, c.from, "", "", "", "", "", c.amount, "", "", c.to, "", "");
   });
   add("");
 
   // Section D - Summary
   add("D. SUMMARY OF COLLECTIONS AND REMITTANCES/DEPOSITS");
-  add("Beginning Balance", 0);
+  add("Beginning Balance", totalFrom);
   add("Add: Collections - Cash", totalCollections);
   add("Add: Collections - Checks", 0);
-  add("Total", totalCollections);
-  add("Less: Remittance/Deposits", totalDeposits);
-  add("Balance", totalCollections - totalDeposits);
+  add("Remittance/Deposits", totalDeposits);
+  add("Balance", totalDeposits);
   add("");
 
   // Certification
   add("CERTIFICATION");
-  add("Prepared By:", batch.issued_by || "");
+  add("Prepared By:", batch.issued_by_name || "");
   add("Verified By:", "");
 
   return rows.join("\n");
@@ -80,11 +98,13 @@ function downloadCSV(batch) {
 export default function ViewRemittance({ batch, onClose }) {
   if (!batch) return null;
 
-  const collections = batch.collections || [];
-  const deposits = batch.deposits || [];
-  const totalCollections = collections.reduce((s, c) => s + Number(c.amount || 0), 0);
-  const totalDeposits = deposits.reduce((s, d) => s + Number(d.depositAmount || 0), 0);
-  const balance = totalCollections - totalDeposits;
+  const collections = (batch.collections || []).map(getCollectionFields);
+  const deposits = (batch.deposits || []).map(getDepositFields);
+  const totalCollections = collections.reduce((s, c) => s + c.amount, 0);
+  const totalDeposits = deposits.reduce((s, d) => s + d.depositAmount, 0);
+
+  const totalFrom = collections.reduce((s, c) => s + c.from, 0);
+  const totalTo = collections.reduce((s, c) => s + c.to, 0);
 
   return (
     <div className="rem-overlay" onClick={onClose}>
@@ -129,7 +149,7 @@ export default function ViewRemittance({ batch, onClose }) {
               <span><strong>Date:</strong> {batch.issued_at || "—"}</span>
             </div>
             <div className="rem-report-info-row">
-              <span><strong>Name of Accountable Officer:</strong> {batch.issued_by || "—"}</span>
+              <span><strong>Name of Accountable Officer:</strong> {batch.issued_by_name || "—"}</span>
               <span><strong>Report No.:</strong> {batch.id || "—"}</span>
             </div>
           </div>
@@ -141,8 +161,8 @@ export default function ViewRemittance({ batch, onClose }) {
             <thead>
               <tr>
                 <th>Type (Form No.)</th>
-                <th>Cash Tickets From</th>
-                <th>Cash Tickets To</th>
+                <th style={{ textAlign: "right" }}>From</th>
+                <th style={{ textAlign: "right" }}>To</th>
                 <th style={{ textAlign: "right" }}>Amount</th>
               </tr>
             </thead>
@@ -150,8 +170,8 @@ export default function ViewRemittance({ batch, onClose }) {
               {collections.length > 0 ? collections.map((c, i) => (
                 <tr key={i}>
                   <td>{c.ticketFormNo || "—"}</td>
-                  <td>{c.from || "—"}</td>
-                  <td>{Number(c.from || 0) - Number(c.amount || 0)}</td>
+                  <td style={{ textAlign: "right" }}>{c.from.toLocaleString()}</td>
+                  <td style={{ textAlign: "right" }}>{c.to.toLocaleString()}</td>
                   <td style={{ textAlign: "right" }}>{formatCurrency(c.amount)}</td>
                 </tr>
               )) : (
@@ -160,7 +180,13 @@ export default function ViewRemittance({ batch, onClose }) {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3}><strong>TOTAL</strong></td>
+                <td><strong>TOTAL</strong></td>
+                <td style={{ textAlign: "right" }}>
+                  <strong>{totalFrom.toLocaleString()}</strong>
+                </td>
+                <td style={{ textAlign: "right" }}>
+                  <strong>{totalTo.toLocaleString()}</strong>
+                </td>
                 <td style={{ textAlign: "right" }}><strong>{formatCurrency(totalCollections)}</strong></td>
               </tr>
             </tfoot>
@@ -171,27 +197,28 @@ export default function ViewRemittance({ batch, onClose }) {
           <table className="rem-report-table">
             <thead>
               <tr>
-                <th>Accountable Officer / Bank</th>
-                <th>Reference Den.</th>
-                <th>Quantity</th>
+                <th>Den.</th>
+                <th style={{ textAlign: "right" }}>Quantity</th>
                 <th style={{ textAlign: "right" }}>Amount</th>
               </tr>
             </thead>
             <tbody>
               {deposits.length > 0 ? deposits.map((d, i) => (
                 <tr key={i}>
-                  <td>{batch.issued_by || "—"}</td>
                   <td>{d.type === "coin" ? "Coins" : d.denomination}</td>
-                  <td>{d.quantity || 0}</td>
+                  <td style={{ textAlign: "right" }}>{d.quantity.toLocaleString()}</td>
                   <td style={{ textAlign: "right" }}>{formatCurrency(d.depositAmount)}</td>
                 </tr>
               )) : (
-                <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--text-secondary)" }}>No deposits</td></tr>
+                <tr><td colSpan={3} style={{ textAlign: "center", color: "var(--text-secondary)" }}>No deposits</td></tr>
               )}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3}><strong>TOTAL DEPOSITS</strong></td>
+                <td><strong>TOTAL DEPOSITS</strong></td>
+                <td style={{ textAlign: "right" }}>
+                  <strong>{deposits.reduce((s, d) => s + d.quantity, 0).toLocaleString()}</strong>
+                </td>
                 <td style={{ textAlign: "right" }}><strong>{formatCurrency(totalDeposits)}</strong></td>
               </tr>
             </tfoot>
@@ -217,18 +244,15 @@ export default function ViewRemittance({ batch, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                {collections.length > 0 ? collections.map((c, i) => {
-                  const endBal = Number(c.from || 0) - Number(c.amount || 0);
-                  return (
-                    <tr key={i}>
-                      <td>{c.ticketFormNo || "—"}</td>
-                      <td>{c.from || 0}</td><td>—</td><td>—</td>
-                      <td>—</td><td>—</td><td>—</td>
-                      <td>{c.amount || 0}</td><td>—</td><td>—</td>
-                      <td>{endBal}</td><td>—</td><td>—</td>
-                    </tr>
-                  );
-                }) : (
+                {collections.length > 0 ? collections.map((c, i) => (
+                  <tr key={i}>
+                    <td>{c.ticketFormNo || "—"}</td>
+                    <td>{c.from}</td><td>—</td><td>—</td>
+                    <td>—</td><td>—</td><td>—</td>
+                    <td>{c.amount}</td><td>—</td><td>—</td>
+                    <td>{c.to}</td><td>—</td><td>—</td>
+                  </tr>
+                )) : (
                   <tr><td colSpan={13} style={{ textAlign: "center", color: "var(--text-secondary)" }}>No forms</td></tr>
                 )}
               </tbody>
@@ -239,12 +263,11 @@ export default function ViewRemittance({ batch, onClose }) {
           <h3 className="rem-report-section">D. SUMMARY OF COLLECTIONS AND REMITTANCES/DEPOSITS</h3>
           <table className="rem-report-table rem-report-table--summary">
             <tbody>
-              <tr><td>Beginning Balance</td><td style={{ textAlign: "right" }}>{formatCurrency(0)}</td></tr>
+              <tr><td>Beginning Balance</td><td style={{ textAlign: "right" }}>{totalFrom.toLocaleString()}</td></tr>
               <tr><td>Add: Collections — Cash</td><td style={{ textAlign: "right" }}>{formatCurrency(totalCollections)}</td></tr>
               <tr><td>Add: Collections — Checks</td><td style={{ textAlign: "right" }}>{formatCurrency(0)}</td></tr>
-              <tr className="rem-report-row--bold"><td>Total</td><td style={{ textAlign: "right" }}>{formatCurrency(totalCollections)}</td></tr>
-              <tr><td>Less: Remittance/Deposits to Cashier/Treasurer/Depository Bank</td><td style={{ textAlign: "right" }}>{formatCurrency(totalDeposits)}</td></tr>
-              <tr className="rem-report-row--bold"><td>Balance</td><td style={{ textAlign: "right" }}>{formatCurrency(balance)}</td></tr>
+              <tr><td>Remittance/Deposits</td><td style={{ textAlign: "right" }}>{formatCurrency(totalDeposits)}</td></tr>
+              <tr className="rem-report-row--bold"><td>Balance</td><td style={{ textAlign: "right" }}>{formatCurrency(totalDeposits)}</td></tr>
             </tbody>
           </table>
 
@@ -254,7 +277,7 @@ export default function ViewRemittance({ batch, onClose }) {
               <p className="rem-report-cert-label">CERTIFICATION:</p>
               <p className="rem-report-cert-text">I hereby certify that the above report of collections and deposits is correct.</p>
               <div className="rem-report-sig">
-                <strong>{batch.issued_by || "—"}</strong>
+                <strong>{batch.issued_by_name || "—"}</strong>
                 <span>Name and Signature of Accountable Officer</span>
               </div>
             </div>

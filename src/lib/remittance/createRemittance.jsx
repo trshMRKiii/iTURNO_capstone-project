@@ -37,7 +37,8 @@ const CreateBatchForm = ({ onClose, onSave }) => {
     const fetchUser = async () => {
       try {
         const user = await apiService.get("/current-user/");
-        setAccountableOfficer(user.username || user.first_name);
+        const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+        setAccountableOfficer(fullName || user.username);
       } catch (err) {
         console.error("Failed to fetch current user", err);
       }

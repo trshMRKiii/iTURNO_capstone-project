@@ -60,7 +60,7 @@ def report_collections(request):
         local_dt = t.issued_at + timedelta(hours=8)
         data.append({
             'id': t.id,
-            'batch': get_batch(t),
+            'batch': get_batch(t).replace("_", " ").title() if get_batch(t) else '',
             'issued_at': local_dt.strftime('%Y-%m-%d %H:%M'),
             'issued_date': local_dt.strftime('%Y-%m-%d'),
             'driver': str(t.driver) if t.driver else '',
@@ -130,7 +130,7 @@ def export_collections_csv(request):
         local_dt = t.issued_at + timedelta(hours=8)
         writer.writerow([
             t.id,
-            get_batch(t),
+            get_batch(t).replace("_", " ").title() if get_batch(t) else "",
             local_dt.strftime('%Y-%m-%d'),
             local_dt.strftime('%H:%M'),
             str(t.driver) if t.driver else "",

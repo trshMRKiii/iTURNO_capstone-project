@@ -572,6 +572,26 @@
   color: var(--text-secondary);
 }
 
+/* Report-style section header */
+.req-report-section-header {
+  padding: 14px 16px 8px;
+}
+
+.req-report-section-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.req-report-section-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 /* Section heading */
 .req-section-heading {
   font-size: 13px;

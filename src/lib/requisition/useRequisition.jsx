@@ -57,11 +57,7 @@ export function useRequisition() {
         }
       }
     }
-    series.sort((a, b) => {
-      const aStart = parseInt(a.start_no) || 0;
-      const bStart = parseInt(b.start_no) || 0;
-      return aStart - bStart;
-    });
+    series.sort((a, b) => a.requisition_id - b.requisition_id || a.id - b.id);
     return series;
   }, [requisitions]);
 
@@ -72,9 +68,13 @@ export function useRequisition() {
       return end > start ? end - start : 0;
     };
 
-    const enriched = allSeries.map((s) => ({ ...s, pcs: getPcs(s) }));
+    const enriched = allSeries.map((s) => {
+      const pcs = getPcs(s);
+      const price = parseFloat(s.ticket_form_price) || 0;
+      return { ...s, pcs, current_value: pcs * price };
+    });
     const totalStock = enriched.reduce((sum, s) => sum + s.pcs, 0);
-    const totalValue = enriched.reduce((sum, s) => sum + (parseFloat(s.total_value) || 0), 0);
+    const totalValue = enriched.reduce((sum, s) => sum + s.current_value, 0);
     const activeSeries = enriched.length > 0 ? enriched[0] : null;
     const hasStock = totalStock > 0;
 
@@ -85,7 +85,7 @@ export function useRequisition() {
         byDenomination[key] = { label: key, totalQty: 0, totalValue: 0, series: [] };
       }
       byDenomination[key].totalQty += s.pcs;
-      byDenomination[key].totalValue += parseFloat(s.total_value) || 0;
+      byDenomination[key].totalValue += s.current_value;
       byDenomination[key].series.push(s);
     }
 
