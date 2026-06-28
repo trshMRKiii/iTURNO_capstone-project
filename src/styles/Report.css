@@ -323,6 +323,24 @@
   flex-wrap: wrap;
 }
 
+.rpt-search-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 12px;
+  min-width: 160px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.rpt-search-input:focus {
+  border-color: #c9a84c;
+}
+.rpt-search-input::placeholder {
+  color: var(--text-muted, #999);
+}
+
 .rpt-card-title {
   font-size: 14px;
   font-weight: 700;

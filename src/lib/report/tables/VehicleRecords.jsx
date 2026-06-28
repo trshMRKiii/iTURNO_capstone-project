@@ -1,4 +1,5 @@
 import { DataTable } from "../../../components/ui/dataTable";
+import { useState } from "react";
 
 export default function VehicleRecords({
   vehiclesTotal,
@@ -12,16 +13,32 @@ export default function VehicleRecords({
   btnExport,
   btnSecondary,
 }) {
+  const [search, setSearch] = useState("");
+  const searched = visibleVehicles.filter((v) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const route = v.route_detail ? `${v.route_detail.origin} - San Fernando` : v.route || "";
+    return [v.code, v.plate_number, route, v.active_driver_name]
+      .some((val) => val && val.toLowerCase().includes(q));
+  });
+
   return (
     <div className="rpt-card rpt-section">
       <div className="rpt-card-header">
         <div className="rpt-card-header-left">
           <span className="rpt-card-title">Vehicle Records</span>
           <span className="rpt-record-count">
-            {showAllVehicles ? vehiclesTotal : Math.min(5, vehiclesTotal)} of {vehiclesTotal} records
+            {searched.length} of {vehiclesTotal} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
+          <input
+            type="text"
+            className="rpt-search-input"
+            placeholder="Search vehicles…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           {vehiclesTotal > 5 && (
             <button className="rpt-btn rpt-btn--secondary" onClick={() => setShowAllVehicles((v) => !v)}>
               {showAllVehicles ? "Show Less" : "View All"}
@@ -39,7 +56,7 @@ export default function VehicleRecords({
 
       <DataTable
         columns={["Vehicle Code", "Plate Number", "Route", "Driver"]}
-        data={visibleVehicles}
+        data={searched}
         rowRenderer={(v, idx, { rowClass, cellClass }) => (
           <tr key={v.code} className={rowClass}>
             <td className={`${cellClass} rpt-mono`}>{v.code}</td>

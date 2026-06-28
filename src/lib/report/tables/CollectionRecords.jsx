@@ -17,10 +17,17 @@ export default function CollectionRecords({
   btnSecondary,
 }) {
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState("");
+  const searched = filteredCollections.filter((r) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return [r.issued_at, r.batch, String(r.id), r.driver, r.vehicle, r.route]
+      .some((v) => v && v.toLowerCase().includes(q));
+  });
   const pageSize = showAllCollections ? 20 : 5;
   const start = page * pageSize;
   const end = start + pageSize;
-  const visibleCollections = filteredCollections.slice(start, end);
+  const visibleCollections = searched.slice(start, end);
 
   return (
     <div className="rpt-card rpt-section">
@@ -49,13 +56,20 @@ export default function CollectionRecords({
 
           <span className="rpt-record-count">
             {showAllCollections
-              ? filteredCollections.length
-              : Math.min(5, filteredCollections.length)}{" "}
-            of {filteredCollections.length} record(s)
+              ? searched.length
+              : Math.min(5, searched.length)}{" "}
+            of {searched.length} record(s)
           </span>
         </div>
 
         <div className="rpt-card-header-actions">
+          <input
+            type="text"
+            className="rpt-search-input"
+            placeholder="Search records…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          />
           <button
             className="rpt-btn-export rpt-btn-export--green"
             onClick={handleExportCSV}
@@ -128,12 +142,12 @@ export default function CollectionRecords({
         )}
       />
 
-      {filteredCollections.length > 0 && (
+      {searched.length > 0 && (
         <div className="rpt-totals-row">
-          <span>Total ({filteredCollections.length} tickets)</span>
+          <span>Total ({searched.length} tickets)</span>
           <span className="rpt-totals-amount">
             {peso(
-              filteredCollections.reduce(
+              searched.reduce(
                 (s, r) => s + Number(r.collection_amount || 0),
                 0,
               ),
@@ -142,7 +156,7 @@ export default function CollectionRecords({
         </div>
       )}
       <div className="flex justify-between">
-        {filteredCollections.length > pageSize && (
+        {searched.length > pageSize && (
           <div className="rpt-pagination">
             <button
               className="rpt-btn rpt-btn--secondary"
@@ -153,11 +167,11 @@ export default function CollectionRecords({
             </button>
             <span>
               Page {page + 1} of{" "}
-              {Math.ceil(filteredCollections.length / pageSize)}
+              {Math.ceil(searched.length / pageSize)}
             </span>
             <button
               className="rpt-btn rpt-btn--secondary"
-              disabled={end >= filteredCollections.length}
+              disabled={end >= searched.length}
               onClick={() => setPage((p) => p + 1)}
             >
               Next

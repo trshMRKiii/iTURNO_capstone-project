@@ -1,4 +1,5 @@
 import { DataTable } from "../../../components/ui/dataTable";
+import { useState } from "react";
 
 export default function DriverRecords({
   driversTotal,
@@ -12,16 +13,31 @@ export default function DriverRecords({
   btnExport,
   btnSecondary,
 }) {
+  const [search, setSearch] = useState("");
+  const searched = visibleDrivers.filter((d) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return [d.iwp_number || String(d.id), d.name, d.contact]
+      .some((val) => val && String(val).toLowerCase().includes(q));
+  });
+
   return (
     <div className="rpt-card rpt-section">
       <div className="rpt-card-header">
         <div className="rpt-card-header-left">
           <span className="rpt-card-title">Driver Records</span>
           <span className="rpt-record-count">
-            {showAllDrivers ? driversTotal : Math.min(5, driversTotal)} of {driversTotal} records
+            {searched.length} of {driversTotal} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
+          <input
+            type="text"
+            className="rpt-search-input"
+            placeholder="Search drivers…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           {driversTotal > 5 && (
             <button className="rpt-btn rpt-btn--secondary" onClick={() => setShowAllDrivers((v) => !v)}>
               {showAllDrivers ? "Show Less" : "View All"}
@@ -39,7 +55,7 @@ export default function DriverRecords({
 
       <DataTable
         columns={["IWP Number", "Name", "Contact Number"]}
-        data={visibleDrivers}
+        data={searched}
         rowRenderer={(d, idx, { rowClass, cellClass }) => (
           <tr key={d.id} className={rowClass}>
             <td className={`${cellClass} rpt-mono`}>{d.iwp_number || d.id}</td>

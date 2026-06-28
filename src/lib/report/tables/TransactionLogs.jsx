@@ -15,10 +15,17 @@ export default function TransactionLogs({
   btnSecondary,
 }) {
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState("");
+  const searched = filteredLogs.filter((l) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return [l.timestamp, l.ticket_id, l.action, l.batch, l.driver, l.vehicle, l.route, l.user]
+      .some((v) => v && String(v).toLowerCase().includes(q));
+  });
   const pageSize = showAllLogs ? 20 : 5;
   const start = page * pageSize;
   const end = start + pageSize;
-  const visibleLogs = filteredLogs.slice(start, end);
+  const visibleLogs = searched.slice(start, end);
 
   return (
     <div className="rpt-card rpt-section">
@@ -26,10 +33,17 @@ export default function TransactionLogs({
         <div className="rpt-card-header-left">
           <span className="rpt-card-title">Transaction Logs</span>
           <span className="rpt-record-count">
-            {visibleLogs.length} of {logsTotal} records
+            {visibleLogs.length} of {searched.length} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
+          <input
+            type="text"
+            className="rpt-search-input"
+            placeholder="Search logs…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          />
           <button
             className="rpt-btn-export rpt-btn-export--green"
             onClick={handleExportLogsCSV}
@@ -95,7 +109,7 @@ export default function TransactionLogs({
         )}
       />
       <div className="flex justify-between">
-        {logsTotal > pageSize && (
+        {searched.length > pageSize && (
           <div className="rpt-pagination">
             <button
               className="rpt-btn rpt-btn--secondary"
@@ -105,18 +119,18 @@ export default function TransactionLogs({
               Previous
             </button>
             <span>
-              Page {page + 1} of {Math.ceil(logsTotal / pageSize)}
+              Page {page + 1} of {Math.ceil(searched.length / pageSize)}
             </span>
             <button
               className="rpt-btn rpt-btn--secondary"
-              disabled={end >= logsTotal}
+              disabled={end >= searched.length}
               onClick={() => setPage((p) => p + 1)}
             >
               Next
             </button>
           </div>
         )}
-        {logsTotal > 5 && (
+        {searched.length > 5 && (
           <button
             className="rpt-btn rpt-btn--secondary"
             onClick={() => {
