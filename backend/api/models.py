@@ -184,6 +184,8 @@ class TicketSeries(models.Model):
     requisition = models.ForeignKey(Requisition, on_delete=models.CASCADE, related_name='ticket_series')
     issued_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='issued_ticket_series')
     date_issued = models.DateTimeField(null=True, blank=True)
+    beginning_balance = models.PositiveIntegerField(null=True, blank=True)
+    beginning_balance_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -244,6 +246,62 @@ class Collection(models.Model):
     from_no = models.CharField(max_length=20, blank=True, null=True)
     to_no = models.CharField(max_length=20, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+class DriverRewardProfile(models.Model):
+    driver = models.OneToOneField(Driver, on_delete=models.CASCADE, related_name='reward_profile')
+    total_points = models.IntegerField(default=0)
+    redemptions_this_year = models.IntegerField(default=0)
+    last_redemption_date = models.DateField(null=True, blank=True)
+    current_streak = models.IntegerField(default=0)
+    last_queue_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.driver} — {self.total_points} pts"
+
+
+class PointsTransaction(models.Model):
+    TYPE_CHOICES = [
+        ('QUEUE', 'Queue'),
+        ('DAILY_BONUS_4', 'Daily Bonus (4 queues)'),
+        ('DAILY_BONUS_5', 'Daily Bonus (5+ queues)'),
+        ('STREAK_BONUS', 'Streak Bonus (5 days)'),
+        ('MONTHLY_BONUS', 'Monthly Bonus (20+ days)'),
+        ('REDEMPTION', 'Redemption'),
+    ]
+
+    profile = models.ForeignKey(DriverRewardProfile, on_delete=models.CASCADE, related_name='transactions')
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    points = models.IntegerField()
+    description = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['profile', 'type', 'created_at'])]
+
+    def __str__(self):
+        return f"{self.profile.driver} {self.type} {self.points:+d}"
+
+
+class Redemption(models.Model):
+    STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')]
+
+    profile = models.ForeignKey(DriverRewardProfile, on_delete=models.CASCADE, related_name='redemptions')
+    points_redeemed = models.IntegerField(default=1000)
+    peso_value = models.DecimalField(max_digits=10, decimal_places=2, default=500)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.profile.driver} — ₱{self.peso_value} ({self.status})"
+
 
 class RoamingLog(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='roaming_logs')

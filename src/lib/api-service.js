@@ -321,6 +321,26 @@ export const apiService = {
     return this.post("/roaming-logs/", data);
   },
 
+  getRewardSummary(driverId) {
+    return this.get(`/rewards/${driverId}/`);
+  },
+
+  getRewardHistory(driverId, params = '') {
+    return this.get(`/rewards/${driverId}/history/${params}`);
+  },
+
+  getRewardRedemptions(driverId) {
+    return this.get(`/rewards/${driverId}/redemptions/`);
+  },
+
+  redeemReward(driverId) {
+    return this.post(`/rewards/${driverId}/redeem/`);
+  },
+
+  getRewardLeaderboard() {
+    return this.get("/rewards/leaderboard/");
+  },
+
 };
 
 //login

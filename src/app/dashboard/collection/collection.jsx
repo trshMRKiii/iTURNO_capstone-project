@@ -30,6 +30,7 @@ function Collection({ userRole }) {
     handleVerifyBatch,
     handleVerifyTicket,
     isBatchVerifiable,
+    isBatchEnded,
   } = useCollection(shifts);
 
   const [activeTab, setActiveTab] = useState("collection");
@@ -278,6 +279,8 @@ function Collection({ userRole }) {
                   batchKey={shift.name}
                   onVerify={handleVerifyBatchWithConfirm}
                   verifyingBatch={verifyingBatch}
+                  userRole={userRole}
+                  isBatchEnded={isBatchEnded(shift.name)}
                 />
               );
             })
@@ -422,7 +425,7 @@ function Collection({ userRole }) {
                             className={`col-table-row ${ticket.is_late ? "col-table-row--late" : ""}`}
                           >
                             <td>
-                              <span className="col-id-badge">#{ticket.id}</span>
+                              <span className="col-id-badge">{ticket.id.replace(/^TICKET-/i, '')}</span>
                             </td>
                             <td>
                               <div className="col-batch-cell">
@@ -772,7 +775,7 @@ function Collection({ userRole }) {
                         return (
                           <tr key={ticket.id} className="col-table-row">
                             <td>
-                              <span className="col-id-badge">#{ticket.id}</span>
+                              <span className="col-id-badge">{ticket.id.replace(/^TICKET-/i, '')}</span>
                             </td>
                             <td>
                               <div className="col-batch-cell">

@@ -12,7 +12,7 @@ import React, { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import "../../../styles/Vehicle.css";
 
-function Vehicle() {
+function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd }) {
   const {
     vehicles,
     loading,
@@ -37,8 +37,14 @@ function Vehicle() {
     handleDelete,
   } = useVehicle();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalSearch, setInternalSearch] = useState("");
+  const searchTerm = embedded ? externalSearch : internalSearch;
+  const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
   const [ledgerVehicle, setLedgerVehicle] = useState(null);
+
+  React.useEffect(() => {
+    if (exposeAdd) exposeAdd(handleAdd);
+  }, [exposeAdd, handleAdd]);
 
   const filteredVehicles = vehicles.filter((v) => {
     const q = searchTerm.toLowerCase().trim();

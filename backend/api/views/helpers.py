@@ -56,7 +56,7 @@ def parse_iso_datetime(value):
 def generate_ticket_id(issued_at, batch_name):
     local_dt = issued_at + timedelta(hours=8)
     date_code = local_dt.strftime('%Y%m%d')
-    prefix = f'TICKET-{date_code}{get_batch_code(batch_name)}'
+    prefix = f'{date_code}{get_batch_code(batch_name)}'
     last_ticket = Ticket.objects.filter(id__startswith=prefix).order_by('-id').first()
     if last_ticket:
         last_seq = int(last_ticket.id[-4:]) if last_ticket.id[-4:].isdigit() else 0

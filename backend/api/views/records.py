@@ -62,6 +62,12 @@ def issue_late_ticket(request):
             active_user=request.user if request.user.is_authenticated else None,
         )
 
+        from ..rewards import award_queue_point
+        try:
+            award_queue_point(ticket.driver, queue_date=issued_at.date())
+        except Exception:
+            pass
+
         serializer = TicketSerializer(ticket)
         return Response({
             "message": "Late ticket issued successfully",

@@ -38,6 +38,41 @@
   background: var(--gold);
 }
 
+.ticket-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ticket-mobile-scan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+
+.ticket-mobile-scan-btn:hover {
+  background: var(--navy-hover, #1a2744);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.dark .ticket-mobile-scan-btn {
+  background: var(--gold);
+  color: #1a1a2e;
+}
+
+.dark .ticket-mobile-scan-btn:hover {
+  background: var(--gold-hover, #d4af37);
+}
+
 .ticket-title {
   font-size: 22px;
   font-weight: 700;
@@ -52,19 +87,60 @@
   margin: 0;
 }
 
-/* ── Grid ── */
-.ticket-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  align-items: start;
-}
-
-/* Left column stacks Issue + Late cards vertically */
-.ticket-col {
+/* ── Single Column Layout ── */
+.ticket-single-col {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* ── Tabs ── */
+.ticket-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+}
+
+.ticket-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ticket-tab:hover {
+  color: var(--text-primary);
+}
+
+.ticket-tab--active {
+  color: var(--accent, #c9a84c);
+  border-bottom-color: var(--accent, #c9a84c);
+}
+
+.ticket-tab-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-secondary, #f0f0f0);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.ticket-tab--active .ticket-tab-count {
+  background: var(--accent, #c9a84c);
+  color: #fff;
 }
 
 /* ── Ticket Price Button (header) ── */
@@ -1017,14 +1093,6 @@
 }
 
 /* ── Responsive ── */
-@media (max-width: 960px) {
-  .ticket-grid {
-    grid-template-columns: 1fr;
-  }
-  .ticket-col {
-    gap: 16px;
-  }
-}
 
 @media (max-width: 640px) {
   .ticket-page {

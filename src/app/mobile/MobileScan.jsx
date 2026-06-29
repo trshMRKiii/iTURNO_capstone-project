@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import jsQR from "jsqr";
 import { useMobileScan } from "./useMobileScan";
 import "../../styles/MobileScan.css";
@@ -24,6 +25,7 @@ function MobileScan() {
     reset,
   } = useMobileScan();
 
+  const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState(null);
   const videoRef = useRef(null);
@@ -125,8 +127,16 @@ function MobileScan() {
   return (
     <div className="ms-page">
       <header className="ms-header">
-        <h1 className="ms-title">iTURNO Mobile</h1>
-        <p className="ms-subtitle">Scan QR to issue ticket or log roaming</p>
+        <button className="ms-back-btn" onClick={() => navigate(-1)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
+        <div>
+          <h1 className="ms-title">iTURNO Mobile</h1>
+          <p className="ms-subtitle">Scan QR to issue ticket or log roaming</p>
+        </div>
       </header>
 
       {result && (

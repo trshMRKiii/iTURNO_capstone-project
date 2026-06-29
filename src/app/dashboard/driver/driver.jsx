@@ -3,7 +3,7 @@ import { useDriver } from "../../../lib/useDriver";
 import { getDriverCode, getDriverDisplayName } from "../../../lib/driver-utils";
 import "../../../styles/Driver.css";
 
-function Driver() {
+function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd }) {
   const {
     drivers,
     loading,
@@ -20,7 +20,13 @@ function Driver() {
     handleDelete,
   } = useDriver();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalSearch, setInternalSearch] = useState("");
+  const searchTerm = embedded ? externalSearch : internalSearch;
+  const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
+
+  React.useEffect(() => {
+    if (exposeAdd) exposeAdd(handleAdd);
+  }, [exposeAdd, handleAdd]);
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
 

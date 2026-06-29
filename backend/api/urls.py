@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import UserViewSet, DriverViewSet, VehicleViewSet, RouteViewSet, TicketViewSet, CurrentUserView, TicketPriceViewSet, PUVTypeViewSet, RemittanceBatchViewSet, TicketFormViewSet, DenominationViewSet, RequisitionViewSet, TicketSeriesViewSet, RoamingLogViewSet
-from .views import report_summary, report_collections, report_daily_chart, transaction_logs, dashboard_stats, public_queue,vehicle_records,driver_records, server_time, issue_late_ticket, schedules_view, export_collections_csv, remittance_batches
+from .views import report_summary, report_collections, report_daily_chart, transaction_logs, dashboard_stats, public_queue,vehicle_records,driver_records, server_time, issue_late_ticket, schedules_view, export_collections_csv, remittance_batches, reward_summary, reward_history, reward_redemptions, reward_redeem, reward_leaderboard
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -36,4 +36,9 @@ urlpatterns = [
     path('schedules/', schedules_view),
     path("report/collections/export/", export_collections_csv, name="export_collections_csv"),
     path("report/remittance/", remittance_batches, name="remittance_batches"),
+    path("rewards/<int:driver_id>/", reward_summary, name="reward_summary"),
+    path("rewards/<int:driver_id>/history/", reward_history, name="reward_history"),
+    path("rewards/<int:driver_id>/redemptions/", reward_redemptions, name="reward_redemptions"),
+    path("rewards/<int:driver_id>/redeem/", reward_redeem, name="reward_redeem"),
+    path("rewards/leaderboard/", reward_leaderboard, name="reward_leaderboard"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

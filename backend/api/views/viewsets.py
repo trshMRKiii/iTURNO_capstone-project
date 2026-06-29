@@ -41,9 +41,15 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if self.request.user and self.request.user.is_authenticated:
-            serializer.save(active_user=self.request.user)
+            ticket = serializer.save(active_user=self.request.user)
         else:
-            serializer.save()
+            ticket = serializer.save()
+
+        from ..rewards import award_queue_point
+        try:
+            award_queue_point(ticket.driver)
+        except Exception:
+            pass
 
 
 class TicketPriceViewSet(viewsets.ModelViewSet):

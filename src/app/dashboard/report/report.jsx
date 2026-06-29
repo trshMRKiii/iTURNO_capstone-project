@@ -23,7 +23,6 @@ import CollectionRecords from "../../../lib/report/tables/CollectionRecords";
 import TransactionLogs from "../../../lib/report/tables/TransactionLogs";
 import VehicleRecords from "../../../lib/report/tables/VehicleRecords";
 import DriverRecords from "../../../lib/report/tables/DriverRecords";
-
 import "../../../styles/Report.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
@@ -47,6 +46,9 @@ export default function Report() {
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [showAllVehicles, setShowAllVehicles] = useState(false);
   const [showAllDrivers, setShowAllDrivers] = useState(false);
+  const [roaming, setRoaming] = useState([]);
+  const [roamingTotal, setRoamingTotal] = useState(0);
+  const [showAllRoaming, setShowAllRoaming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -112,11 +114,24 @@ export default function Report() {
     }
   }, []);
 
+  const fetchRoaming = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/roaming-logs/`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : data.results || [];
+      setRoaming(list);
+      setRoamingTotal(data.count ?? list.length);
+    } catch {
+      console.error("Failed to load roaming logs");
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
     fetchLogs();
     fetchVehicles();
     fetchDrivers();
+    fetchRoaming();
   }, []);
 
   const filteredCollections = collections.filter((r) => {
@@ -192,6 +207,18 @@ export default function Report() {
         "Contact Number": d.contact_number,
       })),
       `driver_records_${Date.now()}.csv`,
+    );
+
+  const handleExportRoamingCSV = () =>
+    exportCSV(
+      roaming.map((r) => ({
+        "Vehicle Plate": r.vehicle_plate,
+        Driver: r.driver_name || "",
+        "Recorded By": r.recorded_by_name || "",
+        Notes: r.notes || "",
+        "Recorded At": r.recorded_at,
+      })),
+      `roaming_logs_${Date.now()}.csv`,
     );
 
   const handleExportPDF = () => exportPDF(filteredCollections, filters);
@@ -289,116 +316,7 @@ export default function Report() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="rpt-summary-row">
-        <SummaryCard
-          label="Batch 1 (AM)"
-          count={summary?.batch1?.count ?? 0}
-          total={summary?.batch1?.total ?? 0}
-        />
-        <SummaryCard
-          label="Batch 2 (PM)"
-          count={summary?.batch2?.count ?? 0}
-          total={summary?.batch2?.total ?? 0}
-        />
-        <SummaryCard
-          label="Today"
-          count={summary?.today?.count ?? 0}
-          total={summary?.today?.total ?? 0}
-        />
-        <div className="rpt-grand-card">
-          <span className="rpt-grand-label">Grand Total</span>
-          <div className="rpt-grand-count">
-            {summary?.total_tickets ?? 0}
-            <span className="rpt-grand-unit">tickets</span>
-          </div>
-          <div className="rpt-grand-amount">
-            {peso(summary?.grand_total ?? 0)}
-          </div>
-        </div>
-      </div>
-
-      {/* Line Chart */}
-      <div className="rpt-card">
-        <div className="rpt-card-header">
-          <span className="rpt-card-title">
-            Daily Collections — Batch 1 vs Batch 2
-          </span>
-          <span className="rpt-chart-badge">All time</span>
-        </div>
-        {chartData.length === 0 ? (
-          <div className="rpt-empty">No chart data for this period.</div>
-        ) : (
-          <div className="rpt-chart-body">
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart
-                data={chartData}
-                margin={{ top: 8, right: 24, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(201,168,76,0.15)"
-                />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: "#c9a84c" }}
-                />
-                <YAxis tick={{ fontSize: 11, fill: "#c9a84c" }} />
-                <Tooltip
-                  contentStyle={{
-                    fontSize: 12,
-                    borderRadius: 8,
-                    border: "1px solid rgba(201,168,76,0.3)",
-                    background: "var(--bg-surface)",
-                    color: "var(--text-primary)",
-                  }}
-                  formatter={(value, name) =>
-                    name.includes("total") ? peso(value) : `${value} tickets`
-                  }
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line
-                  type="monotone"
-                  dataKey="batch1_count"
-                  name="Batch 1 — Tickets"
-                  stroke="#c9a84c"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="batch2_count"
-                  name="Batch 2 — Tickets"
-                  stroke="#2d3e5f"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="batch1_total"
-                  name="Batch 1 — Collection (₱)"
-                  stroke="rgba(201,168,76,0.45)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="batch2_total"
-                  name="Batch 2 — Collection (₱)"
-                  stroke="rgba(45,62,95,0.45)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
+      
       {/* Child table sections — style props kept for backward compat but unused */}
       <CollectionRecords
         filters={filters}
@@ -424,6 +342,9 @@ export default function Report() {
         visibleLogs={showAllLogs ? logs : logs.slice(0, 5)}
         handleExportLogsCSV={handleExportLogsCSV}
         STATUS_COLORS={STATUS_COLORS}
+        roaming={roaming}
+        roamingTotal={roamingTotal}
+        handleExportRoamingCSV={handleExportRoamingCSV}
       />
 
       <VehicleRecords

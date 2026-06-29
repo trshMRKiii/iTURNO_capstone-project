@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { apiService } from "../api-service";
 import { v4 as uuidv4 } from "uuid";
 
+function formatCurrency(val) {
+  return "₱" + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const Field = ({ label, children }) => (
   <div className="rem-field">
     <label className="rem-label">{label}</label>
@@ -12,14 +16,21 @@ const Field = ({ label, children }) => (
 const CreateBatchForm = ({ onClose, onSave }) => {
   const [accountableOfficer, setAccountableOfficer] = useState("");
   const [collections, setCollections] = useState([
-    { ticketFormNo: "", from: 0, to: 0, amount: 0 },
+    { ticketFormNo: "", from: 0, to: 0, ticketsIssued: 0, amount: 0 },
   ]);
-  const [deposits, setDeposits] = useState([
-    { type: "bill", denomination: 1000, quantity: 0, depositAmount: 0 },
-  ]);
+  const [deposits, setDeposits] = useState(
+    [
+      { type: "bill", denomination: 1000, quantity: 0, depositAmount: 0 },
+      { type: "bill", denomination: 500, quantity: 0, depositAmount: 0 },
+      { type: "bill", denomination: 200, quantity: 0, depositAmount: 0 },
+      { type: "bill", denomination: 100, quantity: 0, depositAmount: 0 },
+      { type: "bill", denomination: 50, quantity: 0, depositAmount: 0 },
+      { type: "bill", denomination: 20, quantity: 0, depositAmount: 0 },
+      { type: "coin", denomination: 0, quantity: 0, depositAmount: 0 },
+    ]
+  );
 
   const [ticketFormOptions, setTicketFormOptions] = useState([]);
-  const [denominationOptions, setDenominationOptions] = useState([]);
   const [todayTickets, setTodayTickets] = useState([]);
   const [ticketSeries, setTicketSeries] = useState([]);
 
@@ -50,9 +61,6 @@ const CreateBatchForm = ({ onClose, onSave }) => {
     apiService.getTicketForms()
       .then(setTicketFormOptions)
       .catch(err => console.error("Failed to load ticket forms:", err));
-    apiService.getDenominations()
-      .then(setDenominationOptions)
-      .catch(err => console.error("Failed to load denominations:", err));
 
     const today = getTodayDateString(new Date());
     apiService.getTickets()
@@ -86,11 +94,14 @@ const CreateBatchForm = ({ onClose, onSave }) => {
       const totalCollected = matchingTickets.reduce(
         (sum, t) => sum + Number(t.collection_amount || 0), 0
       );
-      const totalStock = matchingSeries.reduce(
-        (sum, s) => sum + ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0) + 1), 0
+      const ticketsIssuedToday = matchingTickets.length;
+      const beginningPcs = matchingSeries.reduce(
+        (sum, s) => sum + (s.beginning ?? ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0))), 0
       );
+      const unitPrice = Number(matchingSeries[0]?.ticket_form_price || 0);
 
-      updated[index].from = totalStock;
+      updated[index].from = beginningPcs * unitPrice;
+      updated[index].ticketsIssued = ticketsIssuedToday;
       updated[index].amount = totalCollected;
     }
 
@@ -124,14 +135,15 @@ const CreateBatchForm = ({ onClose, onSave }) => {
   );
 
   const endingBalance = collections.reduce(
-    (sum, c) => sum + (Number(c.from) - Number(c.amount || 0)),
+    (sum, c) => sum + (Number(c.from || 0) - Number(c.amount || 0)),
     0
   );
 
+  const [certified, setCertified] = useState(false);
   const amountsMismatch = totalRemittances !== totalCollections;
 
   const handleSave = () => {
-    if (amountsMismatch) return;
+    if (amountsMismatch || !certified) return;
     const payload = {
       id: batchId,
       issued_at: dateIssued,
@@ -209,9 +221,16 @@ const CreateBatchForm = ({ onClose, onSave }) => {
                       onChange={(e) => updateCollection(i, "ticketFormNo", e.target.value)}
                     >
                       <option value="">-- Select --</option>
-                      {ticketFormOptions.map(tf => (
-                        <option key={tf.id} value={tf.name}>{tf.name}</option>
-                      ))}
+                      {ticketFormOptions.map(tf => {
+                        const alreadySelected = collections.some(
+                          (col, idx) => idx !== i && col.ticketFormNo === tf.name
+                        );
+                        return (
+                          <option key={tf.id} value={tf.name} disabled={alreadySelected}>
+                            {tf.name}
+                          </option>
+                        );
+                      })}
                     </select>
                   </td>
                   <td>
@@ -245,14 +264,14 @@ const CreateBatchForm = ({ onClose, onSave }) => {
             <tfoot>
               <tr>
                 <td style={{ textAlign: "right" }}>Totals</td>
-                <td>{collections.reduce((sum, c) => sum + Number(c.from || 0), 0)}</td>
-                <td>{collections.reduce((sum, c) => sum + (Number(c.from || 0) - Number(c.amount || 0)), 0)}</td>
-                <td>{collections.reduce((sum, c) => sum + Number(c.amount || 0), 0)}</td>
+                <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.from || 0), 0))}</td>
+                <td>{formatCurrency(collections.reduce((sum, c) => sum + (Number(c.from || 0) - Number(c.amount || 0)), 0))}</td>
+                <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.amount || 0), 0))}</td>
               </tr>
             </tfoot>
           </table>
           <button
-            onClick={() => setCollections([...collections, { ticketFormNo: "", from: 0, to: 0, amount: 0 }])}
+            onClick={() => setCollections([...collections, { ticketFormNo: "", from: 0, to: 0, ticketsIssued: 0, amount: 0 }])}
             className="rem-add-row-btn"
           >
             + Add Ticket Row
@@ -280,34 +299,8 @@ const CreateBatchForm = ({ onClose, onSave }) => {
             <tbody>
               {deposits.map((d, i) => (
                 <tr key={i}>
-                  <td>
-                    <select
-                      className="rem-select"
-                      value={d.type || "bill"}
-                      onChange={(e) => updateDeposit(i, "type", e.target.value)}
-                    >
-                      <option value="bill">Bill</option>
-                      <option value="coin">Coin</option>
-                    </select>
-                  </td>
-                  <td>
-                    {d.type === "coin" ? (
-                      <input type="number" className="rem-input" value={0} disabled />
-                    ) : (
-                      <select
-                        className="rem-select"
-                        value={d.denomination}
-                        onChange={(e) => updateDeposit(i, "denomination", Number(e.target.value))}
-                      >
-                        <option value={0}>-- Select --</option>
-                        {denominationOptions
-                          .filter(dn => dn.type === "bill")
-                          .map(dn => (
-                            <option key={dn.id} value={dn.value}>{dn.label}</option>
-                          ))}
-                      </select>
-                    )}
-                  </td>
+                  <td>{d.type === "coin" ? "Coins" : "Bill"}</td>
+                  <td>{d.type === "coin" ? "—" : formatCurrency(d.denomination)}</td>
                   <td>
                     <input
                       type="number"
@@ -331,37 +324,28 @@ const CreateBatchForm = ({ onClose, onSave }) => {
             <tfoot>
               <tr>
                 <td colSpan={3} style={{ textAlign: "right" }}>Total Deposits</td>
-                <td>{deposits.reduce((sum, d) => sum + Number(d.depositAmount || 0), 0)}</td>
+                <td>{formatCurrency(deposits.reduce((sum, d) => sum + Number(d.depositAmount || 0), 0))}</td>
               </tr>
             </tfoot>
           </table>
-          <button
-            onClick={() => setDeposits([...deposits, { type: "bill", denomination: 1000, quantity: 0, depositAmount: 0 }])}
-            className="rem-add-row-btn"
-          >
-            + Add Deposit Row
-          </button>
 
           {/* Summary */}
           <div className="rem-summary-grid">
-            <div className="rem-summary-card">
-              <div className="rem-summary-label">Total Collections</div>
-              <div className="rem-summary-value">₱{totalCollections.toLocaleString()}</div>
-            </div>
+            
             <div className="rem-summary-card">
               <div className="rem-summary-label">Total Remittances</div>
-              <div className="rem-summary-value">₱{totalRemittances.toLocaleString()}</div>
+              <div className="rem-summary-value">{formatCurrency(totalRemittances)}</div>
             </div>
             <div className="rem-summary-card">
               <div className="rem-summary-label">Ending Balance</div>
-              <div className="rem-summary-value">{endingBalance.toLocaleString()}</div>
+              <div className="rem-summary-value">{formatCurrency(endingBalance)}</div>
             </div>
           </div>
 
           {/* Certification */}
           <div className="rem-cert">
             <label className="rem-cert-check">
-              <input type="checkbox" />
+              <input type="checkbox" checked={certified} onChange={(e) => setCertified(e.target.checked)} />
               <span>I certify that the above collections and deposits are accurate.</span>
             </label>
             <div className="rem-info-grid" style={{ gridTemplateColumns: "1fr" }}>
@@ -379,7 +363,7 @@ const CreateBatchForm = ({ onClose, onSave }) => {
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              Total Deposits (₱{totalRemittances.toLocaleString()}) does not match Total Collections (₱{totalCollections.toLocaleString()}). Amounts must match to save.
+              Total Deposits ({formatCurrency(totalRemittances)}) does not match Total Collections ({formatCurrency(totalCollections)}). Amounts must match to save.
             </div>
           )}
           <div className="rem-modal-footer">
@@ -390,8 +374,8 @@ const CreateBatchForm = ({ onClose, onSave }) => {
               type="button"
               className="rem-modal-btn rem-modal-btn--submit"
               onClick={handleSave}
-              disabled={amountsMismatch}
-              style={amountsMismatch ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+              disabled={amountsMismatch || !certified}
+              style={(amountsMismatch || !certified) ? { opacity: 0.5, cursor: "not-allowed" } : {}}
             >
               Save Batch
             </button>

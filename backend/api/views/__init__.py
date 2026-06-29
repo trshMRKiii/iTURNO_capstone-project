@@ -22,6 +22,14 @@ from .reports import (
     export_collections_csv,
 )
 
+from .rewards import (
+    reward_summary,
+    reward_history,
+    reward_redemptions,
+    reward_redeem,
+    reward_leaderboard,
+)
+
 from .records import (
     issue_late_ticket,
     transaction_logs,

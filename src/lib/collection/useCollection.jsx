@@ -55,13 +55,15 @@ export function useCollection(shifts, userRole) {
   const getShiftByName = (batchName) =>
     Object.values(shifts || {}).find((shift) => shift.name === batchName);
 
-  const isBatchVerifiable = (batchKey) => {
+  const isBatchEnded = (batchKey) => {
+    const shift = getShiftByName(batchKey);
+    if (!shift) return false;
     const now = new Date();
-    const normalizedKey = batchKey.toLowerCase().replace(/\s+/g, "");
-    const verifiedDate = verifiedBatches[normalizedKey];
-    const today = getTodayDateString(now);
+    return now.getHours() >= shift.endHour;
+  };
 
-    return verifiedDate !== today;
+  const isBatchVerifiable = (batchKey) => {
+    return isBatchEnded(batchKey);
   };
 
   useEffect(() => {
@@ -197,6 +199,7 @@ export function useCollection(shifts, userRole) {
     clearSuccessMessage,
     clearError,
     isBatchVerifiable,
+    isBatchEnded,
   };
 }
 
@@ -223,66 +226,86 @@ export const BatchCard = ({
   onVerify,
   verifyingBatch,
   userRole,
-}) => (
-  <div className="bc-card">
-    <div className="bc-header">
-      <span className="bc-label">{label}</span>
-    </div>
-    <div className="bc-body">
-      {stats && (
-        <div className="bc-rows">
-          {[
-            {
-              label: "Revenue",
-              value: formatCurrency(stats.total),
-              bold: true,
-            },
-            { label: "Active Dispatches", value: stats.count },
-            {
-              label: "Pending Verification",
-              value: stats.pending,
-              warn: stats.pending > 0,
-            },
-          ].map(({ label: l, value, warn }) => (
-            <div key={l} className="bc-row">
-              <span className="bc-row-label">{l}</span>
-              <span
-                className={`bc-row-value ${warn ? "bc-row-value--warn" : ""}`}
-              >
-                {value}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-      <button
-        type="button"
-        className="bc-verify-btn"
-        onClick={() => onVerify(batchKey)}
-        disabled={userRole === "MANAGER"}
-      >
-        {verifyingBatch === batchKey ? (
-          <>
-            <span className="bc-spinner" />
-            Verifying…
-          </>
-        ) : (
-          <>
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            Verify {batchKey}
-          </>
+  isBatchEnded,
+}) => {
+  const disabled = !isBatchEnded || userRole === "MANAGER";
+
+  return (
+    <div className="bc-card">
+      <div className="bc-header">
+        <span className="bc-label">{label}</span>
+      </div>
+      <div className="bc-body">
+        {stats && (
+          <div className="bc-rows">
+            {[
+              {
+                label: "Revenue",
+                value: formatCurrency(stats.total),
+                bold: true,
+              },
+              { label: "Active Dispatches", value: stats.count },
+              {
+                label: "Pending Verification",
+                value: stats.pending,
+                warn: stats.pending > 0,
+              },
+            ].map(({ label: l, value, warn }) => (
+              <div key={l} className="bc-row">
+                <span className="bc-row-label">{l}</span>
+                <span
+                  className={`bc-row-value ${warn ? "bc-row-value--warn" : ""}`}
+                >
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
-      </button>
+        <button
+          type="button"
+          className="bc-verify-btn"
+          onClick={() => onVerify(batchKey)}
+          disabled={disabled}
+        >
+          {verifyingBatch === batchKey ? (
+            <>
+              <span className="bc-spinner" />
+              Verifying…
+            </>
+          ) : !isBatchEnded ? (
+            <>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              Batch In Progress
+            </>
+          ) : (
+            <>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              Verify {batchKey}
+            </>
+          )}
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};

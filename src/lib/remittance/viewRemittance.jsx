@@ -170,8 +170,8 @@ export default function ViewRemittance({ batch, onClose }) {
               {collections.length > 0 ? collections.map((c, i) => (
                 <tr key={i}>
                   <td>{c.ticketFormNo || "—"}</td>
-                  <td style={{ textAlign: "right" }}>{c.from.toLocaleString()}</td>
-                  <td style={{ textAlign: "right" }}>{c.to.toLocaleString()}</td>
+                  <td style={{ textAlign: "right" }}>{formatCurrency(c.from)}</td>
+                  <td style={{ textAlign: "right" }}>{formatCurrency(c.to)}</td>
                   <td style={{ textAlign: "right" }}>{formatCurrency(c.amount)}</td>
                 </tr>
               )) : (
@@ -182,10 +182,10 @@ export default function ViewRemittance({ batch, onClose }) {
               <tr>
                 <td><strong>TOTAL</strong></td>
                 <td style={{ textAlign: "right" }}>
-                  <strong>{totalFrom.toLocaleString()}</strong>
+                  <strong>{formatCurrency(totalFrom)}</strong>
                 </td>
                 <td style={{ textAlign: "right" }}>
-                  <strong>{totalTo.toLocaleString()}</strong>
+                  <strong>{formatCurrency(totalTo)}</strong>
                 </td>
                 <td style={{ textAlign: "right" }}><strong>{formatCurrency(totalCollections)}</strong></td>
               </tr>
@@ -263,7 +263,7 @@ export default function ViewRemittance({ batch, onClose }) {
           <h3 className="rem-report-section">D. SUMMARY OF COLLECTIONS AND REMITTANCES/DEPOSITS</h3>
           <table className="rem-report-table rem-report-table--summary">
             <tbody>
-              <tr><td>Beginning Balance</td><td style={{ textAlign: "right" }}>{totalFrom.toLocaleString()}</td></tr>
+              <tr><td>Beginning Balance</td><td style={{ textAlign: "right" }}>{formatCurrency(totalFrom)}</td></tr>
               <tr><td>Add: Collections — Cash</td><td style={{ textAlign: "right" }}>{formatCurrency(totalCollections)}</td></tr>
               <tr><td>Add: Collections — Checks</td><td style={{ textAlign: "right" }}>{formatCurrency(0)}</td></tr>
               <tr><td>Remittance/Deposits</td><td style={{ textAlign: "right" }}>{formatCurrency(totalDeposits)}</td></tr>
