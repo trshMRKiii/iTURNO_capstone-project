@@ -77,6 +77,32 @@
 
 .veh-add-btn:active { transform: translateY(0); }
 
+/* ── Export QR button ── */
+.veh-export-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #2d5016 0%, #4a7c28 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 3px 10px rgba(45,80,22,0.25);
+  white-space: nowrap;
+}
+
+.veh-export-qr-btn:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(45,80,22,0.3);
+}
+
+.veh-export-qr-btn:active { transform: translateY(0); }
+
 /* ── Alert ── */
 .veh-alert {
   display: flex;

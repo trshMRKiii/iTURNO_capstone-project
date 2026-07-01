@@ -20,6 +20,7 @@ import { exportTablePDF } from "../../../lib/report/exportPDF";
 
 import TransactionLogs from "../../../lib/report/tables/TransactionLogs";
 import FleetRecords from "../../../lib/report/tables/FleetRecords";
+import RewardRedemptions from "../../../lib/report/tables/RewardRedemptions";
 import { getDriverCode } from "../../../lib/driver-utils";
 import "../../../styles/Report.css";
 
@@ -47,6 +48,8 @@ export default function Report() {
   const [roaming, setRoaming] = useState([]);
   const [roamingTotal, setRoamingTotal] = useState(0);
   const [showAllRoaming, setShowAllRoaming] = useState(false);
+  const [redemptions, setRedemptions] = useState([]);
+  const [redemptionsTotal, setRedemptionsTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -124,12 +127,25 @@ export default function Report() {
     }
   }, []);
 
+  const fetchRedemptions = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/rewards/redemptions/`);
+      const data = await res.json();
+      const list = data.redemptions || [];
+      setRedemptions(list);
+      setRedemptionsTotal(list.length);
+    } catch {
+      console.error("Failed to load reward redemptions");
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
     fetchLogs();
     fetchVehicles();
     fetchDrivers();
     fetchRoaming();
+    fetchRedemptions();
   }, []);
 
   const filteredLogs = logs.filter((l) => {
@@ -207,6 +223,24 @@ export default function Report() {
 
   const handleExportDriversPDF = () =>
     exportTablePDF(drivers.map(buildDriverExportRow), "Driver Records");
+
+  const buildRedemptionExportRow = (r) => ({
+    Date: r.created_at ? r.created_at.slice(0, 10) : "—",
+    Driver: r.driver_name || "—",
+    "Points Redeemed": r.points_redeemed,
+    "Peso Value": r.peso_value,
+    Status: r.status,
+    "Approved By": r.approved_by_name || "—",
+  });
+
+  const handleExportRedemptionsCSV = () =>
+    exportCSV(
+      redemptions.map(buildRedemptionExportRow),
+      `reward_redemptions_${Date.now()}.csv`,
+    );
+
+  const handleExportRedemptionsPDF = () =>
+    exportTablePDF(redemptions.map(buildRedemptionExportRow), "Reward Redemptions");
 
   return (
     <div className="rpt-page">
@@ -320,6 +354,13 @@ export default function Report() {
         visibleDrivers={showAllDrivers ? drivers : drivers.slice(0, 5)}
         handleExportDriversCSV={handleExportDriversCSV}
         handleExportDriversPDF={handleExportDriversPDF}
+      />
+
+      <RewardRedemptions
+        redemptions={redemptions}
+        redemptionsTotal={redemptionsTotal}
+        handleExportRedemptionsCSV={handleExportRedemptionsCSV}
+        handleExportRedemptionsPDF={handleExportRedemptionsPDF}
       />
     </div>
   );

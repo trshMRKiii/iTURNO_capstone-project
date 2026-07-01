@@ -211,14 +211,6 @@ class TicketForm(models.Model):
     def __str__(self):
         return self.name
 
-class Denomination(models.Model):
-    value = models.DecimalField(max_digits=10, decimal_places=2)
-    label = models.CharField(max_length=50)
-    type = models.CharField(max_length=10, choices=[("bill","Bill"),("coin","Coin")], default="bill")
-
-    def __str__(self):
-        return self.label
-
 class RemittanceBatch(models.Model):
     issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     issued_at = models.DateTimeField(auto_now_add=True)
@@ -238,6 +230,23 @@ class Collection(models.Model):
     from_no = models.CharField(max_length=20, blank=True, null=True)
     to_no = models.CharField(max_length=20, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+class RewardConfig(models.Model):
+    # Redemption rules
+    points_per_redemption = models.IntegerField(default=1000)
+    peso_value_per_redemption = models.DecimalField(max_digits=10, decimal_places=2, default=500)
+    max_redemptions_per_year = models.IntegerField(default=2)
+    cooldown_months = models.IntegerField(default=6)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.points_per_redemption} pts = ₱{self.peso_value_per_redemption}"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
 
 class DriverRewardProfile(models.Model):
     driver = models.OneToOneField(Driver, on_delete=models.CASCADE, related_name='reward_profile')

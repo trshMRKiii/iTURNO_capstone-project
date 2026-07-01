@@ -10,9 +10,11 @@ function Registry() {
 
   const vehAddRef = useRef(null);
   const drvAddRef = useRef(null);
+  const vehExportQRRef = useRef(null);
 
   const exposeVehAdd = useCallback((fn) => { vehAddRef.current = fn; }, []);
   const exposeDrvAdd = useCallback((fn) => { drvAddRef.current = fn; }, []);
+  const exposeVehExportQR = useCallback((fn) => { vehExportQRRef.current = fn; }, []);
 
   const searchTerm = activeTab === "vehicles" ? vehSearch : drvSearch;
   const setSearchTerm = activeTab === "vehicles" ? setVehSearch : setDrvSearch;
@@ -51,6 +53,20 @@ function Registry() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {activeTab === "vehicles" && (
+            <button className="reg-export-qr-btn" onClick={() => vehExportQRRef.current?.()} title="Export QR codes for filtered vehicles">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="3" height="3" rx="0.5" />
+                <rect x="18" y="14" width="3" height="3" rx="0.5" />
+                <rect x="14" y="18" width="3" height="3" rx="0.5" />
+                <rect x="18" y="18" width="3" height="3" rx="0.5" />
+              </svg>
+              Export QR
+            </button>
+          )}
           <button className="reg-add-btn" onClick={handleAdd}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M5 12h14" />
@@ -95,6 +111,7 @@ function Registry() {
             searchTerm={vehSearch}
             onSearchChange={setVehSearch}
             exposeAdd={exposeVehAdd}
+            exposeExportQR={exposeVehExportQR}
           />
         )}
         {activeTab === "drivers" && (

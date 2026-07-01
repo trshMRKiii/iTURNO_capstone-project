@@ -281,28 +281,33 @@
   box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
 }
 
-.set-select {
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13.5px;
-  font-family: inherit;
-  background: var(--bg-page);
-  color: var(--text-primary);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a2744' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 16px;
-  padding-right: 34px;
-  cursor: pointer;
+/* ── Rewards settings form ── */
+.set-rewards-form .set-add-row {
+  gap: 16px;
 }
 
-.set-select:focus {
-  outline: none;
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+.set-rewards-note {
+  margin: 16px 20px 0;
+  padding: 12px 14px;
+  background: var(--bg-page);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.set-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.set-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 /* ── Buttons ── */
@@ -357,19 +362,6 @@
 
 .set-delete-btn:active {
   transform: translateY(0);
-}
-
-/* ── Denomination badge ── */
-.set-denom-badge {
-  display: inline-block;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
-  color: var(--gold);
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 /* ── Responsive ── */

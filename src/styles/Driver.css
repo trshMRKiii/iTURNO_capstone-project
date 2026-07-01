@@ -481,9 +481,8 @@
 }
 
 .drv-profile-avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
+  width: 100px;
+  height: 100px;
   object-fit: cover;
   border: 3px solid var(--gold);
   box-shadow: 0 4px 16px rgba(201,168,76,0.25);

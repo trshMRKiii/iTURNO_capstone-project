@@ -10,9 +10,10 @@ import VehicleModal from "../../../lib/vehicle/vehicleModal";
 
 import React, { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { renderToStaticMarkup } from "react-dom/server";
 import "../../../styles/Vehicle.css";
 
-function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd }) {
+function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd, exposeExportQR }) {
   const {
     vehicles,
     loading,
@@ -42,9 +43,62 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
   const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
   const [ledgerVehicle, setLedgerVehicle] = useState(null);
 
+  const exportQR = () => {
+    const toExport = filteredVehicles.filter((v) => v.qr_code);
+    if (!toExport.length) return;
+
+    const items = toExport.map((v) => {
+      const svgStr = renderToStaticMarkup(
+        <QRCodeSVG value={v.qr_code} size={140} level="H" includeMargin />
+      );
+      return `<div class="qr-item">
+        ${svgStr}
+        <div class="qr-plate">${v.plate_number || ""}</div>
+        <div class="qr-code">${v.qr_code}</div>
+        ${v.route_detail?.full_name ? `<div class="qr-route">${v.route_detail.full_name}</div>` : ""}
+      </div>`;
+    }).join("");
+
+    const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>Vehicle QR Codes</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 24px; background: #fff; }
+  h2 { font-size: 16px; margin-bottom: 4px; }
+  .meta { font-size: 11px; color: #666; margin-bottom: 16px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+  .print-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; background: #1a2744; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .print-btn:hover { background: #2d3e5f; }
+  .grid { display: flex; flex-wrap: wrap; gap: 20px; }
+  .qr-item { border: 1px solid #ddd; border-radius: 6px; padding: 12px; text-align: center; width: 180px; break-inside: avoid; }
+  .qr-item svg { display: block; margin: 0 auto; }
+  .qr-plate { font-weight: bold; font-size: 13px; margin-top: 8px; }
+  .qr-code { font-size: 10px; color: #555; margin-top: 2px; word-break: break-all; }
+  .qr-route { font-size: 10px; color: #888; margin-top: 2px; }
+  @media print { .toolbar { display: none; } body { margin: 12px; } }
+</style>
+</head><body>
+<div class="toolbar">
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span style="font-size:12px;color:#666;">${toExport.length} vehicle(s) &nbsp;|&nbsp; ${now}${searchTerm ? ` &nbsp;|&nbsp; Filter: "${searchTerm}"` : ""}</span>
+</div>
+<h2>Vehicle QR Codes</h2>
+<div class="grid">${items}</div>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  };
+
   React.useEffect(() => {
     if (exposeAdd) exposeAdd(handleAdd);
   }, [exposeAdd, handleAdd]);
+
+  React.useEffect(() => {
+    if (exposeExportQR) exposeExportQR(exportQR);
+  });
 
   const filteredVehicles = vehicles.filter((v) => {
     const q = searchTerm.toLowerCase().trim();
@@ -96,6 +150,18 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
               <path d="M12 5v14" />
             </svg>
             Register Vehicle
+          </button>
+          <button className="veh-export-qr-btn" onClick={exportQR} title="Export QR codes for filtered vehicles">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="3" height="3" rx="0.5" />
+              <rect x="18" y="14" width="3" height="3" rx="0.5" />
+              <rect x="14" y="18" width="3" height="3" rx="0.5" />
+              <rect x="18" y="18" width="3" height="3" rx="0.5" />
+            </svg>
+            Export QR
           </button>
         </div>
       </div>

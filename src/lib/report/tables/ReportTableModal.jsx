@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function ReportTableModal({ title, subtitle, count, onClose, children }) {
+export default function ReportTableModal({ title, subtitle, count, onClose, children, searchValue, onSearchChange, searchPlaceholder }) {
   return (
     <div className="rpt-overlay" onClick={onClose}>
       <div className="rpt-modal" onClick={(e) => e.stopPropagation()}>
@@ -21,6 +21,16 @@ export default function ReportTableModal({ title, subtitle, count, onClose, chil
           <div className="rpt-modal-header-right">
             {typeof count === "number" && (
               <span className="rpt-modal-count">{count} record{count !== 1 ? "s" : ""}</span>
+            )}
+            {onSearchChange && (
+              <input
+                type="text"
+                className="rpt-search-input"
+                placeholder={searchPlaceholder || "Search…"}
+                value={searchValue || ""}
+                onChange={(e) => onSearchChange(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
             )}
             <button className="rpt-modal-close" onClick={onClose} aria-label="Close">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

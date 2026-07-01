@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Denomination, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -173,11 +173,6 @@ class TicketFormSerializer(serializers.ModelSerializer):
         model = TicketForm
         fields = ['id', 'name', 'price']
 
-class DenominationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Denomination
-        fields = ['id', 'value', 'label', 'type']
-
 class DepositSerializer(serializers.ModelSerializer):
     class Meta:
         model = Deposit
@@ -296,16 +291,30 @@ class PointsTransactionSerializer(serializers.ModelSerializer):
 
 class RedemptionSerializer(serializers.ModelSerializer):
     approved_by_name = serializers.SerializerMethodField()
+    driver_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Redemption
-        fields = ['id', 'points_redeemed', 'peso_value', 'status', 'approved_by', 'approved_by_name', 'created_at']
+        fields = ['id', 'points_redeemed', 'peso_value', 'status', 'approved_by', 'approved_by_name', 'driver_name', 'created_at']
 
     def get_approved_by_name(self, obj):
         if obj.approved_by:
             full = f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip()
             return full or obj.approved_by.username
         return None
+
+    def get_driver_name(self, obj):
+        driver = obj.profile.driver
+        return f"{driver.last_name}, {driver.first_name}".strip()
+
+
+class RewardConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RewardConfig
+        fields = [
+            'id', 'points_per_redemption', 'peso_value_per_redemption',
+            'max_redemptions_per_year', 'cooldown_months', 'updated_at',
+        ]
 
 
 class DriverRewardProfileSerializer(serializers.ModelSerializer):

@@ -31,6 +31,7 @@ export default function FleetRecords({
   const [activeTab, setActiveTab] = useState("vehicles");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [modalSearch, setModalSearch] = useState("");
 
   const isVehicles = activeTab === "vehicles";
 
@@ -90,9 +91,27 @@ export default function FleetRecords({
     </tr>
   );
 
+  const modalSearchedVehicles = searchedVehicles.filter((v) => {
+    if (!modalSearch) return true;
+    const q = modalSearch.toLowerCase();
+    const route = v.route_detail ? `${v.route_detail.origin} - San Fernando` : v.route || "";
+    return [v.plate_number, route, v.active_driver_name]
+      .some((val) => val && val.toLowerCase().includes(q));
+  });
+
+  const modalSearchedDrivers = searchedDrivers.filter((d) => {
+    if (!modalSearch) return true;
+    const q = modalSearch.toLowerCase();
+    return [d.iwp_number || String(d.id), d.name, d.contact]
+      .some((val) => val && String(val).toLowerCase().includes(q));
+  });
+
+  const modalData = isVehicles ? modalSearchedVehicles : modalSearchedDrivers;
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearch("");
+    setModalSearch("");
     setShowModal(false);
   };
 
@@ -104,6 +123,7 @@ export default function FleetRecords({
 
   const handleCloseModal = () => {
     setShowModal(false);
+    setModalSearch("");
     if (isVehicles) setShowAllVehicles(false);
     else setShowAllDrivers(false);
   };
@@ -176,13 +196,16 @@ export default function FleetRecords({
         <ReportTableModal
           title={isVehicles ? "Vehicle Records" : "Driver Records"}
           subtitle={isVehicles ? "Complete registered vehicle fleet" : "Complete registered driver roster"}
-          count={searched.length}
+          count={modalData.length}
           onClose={handleCloseModal}
+          searchValue={modalSearch}
+          onSearchChange={setModalSearch}
+          searchPlaceholder={isVehicles ? "Search vehicles…" : "Search drivers…"}
         >
           {isVehicles ? (
-            <DataTable columns={VEHICLE_COLUMNS} data={searched} rowRenderer={renderVehicleRow} />
+            <DataTable columns={VEHICLE_COLUMNS} data={modalData} rowRenderer={renderVehicleRow} />
           ) : (
-            <DataTable columns={DRIVER_COLUMNS} data={searched} rowRenderer={renderDriverRow} />
+            <DataTable columns={DRIVER_COLUMNS} data={modalData} rowRenderer={renderDriverRow} />
           )}
         </ReportTableModal>
       )}

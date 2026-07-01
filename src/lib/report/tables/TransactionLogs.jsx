@@ -15,6 +15,7 @@ export default function TransactionLogs({
   const [activeTab, setActiveTab] = useState("logs");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [modalSearch, setModalSearch] = useState("");
 
   const searchedLogs = filteredLogs.filter((l) => {
     if (!search) return true;
@@ -88,9 +89,26 @@ export default function TransactionLogs({
       "Roaming Logs",
     );
 
+  const modalSearchedLogs = searchedLogs.filter((l) => {
+    if (!modalSearch) return true;
+    const q = modalSearch.toLowerCase();
+    return [l.timestamp, l.ticket_id, l.action, l.batch, l.driver, l.vehicle, l.route, l.user]
+      .some((v) => v && String(v).toLowerCase().includes(q));
+  });
+
+  const modalSearchedRoaming = searchedRoaming.filter((r) => {
+    if (!modalSearch) return true;
+    const q = modalSearch.toLowerCase();
+    return [r.vehicle_plate, r.driver_name, r.recorded_by_name, r.notes]
+      .some((v) => v && String(v).toLowerCase().includes(q));
+  });
+
+  const modalData = isLogs ? modalSearchedLogs : modalSearchedRoaming;
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearch("");
+    setModalSearch("");
     setShowModal(false);
   };
 
@@ -207,13 +225,16 @@ export default function TransactionLogs({
         <ReportTableModal
           title={isLogs ? "Transaction Logs" : "Roaming Logs"}
           subtitle={isLogs ? "Full ticket activity history" : "Full roaming vehicle activity history"}
-          count={searched.length}
-          onClose={() => setShowModal(false)}
+          count={modalData.length}
+          onClose={() => { setShowModal(false); setModalSearch(""); }}
+          searchValue={modalSearch}
+          onSearchChange={setModalSearch}
+          searchPlaceholder={isLogs ? "Search logs…" : "Search roaming…"}
         >
           {isLogs ? (
-            <DataTable columns={LOG_COLUMNS} data={searched} rowRenderer={renderLogRow} />
+            <DataTable columns={LOG_COLUMNS} data={modalData} rowRenderer={renderLogRow} />
           ) : (
-            <DataTable columns={ROAMING_COLUMNS} data={searched} rowRenderer={renderRoamingRow} />
+            <DataTable columns={ROAMING_COLUMNS} data={modalData} rowRenderer={renderRoamingRow} />
           )}
         </ReportTableModal>
       )}

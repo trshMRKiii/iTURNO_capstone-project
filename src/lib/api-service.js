@@ -301,18 +301,6 @@ export const apiService = {
     return this.delete(`/ticket-forms/${id}/`);
   },
 
-  getDenominations() {
-    return this.get("/denominations/");
-  },
-
-  createDenomination(data) {
-    return this.post("/denominations/", data);
-  },
-
-  deleteDenomination(id) {
-    return this.delete(`/denominations/${id}/`);
-  },
-
   getRoamingLogs() {
     return this.get("/roaming-logs/");
   },
@@ -339,6 +327,18 @@ export const apiService = {
 
   getRewardLeaderboard() {
     return this.get("/rewards/leaderboard/");
+  },
+
+  getAllRewardRedemptions(params = '') {
+    return this.get(`/rewards/redemptions/${params}`);
+  },
+
+  getRewardConfig() {
+    return this.get("/rewards/config/");
+  },
+
+  updateRewardConfig(data) {
+    return this.put("/rewards/config/", data);
   },
 
 };

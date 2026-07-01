@@ -69,7 +69,9 @@ const CreateBatchForm = ({ onClose, onSave }) => {
         setTodayTickets(
           tickets.filter(t =>
             t.issued_at && getTodayDateString(new Date(t.issued_at)) === today &&
-            t.status !== "CANCELLED"
+            t.status !== "CANCELLED" &&
+            t.is_verified === true &&
+            !t.remittance_batch
           )
         );
       })
