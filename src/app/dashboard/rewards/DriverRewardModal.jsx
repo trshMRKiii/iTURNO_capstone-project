@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
+import { exportRewardReceipt } from "../../../lib/report/exportRewardReceipt";
 
 const peso = (n) =>
   "₱" +
@@ -219,8 +220,8 @@ export default function DriverRewardModal({ driver, rewardConfig, onClose, onRed
                       <th>Date</th>
                       <th>Points</th>
                       <th>Value</th>
-                      <th>Status</th>
                       <th>Approved By</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -236,12 +237,15 @@ export default function DriverRewardModal({ driver, rewardConfig, onClose, onRed
                           </td>
                           <td className="rw-pts-neg">-{r.points_redeemed.toLocaleString()}</td>
                           <td>{peso(r.peso_value)}</td>
-                          <td>
-                            <span className={`rw-status-tag rw-status-${r.status.toLowerCase()}`}>
-                              {r.status}
-                            </span>
-                          </td>
                           <td>{r.approved_by_name || "—"}</td>
+                          <td>
+                            <button
+                              className="rw-receipt-btn"
+                              onClick={() => exportRewardReceipt(r, driver)}
+                            >
+                              Create Receipt
+                            </button>
+                          </td>
                         </tr>
                       ))
                     )}

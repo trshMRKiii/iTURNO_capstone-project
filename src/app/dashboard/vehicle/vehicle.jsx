@@ -5,6 +5,8 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
   DESTINATION,
+  formatPlateNumber,
+  buildDriverAddress,
 } from "../../../lib/vehicle/vehicleHook";
 import VehicleModal from "../../../lib/vehicle/vehicleModal";
 
@@ -383,10 +385,14 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                   <input
                     type="text"
                     className="veh-input"
-                    placeholder="e.g. ABC 1234"
+                    placeholder="e.g. ABC-1234"
                     value={form.plate_number}
+                    maxLength={8}
                     onChange={(e) =>
-                      setForm({ ...form, plate_number: e.target.value })
+                      setForm({
+                        ...form,
+                        plate_number: formatPlateNumber(e.target.value),
+                      })
                     }
                     required
                   />
@@ -480,14 +486,19 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                 <select
                   className="veh-select"
                   value={form.active_driver || ""}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const driverId = e.target.value
+                      ? parseInt(e.target.value)
+                      : null;
+                    const driver = activeDrivers.find((d) => d.id === driverId);
                     setForm({
                       ...form,
-                      active_driver: e.target.value
-                        ? parseInt(e.target.value)
-                        : null,
-                    })
-                  }
+                      active_driver: driverId,
+                      operator_address: driver
+                        ? buildDriverAddress(driver)
+                        : form.operator_address,
+                    });
+                  }}
                 >
                   <option value="">— None / Unassigned —</option>
                   {activeDrivers.map((d) => (

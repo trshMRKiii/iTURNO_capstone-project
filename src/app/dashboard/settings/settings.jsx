@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useToast } from "../../../components/ui/ToastConfirmContext";
+import { useShifts } from "../../../lib/useShifts";
 import "../../../styles/Settings.css";
 
 const TABS = [
@@ -54,6 +55,17 @@ const TABS = [
       </svg>
     ),
   },
+  {
+    key: "batchSchedule",
+    label: "Batch Schedule",
+    description: "Start and end hours for each collection batch",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+  },
 ];
 
 const DeleteIcon = () => (
@@ -100,6 +112,66 @@ function Settings() {
   const showToast = useToast();
 
   const [search, setSearch] = useState("");
+
+  const {
+    shifts,
+    loading: shiftsLoading,
+    error: shiftsError,
+    updateShifts,
+  } = useShifts();
+  const [editingShifts, setEditingShifts] = useState({});
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  useEffect(() => {
+    if (shifts && Object.keys(shifts).length > 0) {
+      setEditingShifts(JSON.parse(JSON.stringify(shifts)));
+    }
+  }, [shifts]);
+
+  const formatLabel = (name, startHour, endHour) => {
+    const start =
+      startHour < 12
+        ? `${startHour}am`
+        : startHour === 12
+          ? "12pm"
+          : `${startHour - 12}pm`;
+    const end =
+      endHour < 12
+        ? `${endHour}am`
+        : endHour === 12
+          ? "12pm"
+          : `${endHour - 12}pm`;
+    return `${name} (${start}-${end})`;
+  };
+
+  const handleScheduleFieldChange = (key, field, value) => {
+    setEditingShifts((prev) => {
+      const updated = {
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [field]: field === "startHour" || field === "endHour" ? Number(value) : value,
+        },
+      };
+      if (field === "startHour" || field === "endHour") {
+        updated[key].label = formatLabel(updated[key].name, updated[key].startHour, updated[key].endHour);
+      }
+      return updated;
+    });
+  };
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      await updateShifts(editingShifts);
+      showToast?.("Batch schedule saved", "success");
+    } catch (err) {
+      console.error("Failed to save schedule", err);
+      showToast?.("Failed to save batch schedule", "info");
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
 
   useEffect(() => {
     apiService.getPUVTypes()
@@ -221,6 +293,7 @@ function Settings() {
     routes: routes.length,
     ticketForms: ticketForms.length,
     rewards: rewardConfig ? 1 : 0,
+    batchSchedule: Object.keys(shifts || {}).length,
   };
 
   return (
@@ -258,7 +331,7 @@ function Settings() {
             <h2 className="set-panel-title">{TABS.find(t => t.key === activeTab)?.label}</h2>
 
           </div>
-          {activeTab !== "rewards" && (
+          {activeTab !== "rewards" && activeTab !== "batchSchedule" && (
             <div className="set-search">
               <SearchIcon />
               <input
@@ -482,6 +555,59 @@ function Settings() {
               <button className="set-add-btn" onClick={handleSaveRewardConfig} disabled={savingRewardConfig}>
                 <PlusIcon />
                 {savingRewardConfig ? "Saving..." : "Save Rewards Settings"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Batch Schedule */}
+        {activeTab === "batchSchedule" && (
+          <div className="set-rewards-form">
+            {shiftsLoading ? (
+              <p className="set-rewards-note">Loading schedule...</p>
+            ) : Object.keys(editingShifts).length === 0 ? (
+              <p className="set-rewards-note">No shift configuration found.</p>
+            ) : (
+              Object.entries(editingShifts).map(([key, shift]) => (
+                <div key={key} className="set-add-row" style={{ alignItems: "flex-end" }}>
+                  <label className="set-field">
+                    <span className="set-field-label">{shift.name} — {shift.label}</span>
+                  </label>
+                  <label className="set-field">
+                    <span className="set-field-label">Start Hour</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      className="set-input"
+                      value={shift.startHour}
+                      onChange={(e) => handleScheduleFieldChange(key, "startHour", e.target.value)}
+                    />
+                  </label>
+                  <label className="set-field">
+                    <span className="set-field-label">End Hour</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      className="set-input"
+                      value={shift.endHour}
+                      onChange={(e) => handleScheduleFieldChange(key, "endHour", e.target.value)}
+                    />
+                  </label>
+                </div>
+              ))
+            )}
+            {(shiftsError) && (
+              <p className="set-rewards-note" style={{ color: "#c0392b" }}>{shiftsError}</p>
+            )}
+            <p className="set-rewards-note">
+              Changes take effect immediately after saving. Tickets already issued retain their original batch assignment.
+            </p>
+            <div className="set-add-row">
+              <button className="set-add-btn" onClick={handleSaveSchedule} disabled={savingSchedule || Object.keys(editingShifts).length === 0}>
+                <PlusIcon />
+                {savingSchedule ? "Saving..." : "Save Batch Schedule"}
               </button>
             </div>
           </div>

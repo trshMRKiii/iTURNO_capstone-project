@@ -232,6 +232,17 @@ class Collection(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
 class RewardConfig(models.Model):
+    # Earning rules
+    points_per_queue = models.IntegerField(default=10)
+    daily_bonus_4_threshold = models.IntegerField(default=4)
+    daily_bonus_4_points = models.IntegerField(default=20)
+    daily_bonus_5_threshold = models.IntegerField(default=5)
+    daily_bonus_5_points = models.IntegerField(default=40)
+    streak_bonus_days = models.IntegerField(default=5)
+    streak_bonus_points = models.IntegerField(default=50)
+    monthly_bonus_days = models.IntegerField(default=20)
+    monthly_bonus_points = models.IntegerField(default=100)
+
     # Redemption rules
     points_per_redemption = models.IntegerField(default=1000)
     peso_value_per_redemption = models.DecimalField(max_digits=10, decimal_places=2, default=500)

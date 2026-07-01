@@ -27,6 +27,23 @@ export const STATUS_LABEL = {
   MAINTENANCE: "Under Maintenance",
 };
 
+// Formats free-typed input into LLL-1234 as the user types, auto-inserting the dash.
+export const formatPlateNumber = (value) => {
+  const clean = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const letters = clean.slice(0, 3).replace(/[0-9]/g, "");
+  const digits = clean.slice(letters.length, letters.length + 4).replace(/[^0-9]/g, "");
+  if (!letters) return "";
+  return digits ? `${letters}-${digits}` : letters;
+};
+
+// Builds a display address string from a driver's location fields.
+export const buildDriverAddress = (driver) => {
+  if (!driver) return "";
+  return [driver.street, driver.barangay, driver.city, driver.province]
+    .filter(Boolean)
+    .join(", ");
+};
+
 // field wrapper for modal
 export const Field = ({ label, children }) => (
   <div className="veh-field">
@@ -332,6 +349,7 @@ export function useVehicle() {
     vehicles,
     drivers,
     routes,
+    activeDrivers,
     loading,
     error,
     editing,
@@ -344,7 +362,6 @@ export function useVehicle() {
     setNewOrigin,
     routeError,
     selectedRoute,
-    activeDrivers,
     transportationTypes,
     handleSubmit,
     handleEdit,

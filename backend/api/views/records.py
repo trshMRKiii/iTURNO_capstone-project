@@ -66,7 +66,8 @@ def issue_late_ticket(request):
         try:
             award_queue_point(ticket.driver, queue_date=issued_at.date())
         except Exception:
-            pass
+            import logging
+            logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
 
         serializer = TicketSerializer(ticket)
         return Response({

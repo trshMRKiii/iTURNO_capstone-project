@@ -1,4 +1,5 @@
 import React from "react";
+import { downloadCSV, downloadPDF } from "./exportReport";
 
 function formatCurrency(val) {
   return "₱" + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -20,79 +21,6 @@ function getDepositFields(d) {
     quantity: Number(d.quantity || 0),
     depositAmount,
   };
-}
-
-function generateCSVRows(batch) {
-  const rows = [];
-  const add = (...cols) => rows.push(cols.map(c => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","));
-
-  add("REPORT OF COLLECTIONS AND DEPOSITS");
-  add("CITY GOVERNMENT OF SAN FERNANDO, LA UNION");
-  add("");
-  add("FUND:", "GENERAL FUND", "", "Date:", batch.issued_at || "");
-  add("Name of Accountable Officer:", batch.issued_by_name || "", "", "Report No.:", batch.id || "");
-  add("");
-
-  // Section A - Collections
-  add("A. COLLECTIONS");
-  add("1. For Collectors");
-  add("Type (Form No.)", "From", "To", "Amount");
-  const collections = (batch.collections || []).map(getCollectionFields);
-  collections.forEach(c => {
-    add(c.ticketFormNo, c.from, c.to, c.amount);
-  });
-  const totalCollections = collections.reduce((s, c) => s + c.amount, 0);
-  const totalFrom = collections.reduce((s, c) => s + c.from, 0);
-  const totalTo = collections.reduce((s, c) => s + c.to, 0);
-  add("TOTAL", totalFrom, totalTo, totalCollections);
-  add("");
-
-  // Section B - Remittances/Deposits
-  add("B. REMITTANCES/DEPOSITS");
-  add("Den.", "Quantity", "Amount");
-  const deposits = (batch.deposits || []).map(getDepositFields);
-  deposits.forEach(d => {
-    const label = d.type === "coin" ? "Coins" : d.denomination;
-    add(label, d.quantity, d.depositAmount);
-  });
-  const totalDeposits = deposits.reduce((s, d) => s + d.depositAmount, 0);
-  add("TOTAL DEPOSITS", "", totalDeposits);
-  add("");
-
-  // Section C - Accountability for Accountable Forms
-  add("C. ACCOUNTABILITY FOR ACCOUNTABLE FORMS");
-  add("Name of Form & No.", "Beg. Bal Qty", "Beg. From", "Beg. To", "Receipt Qty", "Rec. From", "Rec. To", "Issued Qty", "Iss. From", "Iss. To", "End Qty", "End From", "End To");
-  collections.forEach(c => {
-    add(c.ticketFormNo, c.from, "", "", "", "", "", c.amount, "", "", c.to, "", "");
-  });
-  add("");
-
-  // Section D - Summary
-  add("D. SUMMARY OF COLLECTIONS AND REMITTANCES/DEPOSITS");
-  add("Beginning Balance", totalFrom);
-  add("Add: Collections - Cash", totalCollections);
-  add("Add: Collections - Checks", 0);
-  add("Remittance/Deposits", totalDeposits);
-  add("Balance", totalDeposits);
-  add("");
-
-  // Certification
-  add("CERTIFICATION");
-  add("Prepared By:", batch.issued_by_name || "");
-  add("Verified By:", "");
-
-  return rows.join("\n");
-}
-
-function downloadCSV(batch) {
-  const csv = generateCSVRows(batch);
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Remittance_${batch.id}_${batch.issued_at || "report"}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function ViewRemittance({ batch, onClose }) {
@@ -126,6 +54,13 @@ export default function ViewRemittance({ batch, onClose }) {
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
               Export CSV
+            </button>
+            <button className="rem-btn rem-btn--export" onClick={() => downloadPDF(batch)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              Export PDF
             </button>
             <button className="rem-modal-close" onClick={onClose} aria-label="Close">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

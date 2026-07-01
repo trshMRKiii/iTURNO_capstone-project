@@ -36,12 +36,36 @@ function Ticket({ userRole }) {
     selectedSeriesId,
     setSelectedSeriesId,
     handleRouteChange,
-    handleVehicleChange,
+    selectVehicleById,
     handleDriverChange,
     handleIssueTicket,
   } = useTicket(userRole);
 
   const [activeTab, setActiveTab] = useState("tickets");
+  const [vehicleSearch, setVehicleSearch] = useState("");
+  const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
+
+  const vehicleSearchResults = availableVehicles.filter((v) => {
+    const term = vehicleSearch.toLowerCase();
+    return (
+      v.plate_number.toLowerCase().includes(term) ||
+      (v.route_detail?.full_name || "").toLowerCase().includes(term)
+    );
+  });
+
+  const handleSelectVehicle = (vehicle) => {
+    selectVehicleById(vehicle.id);
+    setVehicleSearch(vehicle.plate_number);
+    setShowVehicleDropdown(false);
+  };
+
+  const handleVehicleSearchChange = (e) => {
+    setVehicleSearch(e.target.value);
+    setShowVehicleDropdown(true);
+    if (selectedVehicle) {
+      selectVehicleById(null);
+    }
+  };
 
 
   const cancelledTickets = filteredTickets.filter((t) => t.status === "CANCELLED");
@@ -84,7 +108,10 @@ function Ticket({ userRole }) {
               <select
                 className="ticket-select"
                 value={selectedRouteId}
-                onChange={handleRouteChange}
+                onChange={(e) => {
+                  handleRouteChange(e);
+                  setVehicleSearch("");
+                }}
               >
                 <option value="">— Select a route —</option>
                 {routes.map((r) => (
@@ -95,22 +122,46 @@ function Ticket({ userRole }) {
               </select>
             </div>
 
-            {/* Vehicle select */}
-            <div className="ticket-field">
+            {/* Vehicle search / select */}
+            <div className="ticket-field ticket-vehicle-combobox">
               <label className="ticket-label">Vehicle (Plate Number)</label>
-              <select
-                className="ticket-select"
-                value={selectedVehicle?.id || ""}
-                onChange={handleVehicleChange}
-              >
-                <option value="">— Select a vehicle —</option>
-                {availableVehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.plate_number}
-                    {v.route_detail ? ` — ${v.route_detail.full_name}` : ""}
-                  </option>
-                ))}
-              </select>
+              <div className="ticket-search-wrap">
+                <SearchIcon className="ticket-search-icon" />
+                <input
+                  className="ticket-select ticket-vehicle-search-input"
+                  placeholder="Search by plate number or route…"
+                  value={vehicleSearch}
+                  onChange={handleVehicleSearchChange}
+                  onFocus={() => setShowVehicleDropdown(true)}
+                  onBlur={() =>
+                    setTimeout(() => setShowVehicleDropdown(false), 150)
+                  }
+                />
+              </div>
+              {showVehicleDropdown && (
+                <div className="ticket-vehicle-dropdown">
+                  {vehicleSearchResults.length === 0 ? (
+                    <div className="ticket-vehicle-dropdown-empty">
+                      No matching vehicles
+                    </div>
+                  ) : (
+                    vehicleSearchResults.map((v) => (
+                      <div
+                        key={v.id}
+                        className="ticket-vehicle-dropdown-item"
+                        onMouseDown={() => handleSelectVehicle(v)}
+                      >
+                        <span className="ticket-plate">{v.plate_number}</span>
+                        {v.route_detail && (
+                          <span className="ticket-vehicle-dropdown-route">
+                            {v.route_detail.full_name}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
               {vehicles.length > availableVehicles.length && (
                 <p className="ticket-field-hint">
                   {vehicles.length - availableVehicles.length} vehicle(s)

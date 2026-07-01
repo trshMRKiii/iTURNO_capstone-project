@@ -249,7 +249,7 @@ export default function Report() {
         <div className="rpt-header-left">
           <div className="rpt-header-accent" />
           <div>
-            <h1 className="rpt-title">Collection Reports</h1>
+            <h1 className="rpt-title">Report Logs</h1>
             <p className="rpt-subtitle">
               View and export collection data per batch and period.
             </p>

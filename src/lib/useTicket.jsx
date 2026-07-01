@@ -169,8 +169,7 @@ export function useTicket(userRole = "") {
   };
 
   // Vehicle change handler
-  const handleVehicleChange = (e) => {
-    const vehicleId = parseInt(e.target.value);
+  const selectVehicleById = (vehicleId) => {
     const vehicle = vehicles.find((v) => v.id === vehicleId);
     setSelectedVehicle(vehicle || null);
 
@@ -193,6 +192,10 @@ export function useTicket(userRole = "") {
     } else {
       setSelectedDriver(null);
     }
+  };
+
+  const handleVehicleChange = (e) => {
+    selectVehicleById(parseInt(e.target.value));
   };
 
   // Driver change handler
@@ -362,6 +365,7 @@ export function useTicket(userRole = "") {
     fetchTickets,
     handleRouteChange,
     handleVehicleChange,
+    selectVehicleById,
     handleDriverChange,
     handleIssueTicket,
     ticketFee,

@@ -3,6 +3,10 @@ import { useDriver } from "../../../lib/useDriver";
 import { getDriverCode, getDriverDisplayName } from "../../../lib/driver-utils";
 import "../../../styles/Driver.css";
 
+function capitalizeWords(value) {
+  return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+}
+
 function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd }) {
   const {
     drivers,
@@ -340,14 +344,21 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                     />
                   </label>
                 </div>
-                {editing && (
-                  <div className="drv-profile-hero-info">
-                    <span className="drv-profile-code">{form.code}</span>
+                <div className="drv-profile-hero-info">
+                  <span className="drv-profile-hero-name">
+                    {[form.first_name, form.middle_name, form.last_name]
+                      .filter(Boolean)
+                      .join(" ") || "New Driver"}
+                  </span>
+                  <div className="drv-profile-hero-tags">
+                    {editing && (
+                      <span className="drv-profile-code">{form.code}</span>
+                    )}
                     <span className={`drv-status ${form.status === "ACTIVE" ? "drv-status--active" : "drv-status--inactive"}`}>
                       {form.status === "ACTIVE" ? "Active" : "Inactive"}
                     </span>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Personal Information */}
@@ -368,7 +379,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                       placeholder="First name"
                       value={form.first_name}
                       onChange={(e) =>
-                        setForm({ ...form, first_name: e.target.value })
+                        setForm({ ...form, first_name: capitalizeWords(e.target.value) })
                       }
                     />
                   </div>
@@ -379,7 +390,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                       className="drv-input"
                       placeholder="Last name"
                       value={form.last_name}
-                      onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                      onChange={(e) => setForm({ ...form, last_name: capitalizeWords(e.target.value) })}
                     />
                   </div>
                   <div className="drv-field">
@@ -390,7 +401,10 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                       placeholder="Middle name"
                       value={form.middle_name || ""}
                       onChange={(e) =>
-                        setForm({ ...form, middle_name: e.target.value || null })
+                        setForm({
+                          ...form,
+                          middle_name: capitalizeWords(e.target.value) || null,
+                        })
                       }
                     />
                   </div>

@@ -49,7 +49,8 @@ class TicketViewSet(viewsets.ModelViewSet):
         try:
             award_queue_point(ticket.driver)
         except Exception:
-            pass
+            import logging
+            logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
 
 
 class TicketPriceViewSet(viewsets.ModelViewSet):

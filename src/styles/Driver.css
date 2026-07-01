@@ -342,10 +342,10 @@
 }
 
 .drv-modal-body {
-  padding: 20px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   overflow-y: auto;
   flex: 1 1 auto;
 }
@@ -463,29 +463,54 @@
 
 /* ── Profile modal ── */
 .drv-modal--profile {
-  max-width: 540px;
+  max-width: 640px;
 }
 
 .drv-profile-hero {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0 16px;
+  gap: 16px;
+  padding: 4px 0 16px;
   border-bottom: 1px solid var(--border-soft);
   margin-bottom: 4px;
 }
 
 .drv-profile-avatar-wrap {
   position: relative;
+  flex-shrink: 0;
 }
 
 .drv-profile-avatar {
-  width: 100px;
-  height: 100px;
+  width: 150px;
+  height: 150px;
   object-fit: cover;
   border: 3px solid var(--gold);
   box-shadow: 0 4px 16px rgba(201,168,76,0.25);
+}
+
+.drv-profile-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.drv-profile-hero-name {
+  font-size: 25px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drv-profile-hero-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .drv-profile-avatar--placeholder {
@@ -515,12 +540,6 @@
 
 .drv-profile-upload-btn:hover {
   transform: scale(1.1);
-}
-
-.drv-profile-hero-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .drv-profile-code {
@@ -555,8 +574,14 @@
 
 .drv-profile-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+
+@media (max-width: 620px) {
+  .drv-profile-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 480px) {
