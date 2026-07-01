@@ -519,7 +519,7 @@
 }
 
 .rpt-modal-body .rpt-table-wrap {
-  overflow-x: auto;
+  overflow-x: scroll;
 }
 
 .rpt-modal-body .rpt-thead-row th {
@@ -539,7 +539,27 @@
 }
 
 /* ── DataTable ── */
-.rpt-table-wrap { overflow-x: auto; }
+.rpt-table-wrap {
+  overflow-x: scroll;
+}
+
+.rpt-table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.rpt-table-wrap::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.rpt-table-wrap::-webkit-scrollbar-thumb {
+  background: #b0b8c8;
+  border-radius: 3px;
+}
+
+.rpt-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: #7a8ba8;
+}
 
 .rpt-table {
   width: 100%;
