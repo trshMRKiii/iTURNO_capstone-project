@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTicket, formatTime } from "../../../lib/useTicket";
 import TicketStatusBadge from "../../../lib/ticket/ticketStatusBadge";
 import "../../../styles/Ticket.css";
@@ -40,7 +39,6 @@ function Ticket({ userRole }) {
     handleIssueTicket,
   } = useTicket(userRole);
 
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("tickets");
 
 
@@ -61,18 +59,6 @@ function Ticket({ userRole }) {
               Issue and monitor trip dispatch tickets
             </p>
           </div>
-        </div>
-        <div className="ticket-header-right">
-          <button className="ticket-mobile-scan-btn" onClick={() => navigate("/mobile-scan")}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-              <rect x="7" y="7" width="10" height="10" rx="1" />
-            </svg>
-            Mobile Scan
-          </button>
         </div>
       </div>
 

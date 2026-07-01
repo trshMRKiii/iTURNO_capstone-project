@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -11,6 +12,7 @@ import {
 } from "recharts";
 import { apiService } from "../../lib/api-service";
 import "../../styles/Dashboard.css";
+import "../../styles/Ticket.css";
 import schedule from "../../../backend/schedules.json";
 
 const peso = (n) => {
@@ -65,6 +67,7 @@ function StatCard({ label, value, sub, icon }) {
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [routes, setRoutes] = useState([]);
@@ -120,6 +123,18 @@ export default function Dashboard() {
               Overview of today's collection and activity
             </p>
           </div>
+        </div>
+        <div className="col-header-right">
+          <button className="ticket-mobile-scan-btn" onClick={() => navigate("/mobile-scan")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+              <rect x="7" y="7" width="10" height="10" rx="1" />
+            </svg>
+            Mobile Scan
+          </button>
         </div>
       </div>
 
