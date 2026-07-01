@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiService } from "../api-service";
+import { useToast, useConfirm } from "../../components/ui/ToastConfirmContext";
 
 const EMPTY_SERIES = {
   ticket_form: "",
@@ -12,6 +13,8 @@ const EMPTY_SERIES = {
 };
 
 export function useRequisition() {
+  const showToast = useToast();
+  const showConfirm = useConfirm();
   const [requisitions, setRequisitions] = useState([]);
   const [ticketForms, setTicketForms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -209,12 +212,16 @@ export function useRequisition() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this requisition?")) return;
+    const confirmed = await showConfirm("Are you sure you want to delete this requisition?");
+    if (!confirmed) return;
     try {
       await apiService.delete(`/requisitions/${id}/`);
       await fetchRequisitions();
+      showToast("Requisition deleted successfully");
     } catch (err) {
-      setError(err.message || "Failed to delete requisition");
+      const message = err.message || "Failed to delete requisition";
+      setError(message);
+      showToast(message, "info");
     }
   };
 

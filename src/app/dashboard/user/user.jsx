@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../../lib/api-service";
-import { useConfirm } from "../../../components/ui/ToastConfirmContext";
+import { useConfirm, useToast } from "../../../components/ui/ToastConfirmContext";
 import "../../../styles/User.css";
 
 const EMPTY_FORM = {
@@ -40,6 +40,7 @@ function User() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const showConfirm = useConfirm();
+  const showToast = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -145,8 +146,10 @@ function User() {
     try {
       await apiService.deleteUser(id);
       fetchUsers();
+      showToast("Staff account deleted successfully");
     } catch (err) {
       setError(err.message);
+      showToast(err.message || "Failed to delete staff account", "info");
     }
   };
 

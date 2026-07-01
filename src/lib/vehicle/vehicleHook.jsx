@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../api-service";
-import { useConfirm } from "../../components/ui/ToastConfirmContext";
+import { useConfirm, useToast } from "../../components/ui/ToastConfirmContext";
 
 export const DESTINATION = "San Fernando";
 
@@ -165,6 +165,7 @@ export function useVehicle() {
   const [routeError, setRouteError] = useState("");
 
   const showConfirm = useConfirm();
+  const showToast = useToast();
 
   useEffect(() => {
     fetchDrivers();
@@ -338,8 +339,10 @@ export function useVehicle() {
     try {
       await apiService.deleteVehicle(id);
       fetchVehicles();
+      showToast("Vehicle record deleted successfully");
     } catch (err) {
       setError(err.message);
+      showToast(err.message || "Failed to delete vehicle", "info");
     }
   };
 
