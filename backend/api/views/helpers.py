@@ -15,6 +15,10 @@ def load_schedule():
 
 
 def get_batch(ticket):
+    if ticket.batch:
+        return ticket.batch
+    # Legacy tickets saved before the batch field existed: fall back to
+    # computing from the current schedule (may drift if schedule changed since).
     local_hour = (ticket.issued_at + timedelta(hours=8)).hour
     schedule = load_schedule()
     for key, shift in schedule.items():

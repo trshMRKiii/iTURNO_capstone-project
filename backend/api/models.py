@@ -120,11 +120,12 @@ class Ticket(models.Model):
     reason = models.TextField(blank=True)
     
     is_late = models.BooleanField(default=False, db_index=True)
-    intended_batch = models.CharField(max_length=20, blank=True)  
-    
+    intended_batch = models.CharField(max_length=20, blank=True)
+    batch = models.CharField(max_length=20, blank=True, db_index=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['status', 'is_verified']),
@@ -143,6 +144,17 @@ class Ticket(models.Model):
             if latest_price:
                 self.collection_amount = latest_price.amount
             # If no price exists, leave as null — backend will use fallback
+        if not self.batch:
+            from django.utils import timezone
+            from datetime import timedelta
+            from .views.helpers import load_schedule
+            reference_time = self.issued_at or timezone.now()
+            local_hour = (reference_time + timedelta(hours=8)).hour
+            schedule = load_schedule()
+            for key, shift in schedule.items():
+                if shift["startHour"] <= local_hour < shift["endHour"]:
+                    self.batch = key
+                    break
         super().save(*args, **kwargs)
 
 class Requisition(models.Model):
