@@ -27,6 +27,8 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
   const [internalSearch, setInternalSearch] = useState("");
   const searchTerm = embedded ? externalSearch : internalSearch;
   const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   React.useEffect(() => {
     if (exposeAdd) exposeAdd(handleAdd);
@@ -68,6 +70,17 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
 
     return haystack.includes(q);
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedDrivers = filteredDrivers.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <div className="drv-page">
@@ -176,7 +189,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                   </td>
                 </tr>
               ) : (
-                filteredDrivers.map((driver) => (
+                paginatedDrivers.map((driver) => (
                   <tr key={driver.id} className="drv-row">
                     <td>
                       <span className="drv-code">{getDriverCode(driver)}</span>
@@ -248,6 +261,27 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
             </tbody>
           </table>
         </div>
+        {!loading && filteredDrivers.length > 0 && totalPages > 1 && (
+          <div className="drv-pagination">
+            <button
+              className="drv-page-btn"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+            >
+              Prev
+            </button>
+            <span className="drv-page-info">
+              Page {safePage} of {totalPages}
+            </span>
+            <button
+              className="drv-page-btn"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modal */}

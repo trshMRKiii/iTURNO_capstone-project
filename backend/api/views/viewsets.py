@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -86,6 +87,9 @@ class RoamingLogViewSet(viewsets.ModelViewSet):
     serializer_class = RoamingLogSerializer
 
     def perform_create(self, serializer):
+        vehicle = serializer.validated_data.get("vehicle")
+        if vehicle and vehicle.status == "QUEUED":
+            raise ValidationError("Vehicle is already in the queue — cannot log roaming.")
         serializer.save(recorded_by=self.request.user)
 
 

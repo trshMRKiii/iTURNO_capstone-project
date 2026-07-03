@@ -190,6 +190,15 @@ function Settings() {
     }
   };
 
+  const handleDeletePUVType = async (id) => {
+    try {
+      await apiService.deletePUVType(id);
+      setPuvTypes(puvTypes.filter(pt => pt.id !== id));
+    } catch (err) {
+      console.error("Failed to delete PUV type:", err);
+    }
+  };
+
   useEffect(() => {
     apiService.getRoutes()
       .then(setRoutes)
@@ -352,12 +361,13 @@ function Settings() {
                 <thead>
                   <tr>
                     <th>Name</th>
+                    <th className="set-th-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredPuvTypes.length === 0 ? (
                     <tr>
-                      <td className="set-table-state">
+                      <td colSpan="2" className="set-table-state">
                         {puvTypes.length === 0 ? "No PUV types configured" : "No matches found"}
                       </td>
                     </tr>
@@ -365,6 +375,12 @@ function Settings() {
                     filteredPuvTypes.map(pt => (
                       <tr key={pt.id} className="set-row">
                         <td className="set-cell-label">{pt.name}</td>
+                        <td className="set-cell-actions">
+                          <button className="set-delete-btn" onClick={() => handleDeletePUVType(pt.id)}>
+                            <DeleteIcon />
+                            Delete
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}

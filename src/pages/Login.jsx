@@ -14,8 +14,8 @@ function Login() {
   const [username,       setUsername]       = useState("");
   const [password,       setPassword]       = useState("");
   const [error,          setError]          = useState("");
-  const [activeQueue,    setActiveQueue]    = useState([]); // index 0 per route group
-  const [nextQueue,      setNextQueue]      = useState([]); // index 1+ per route group
+  const [activeQueue,    setActiveQueue]    = useState([]); 
+  const [nextQueue,      setNextQueue]      = useState([]); 
   const [routes,         setRoutes]         = useState([]);
   const [selectedRoute,  setSelectedRoute]  = useState("ALL");
   const [loadingQueue,   setLoadingQueue]   = useState(false);
@@ -274,7 +274,7 @@ function Login() {
                     <tr>
                       <th>Plate Number</th>
                       <th>Driver</th>
-                      <th>Route</th>
+                      
                       <th>Status</th>
                       <th>Est. Departure</th>
                     </tr>
@@ -304,7 +304,7 @@ function Login() {
                           <tr key={v.id}>
                             <td><span className="lp-plate">{v.plate_number}</span></td>
                             <td>{v.active_driver_name || <span className="lp-na">Unassigned</span>}</td>
-                            <td>{v.route_detail?.full_name || v.route_detail?.origin || <span className="lp-na">No route</span>}</td>
+                            
                             <td>
                               <span className="lp-status lp-status--available">
                                 {v.status}
@@ -379,7 +379,7 @@ function Login() {
                       <th>#</th>
                       <th>Plate Number</th>
                       <th>Driver</th>
-                      <th>Route</th>
+                      
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -409,7 +409,7 @@ function Login() {
                             <td className="lp-td--num">{idx + 1}</td>
                             <td><span className="lp-plate">{v.plate_number}</span></td>
                             <td>{v.active_driver_name || <span className="lp-na">Unassigned</span>}</td>
-                            <td>{v.route_detail?.full_name || v.route_detail?.origin || <span className="lp-na">No route</span>}</td>
+                            
                             <td><span className="lp-status lp-status--available">{v.status}</span></td>
                           </tr>
                         ))}

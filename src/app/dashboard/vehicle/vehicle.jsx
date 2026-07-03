@@ -44,6 +44,8 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
   const searchTerm = embedded ? externalSearch : internalSearch;
   const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
   const [ledgerVehicle, setLedgerVehicle] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const exportQR = () => {
     const toExport = filteredVehicles.filter((v) => v.qr_code);
@@ -113,6 +115,17 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
       (v.route_detail?.origin || "").toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredVehicles.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedVehicles = filteredVehicles.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <div className="veh-page">
@@ -242,7 +255,7 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                   </td>
                 </tr>
               ) : (
-                filteredVehicles.map((vehicle) => (
+                paginatedVehicles.map((vehicle) => (
                   <tr key={vehicle.id} className="veh-row">
                     <td>
                       <span className="veh-plate">{vehicle.plate_number}</span>
@@ -335,6 +348,27 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
             </tbody>
           </table>
         </div>
+        {!loading && filteredVehicles.length > 0 && totalPages > 1 && (
+          <div className="veh-pagination">
+            <button
+              className="veh-page-btn"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+            >
+              Prev
+            </button>
+            <span className="veh-page-info">
+              Page {safePage} of {totalPages}
+            </span>
+            <button
+              className="veh-page-btn"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modal */}

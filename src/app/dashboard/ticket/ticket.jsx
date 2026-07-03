@@ -35,6 +35,8 @@ function Ticket({ userRole }) {
     availableSeries,
     selectedSeriesId,
     setSelectedSeriesId,
+    ticketQuantity,
+    setTicketQuantity,
     handleRouteChange,
     selectVehicleById,
     handleDriverChange,
@@ -192,6 +194,21 @@ function Ticket({ userRole }) {
               )}
             </div>
 
+            {/* Quantity */}
+            <div className="ticket-field">
+              <label className="ticket-label">Quantity</label>
+              <input
+                type="number"
+                className="ticket-select"
+                min={1}
+                value={ticketQuantity}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setTicketQuantity(Number.isNaN(val) ? 1 : Math.max(1, val));
+                }}
+              />
+            </div>
+
             {/* Driver panel */}
             {selectedVehicle && (
               <div className="ticket-driver-panel">
@@ -275,7 +292,11 @@ function Ticket({ userRole }) {
               disabled={issuingTicket || !selectedVehicle || !selectedDriver || !selectedSeriesId}
             >
               <IssueTicketIcon />
-              {issuingTicket ? "Issuing…" : "Issue Ticket"}
+              {issuingTicket
+                ? "Issuing…"
+                : ticketQuantity > 1
+                  ? `Issue ${ticketQuantity} Tickets`
+                  : "Issue Ticket"}
             </button>
           </div>
         </div>

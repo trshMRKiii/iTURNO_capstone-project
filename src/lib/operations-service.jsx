@@ -36,8 +36,15 @@ export const OperationsService = {
 
   // Returns the effective batch name for a ticket, respecting late issuances.
   // A late ticket (is_late=true) belongs to its intended_batch, not its actual issue time.
+  // Prefers the batch key stored on the ticket (set once at creation) so that
+  // editing the batch schedule later doesn't reshuffle already-issued tickets.
   getEffectiveBatchName(ticket, shifts) {
-    if (ticket.is_late && ticket.intended_batch) return ticket.intended_batch;
+    if (ticket.is_late && ticket.intended_batch) {
+      return shifts?.[ticket.intended_batch]?.name || ticket.intended_batch;
+    }
+    if (ticket.batch) {
+      return shifts?.[ticket.batch]?.name || ticket.batch;
+    }
     return this.getShiftBatchName(ticket.issued_at, shifts);
   },
 
@@ -76,7 +83,7 @@ export const OperationsService = {
       if (ticketDateStr !== dateFilter) return false;
 
       if (batchFilter !== "ALL") {
-        return this.getShiftBatchName(t.issued_at, shifts) === batchFilter;
+        return this.getEffectiveBatchName(t, shifts) === batchFilter;
       }
       return true;
     });

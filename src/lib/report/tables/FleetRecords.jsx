@@ -7,7 +7,6 @@ const VEHICLE_COLUMNS = [
   "Route",
   "Transportation",
   "Franchise #",
-  "QR Code",
   "Active Driver",
   "Status",
 ];
@@ -69,9 +68,7 @@ export default function FleetRecords({
       <td className={cellClass}>
         {v.franchise_number || <span className="rpt-na">—</span>}
       </td>
-      <td className={cellClass}>
-        {v.qr_code || <span className="rpt-na">—</span>}
-      </td>
+    
       <td className={cellClass}>
         {v.active_driver_name || <span className="rpt-na">Unassigned</span>}
       </td>

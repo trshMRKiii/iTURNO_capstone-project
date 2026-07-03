@@ -13,6 +13,7 @@ export function useMobileScan() {
   const [selectedSeriesId, setSelectedSeriesId] = useState(
     () => localStorage.getItem("lastSelectedSeriesId") || ""
   );
+  const [ticketQuantity, setTicketQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -88,6 +89,9 @@ export function useMobileScan() {
       }
 
       setScannedVehicle(vehicle);
+      if (vehicle.status === "QUEUED") {
+        setMode("QUEUE");
+      }
 
       const rememberedDriverId = vehicleDriverMap[vehicle.id];
       const rememberedDriver = rememberedDriverId
@@ -134,6 +138,10 @@ export function useMobileScan() {
       setSubmitting(true);
 
       if (mode === "ROAM") {
+        if (scannedVehicle.status === "QUEUED") {
+          throw new Error("Vehicle is already in the queue — cannot log roaming.");
+        }
+
         const log = await apiService.createRoamingLog({
           vehicle: scannedVehicle.id,
           driver: selectedDriver.id,
@@ -148,25 +156,39 @@ export function useMobileScan() {
         const series = availableSeries.find((s) => String(s.id) === String(selectedSeriesId));
         if (!series) throw new Error("Selected series not found or depleted.");
 
-        const ticketId = `${series.start_no}`;
-        const payload = {
-          id: ticketId,
-          vehicle_id: scannedVehicle.id,
-          driver_id: selectedDriver.id,
-          route: scannedVehicle.route_detail?.id || null,
-          series_id: parseInt(selectedSeriesId),
-          status: "ISSUED",
-          is_verified: false,
-        };
-        if (ticketFee > 0) payload.collection_amount = ticketFee;
+        const quantity = Math.max(1, parseInt(ticketQuantity) || 1);
+        if (quantity > series.pcs) {
+          throw new Error(`Only ${series.pcs} ticket(s) remaining in this series.`);
+        }
 
-        const ticket = await apiService.createTicket(payload);
+        let nextStartNo = parseInt(series.start_no);
+        const issuedIds = [];
+        for (let i = 0; i < quantity; i++) {
+          const payload = {
+            id: `${nextStartNo}`,
+            vehicle_id: scannedVehicle.id,
+            driver_id: selectedDriver.id,
+            route: scannedVehicle.route_detail?.id || null,
+            series_id: parseInt(selectedSeriesId),
+            status: "ISSUED",
+            is_verified: false,
+          };
+          if (ticketFee > 0) payload.collection_amount = ticketFee;
+
+          const ticket = await apiService.createTicket(payload);
+          issuedIds.push(ticket.id);
+          nextStartNo += 1;
+        }
 
         await apiService.patch(`/vehicles/${scannedVehicle.id}/`, {
           status: "QUEUED",
         });
 
-        setResult(`Ticket ${ticket.id} issued for ${scannedVehicle.plate_number}`);
+        setResult(
+          quantity > 1
+            ? `Tickets ${issuedIds[0]}–${issuedIds[issuedIds.length - 1]} issued for ${scannedVehicle.plate_number}`
+            : `Ticket ${issuedIds[0]} issued for ${scannedVehicle.plate_number}`
+        );
 
         const freshSeries = await apiService.request("/ticket-series/");
         setTicketSeries(freshSeries);
@@ -176,6 +198,7 @@ export function useMobileScan() {
 
       setScannedVehicle(null);
       setSelectedDriver(null);
+      setTicketQuantity(1);
     } catch (err) {
       setError(err.message || "Submission failed");
     } finally {
@@ -188,6 +211,7 @@ export function useMobileScan() {
     setSelectedDriver(null);
     setError(null);
     setResult(null);
+    setTicketQuantity(1);
   };
 
   return {
@@ -198,6 +222,8 @@ export function useMobileScan() {
     setMode,
     selectedSeriesId,
     setSelectedSeriesId,
+    ticketQuantity,
+    setTicketQuantity,
     activeDrivers,
     availableSeries,
     ticketFee,

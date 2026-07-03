@@ -49,8 +49,7 @@ export const hadBatch1TicketToday = (vehicleId, tickets, shifts = SHIFTS) => {
     const ticketDate = t.issued_at?.split("T")[0];
     return (
       ticketDate === todayStr &&
-      OperationsService.getShiftBatchName(t.issued_at, activeShifts) ===
-        batch1Name
+      OperationsService.getEffectiveBatchName(t, activeShifts) === batch1Name
     );
   });
 };
@@ -76,6 +75,7 @@ export function useTicket(userRole = "") {
   const [selectedSeriesId, setSelectedSeriesId] = useState(
     () => localStorage.getItem("lastSelectedSeriesId") || ""
   );
+  const [ticketQuantity, setTicketQuantity] = useState(1);
   const [vehicleDriverMap, setVehicleDriverMap] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("vehicleDriverMap") || "{}");
@@ -226,6 +226,8 @@ export function useTicket(userRole = "") {
       return;
     }
 
+    const quantity = Math.max(1, parseInt(ticketQuantity) || 1);
+
     const driverHasActiveTicket = tickets.some(
       (t) =>
         t.driver?.id === selectedDriver.id && ["ISSUED"].includes(t.status),
@@ -250,36 +252,55 @@ export function useTicket(userRole = "") {
       return;
     }
 
+    const series = availableSeries.find((s) => String(s.id) === String(selectedSeriesId));
+    if (!series) {
+      setIssueError("Selected ticket series not found.");
+      return;
+    }
+    if (quantity > series.pcs) {
+      setIssueError(`Only ${series.pcs} ticket(s) remaining in this series.`);
+      return;
+    }
+
     try {
       setIssuingTicket(true);
-      const series = availableSeries.find((s) => String(s.id) === String(selectedSeriesId));
-      const ticketId = `${series.start_no}`;
+      let nextStartNo = parseInt(series.start_no);
+      const issuedIds = [];
 
-      const ticketPayload = {
-        id: ticketId,
-        vehicle_id: selectedVehicle.id,
-        driver_id: selectedDriver.id,
-        route: selectedVehicle.route_detail?.id || null,
-        series_id: parseInt(selectedSeriesId),
-        status: "ISSUED",
-        is_verified: false,
-      };
-      if (ticketFee > 0) {
-        ticketPayload.collection_amount = ticketFee;
+      for (let i = 0; i < quantity; i++) {
+        const ticketPayload = {
+          id: `${nextStartNo}`,
+          vehicle_id: selectedVehicle.id,
+          driver_id: selectedDriver.id,
+          route: selectedVehicle.route_detail?.id || null,
+          series_id: parseInt(selectedSeriesId),
+          status: "ISSUED",
+          is_verified: false,
+        };
+        if (ticketFee > 0) {
+          ticketPayload.collection_amount = ticketFee;
+        }
+        const newTicket = await apiService.createTicket(ticketPayload);
+        issuedIds.push(newTicket.id);
+        nextStartNo += 1;
       }
-      const newTicket = await apiService.createTicket(ticketPayload);
 
       await apiService.patch(`/vehicles/${selectedVehicle.id}/`, {
         status: "QUEUED",
       });
 
-      setSuccessMessage(`Ticket ${newTicket.id} issued successfully.`);
+      setSuccessMessage(
+        quantity > 1
+          ? `Tickets ${issuedIds[0]}–${issuedIds[issuedIds.length - 1]} issued successfully.`
+          : `Ticket ${issuedIds[0]} issued successfully.`
+      );
       fetchTickets();
       fetchVehicles();
       fetchTicketSeries();
       setSelectedVehicle(null);
       setSelectedDriver(null);
       setShowDriverModal(false);
+      setTicketQuantity(1);
 
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
@@ -361,6 +382,8 @@ export function useTicket(userRole = "") {
     availableSeries,
     selectedSeriesId,
     setSelectedSeriesId: updateSelectedSeriesId,
+    ticketQuantity,
+    setTicketQuantity,
     // Actions
     fetchTickets,
     handleRouteChange,

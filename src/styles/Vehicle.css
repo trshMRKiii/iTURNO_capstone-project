@@ -131,6 +131,42 @@
 
 .veh-table-wrap { overflow-x: auto; }
 
+.veh-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.veh-page-btn {
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary, inherit);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.veh-page-btn:hover:not(:disabled) {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.veh-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.veh-page-info {
+  font-size: 12.5px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
 .veh-table {
   width: 100%;
   border-collapse: collapse;

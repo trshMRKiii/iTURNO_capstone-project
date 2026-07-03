@@ -13,6 +13,8 @@ function MobileScan() {
     setMode,
     selectedSeriesId,
     setSelectedSeriesId,
+    ticketQuantity,
+    setTicketQuantity,
     activeDrivers,
     availableSeries,
     ticketFee,
@@ -254,10 +256,16 @@ function MobileScan() {
                   value="ROAM"
                   checked={mode === "ROAM"}
                   onChange={() => setMode("ROAM")}
+                  disabled={scannedVehicle.status === "QUEUED"}
                 />
                 <span className="ms-radio-dot" />
                 <span>Roam (Log Only)</span>
               </label>
+              {scannedVehicle.status === "QUEUED" && (
+                <span className="ms-field-hint">
+                  Vehicle is already in the queue — roaming cannot be logged.
+                </span>
+              )}
             </div>
           </div>
 
@@ -280,6 +288,23 @@ function MobileScan() {
               {ticketFee > 0 && (
                 <span className="ms-fee">Fee: ₱{ticketFee.toFixed(2)}</span>
               )}
+            </div>
+          )}
+
+          {/* Quantity (only for QUEUE mode) */}
+          {mode === "QUEUE" && (
+            <div className="ms-field">
+              <span className="ms-label">Quantity</span>
+              <input
+                type="number"
+                className="ms-select"
+                min={1}
+                value={ticketQuantity}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setTicketQuantity(Number.isNaN(val) ? 1 : Math.max(1, val));
+                }}
+              />
             </div>
           )}
 
@@ -326,7 +351,9 @@ function MobileScan() {
             {submitting
               ? "Submitting..."
               : mode === "QUEUE"
-                ? "Issue Ticket"
+                ? ticketQuantity > 1
+                  ? `Issue ${ticketQuantity} Tickets`
+                  : "Issue Ticket"
                 : "Log Roaming"}
           </button>
         </div>
