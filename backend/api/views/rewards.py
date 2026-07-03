@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from ..models import Driver, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig
 from ..serializers import DriverRewardProfileSerializer, PointsTransactionSerializer, RedemptionSerializer, RewardConfigSerializer
 from ..rewards import get_or_create_profile, can_redeem, redeem_points
+from .helpers import record_audit_log
 
 
 @api_view(['GET', 'PUT'])
@@ -15,6 +16,14 @@ def reward_config(request):
     serializer = RewardConfigSerializer(config, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    record_audit_log(
+        user=request.user,
+        action='UPDATE',
+        model_name='RewardConfig',
+        object_id=config.pk,
+        object_repr='Reward configuration',
+        changes=request.data,
+    )
     return Response(serializer.data)
 
 

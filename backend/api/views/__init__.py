@@ -34,6 +34,7 @@ from .rewards import (
 from .records import (
     issue_late_ticket,
     transaction_logs,
+    audit_logs,
     dashboard_stats,
     vehicle_records,
     driver_records,

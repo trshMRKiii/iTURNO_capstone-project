@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 from django.conf import settings
 from django.utils import timezone
 
-from ..models import Ticket, TicketPrice
+from ..models import Ticket, TicketPrice, AuditLog
 
 
 def load_schedule():
@@ -83,6 +83,17 @@ def filter_collected(start_date=None, end_date=None):
         except ValueError:
             pass
     return qs
+
+
+def record_audit_log(user, action, model_name, object_id='', object_repr='', changes=None):
+    AuditLog.objects.create(
+        user=user if user and getattr(user, 'is_authenticated', False) else None,
+        action=action,
+        model_name=model_name,
+        object_id=str(object_id),
+        object_repr=str(object_repr)[:255],
+        changes=changes or {},
+    )
 
 
 def summarize(ticket_list, fallback_amount=0.0):

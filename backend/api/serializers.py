@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, AuditLog
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -344,6 +344,25 @@ class DriverRewardProfileSerializer(serializers.ModelSerializer):
         from .rewards import can_redeem
         _, msg = can_redeem(obj)
         return msg
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            'id', 'user', 'user_name', 'action', 'action_display',
+            'model_name', 'object_id', 'object_repr', 'changes', 'created_at',
+        ]
+
+    def get_user_name(self, obj):
+        user = obj.user
+        if not user:
+            return 'System'
+        full = f"{user.first_name} {user.last_name}".strip()
+        return full or user.username
 
 
 class RemittanceBatchSerializer(serializers.ModelSerializer):

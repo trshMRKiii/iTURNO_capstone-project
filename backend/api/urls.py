@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import UserViewSet, DriverViewSet, VehicleViewSet, RouteViewSet, TicketViewSet, CurrentUserView, TicketPriceViewSet, PUVTypeViewSet, RemittanceBatchViewSet, TicketFormViewSet, RequisitionViewSet, TicketSeriesViewSet, RoamingLogViewSet
-from .views import report_summary, report_collections, report_daily_chart, transaction_logs, dashboard_stats, public_queue,vehicle_records,driver_records, server_time, issue_late_ticket, schedules_view, export_collections_csv, remittance_batches, reward_summary, reward_history, reward_redemptions, reward_redemptions_all, reward_redeem, reward_leaderboard, reward_config
+from .views import report_summary, report_collections, report_daily_chart, transaction_logs, audit_logs, dashboard_stats, public_queue,vehicle_records,driver_records, server_time, issue_late_ticket, schedules_view, export_collections_csv, remittance_batches, reward_summary, reward_history, reward_redemptions, reward_redemptions_all, reward_redeem, reward_leaderboard, reward_config
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -26,6 +26,7 @@ urlpatterns = [
     path('report/collections/', report_collections),
     path('report/chart/', report_daily_chart),
     path('logs/', transaction_logs),
+    path('audit-logs/', audit_logs),
     path('vehicles/records/', vehicle_records),
     path('drivers/records/', driver_records),
     path('dashboard/stats/', dashboard_stats),
