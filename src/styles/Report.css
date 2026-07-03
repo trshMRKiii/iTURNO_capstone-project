@@ -602,6 +602,9 @@
   text-align: center;
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+.rpt-td-empty-inner {
   display: flex;
   flex-direction: column;
   align-items: center;

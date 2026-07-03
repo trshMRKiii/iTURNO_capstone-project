@@ -280,8 +280,7 @@ function Requisition() {
                                   <tr>
                                     <th>Series No.</th>
                                     <th>Ticket Form</th>
-                                    <th>Pad No.</th>
-                                    <th>Box No.</th>
+                                    
                                     <th>QTY</th>
                                     <th>Total Amount</th>
                                   </tr>
@@ -291,8 +290,7 @@ function Requisition() {
                                     <tr key={ts.id}>
                                       <td>{ts.series_no}</td>
                                       <td>{ts.ticket_form_label || "—"}</td>
-                                      <td>{ts.pad_no || "—"}</td>
-                                      <td>{ts.box_no || "—"}</td>
+                                      
                                       <td>{ts.qty}</td>
                                       <td>{formatCurrency(ts.total_value)}</td>
                                     </tr>

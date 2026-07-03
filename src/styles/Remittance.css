@@ -270,6 +270,16 @@
   box-shadow: 0 2px 8px rgba(201,168,76,0.25);
 }
 
+.rem-btn--delete {
+  background: rgba(220,38,38,0.1);
+  color: #dc2626;
+  box-shadow: none;
+}
+
+.rem-btn--delete:hover {
+  background: rgba(220,38,38,0.18);
+}
+
 /* ── Loading dots ── */
 .rem-loading-dots {
   display: flex;

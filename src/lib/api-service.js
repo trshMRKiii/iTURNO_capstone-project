@@ -341,6 +341,10 @@ export const apiService = {
     return this.put("/rewards/config/", data);
   },
 
+  deleteRemittanceBatch(id) {
+    return this.delete(`/remittance/${id}/`);
+  },
+
 };
 
 //login

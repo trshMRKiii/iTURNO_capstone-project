@@ -24,7 +24,11 @@ import RewardRedemptions from "../../../lib/report/tables/RewardRedemptions";
 import { getDriverCode } from "../../../lib/driver-utils";
 import "../../../styles/Report.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000/api"
+    : `http://${window.location.hostname}:8000/api`);
 
 export default function Report() {
   const [filters, setFilters] = useState({

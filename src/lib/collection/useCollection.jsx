@@ -105,7 +105,14 @@ export function useCollection(shifts, userRole) {
         safeLower(t.id).includes(term) ||
         safeLower(t.vehicle?.plate_number).includes(term) ||
         safeLower(t.driver?.name).includes(term) ||
-        safeLower(t.vehicle?.route_detail?.full_name).includes(term),
+        safeLower(t.vehicle?.route_detail?.full_name).includes(term) ||
+        (t.status === "CANCELLED" && "cancelled".includes(term)) ||
+        (t.status !== "CANCELLED" &&
+          t.is_verified &&
+          "verified".includes(term)) ||
+        (t.status !== "CANCELLED" &&
+          !t.is_verified &&
+          "pending".includes(term)),
     );
     return filtered.sort(
       (a, b) => new Date(b.issued_at) - new Date(a.issued_at),
