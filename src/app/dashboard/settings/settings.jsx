@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../../lib/api-service";
-import { useToast } from "../../../components/ui/ToastConfirmContext";
+import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { useShifts } from "../../../lib/useShifts";
 import "../../../styles/Settings.css";
 
@@ -66,6 +66,18 @@ const TABS = [
       </svg>
     ),
   },
+  {
+    key: "system",
+    label: "System",
+    description: "Backup, restore, and roll back the entire system",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+      </svg>
+    ),
+  },
 ];
 
 const DeleteIcon = () => (
@@ -87,6 +99,32 @@ const SearchIcon = () => (
     <path d="M21 21l-4.35-4.35" />
   </svg>
 );
+
+const DownloadIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M4 21h16" />
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 21V9" /><path d="M7 14l5-5 5 5" /><path d="M4 3h16" />
+  </svg>
+);
+
+const RollbackIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <polyline points="3 4 3 9 8 9" />
+  </svg>
+);
+
+const formatBytes = (bytes) => {
+  if (!bytes) return "0 KB";
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(2)} MB`;
+};
 
 function Settings() {
   const [activeTab, setActiveTab] = useState("puv");
@@ -285,6 +323,125 @@ function Settings() {
     }
   };
 
+  const showConfirm = useConfirm();
+  const [systemBackups, setSystemBackups] = useState([]);
+  const [backupsLoading, setBackupsLoading] = useState(false);
+  const [creatingBackup, setCreatingBackup] = useState(false);
+  const [newBackupLabel, setNewBackupLabel] = useState("");
+  const [busyBackupId, setBusyBackupId] = useState(null);
+  const [uploadingRestore, setUploadingRestore] = useState(false);
+  const restoreUploadRef = React.useRef(null);
+
+  const fetchSystemBackups = async () => {
+    setBackupsLoading(true);
+    try {
+      const res = await apiService.getSystemBackups();
+      setSystemBackups(res.backups || []);
+    } catch (err) {
+      console.error("Failed to load backups:", err);
+      showToast?.("Failed to load backups", "info");
+    } finally {
+      setBackupsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== "system") return;
+    setBackupsLoading(true);
+    apiService.getSystemBackups()
+      .then(res => setSystemBackups(res.backups || []))
+      .catch(err => {
+        console.error("Failed to load backups:", err);
+        showToast?.("Failed to load backups", "info");
+      })
+      .finally(() => setBackupsLoading(false));
+  }, [activeTab]);
+
+  const handleCreateBackup = async () => {
+    setCreatingBackup(true);
+    try {
+      await apiService.createSystemBackup(newBackupLabel.trim());
+      setNewBackupLabel("");
+      showToast?.("System backup created", "success");
+      await fetchSystemBackups();
+    } catch (err) {
+      console.error("Failed to create backup:", err);
+      showToast?.("Failed to create backup", "info");
+    } finally {
+      setCreatingBackup(false);
+    }
+  };
+
+  const handleDeleteBackup = async (backup) => {
+    const ok = await showConfirm?.(`Delete backup "${backup.label || backup.filename}"? This cannot be undone.`);
+    if (!ok) return;
+    setBusyBackupId(backup.id);
+    try {
+      await apiService.deleteSystemBackup(backup.id);
+      showToast?.("Backup deleted", "success");
+      await fetchSystemBackups();
+    } catch (err) {
+      console.error("Failed to delete backup:", err);
+      showToast?.("Failed to delete backup", "info");
+    } finally {
+      setBusyBackupId(null);
+    }
+  };
+
+  const handleDownloadBackup = async (backup) => {
+    try {
+      await apiService.downloadSystemBackup(backup.id, backup.filename);
+    } catch (err) {
+      console.error("Failed to download backup:", err);
+      showToast?.("Failed to download backup", "info");
+    }
+  };
+
+  const handleRollbackToBackup = async (backup) => {
+    const ok = await showConfirm?.(
+      `Roll back the ENTIRE system to "${backup.label || backup.filename}"? All data created or changed after this backup will be permanently lost. A safety snapshot of the current state will be taken first.`
+    );
+    if (!ok) return;
+    setBusyBackupId(backup.id);
+    try {
+      await apiService.restoreSystemBackup(backup.id);
+      showToast?.("System rolled back successfully", "success");
+      await fetchSystemBackups();
+    } catch (err) {
+      console.error("Failed to roll back:", err);
+      showToast?.("Rollback failed. See console for details.", "info");
+    } finally {
+      setBusyBackupId(null);
+    }
+  };
+
+  const handleRestoreUploadClick = () => {
+    restoreUploadRef.current?.click();
+  };
+
+  const handleRestoreUploadFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    const ok = await showConfirm?.(
+      `Restore the ENTIRE system from "${file.name}"? All current data will be replaced. A safety snapshot of the current state will be taken first.`
+    );
+    if (!ok) return;
+
+    setUploadingRestore(true);
+    try {
+      await apiService.restoreSystemBackupUpload(file);
+      showToast?.("System restored from uploaded file", "success");
+      await fetchSystemBackups();
+    } catch (err) {
+      console.error("Failed to restore from file:", err);
+      showToast?.("Restore failed. Check the file and try again.", "info");
+    } finally {
+      setUploadingRestore(false);
+    }
+  };
+
   // reset search when switching tabs
   const switchTab = (key) => {
     setActiveTab(key);
@@ -303,6 +460,7 @@ function Settings() {
     ticketForms: ticketForms.length,
     rewards: rewardConfig ? 1 : 0,
     batchSchedule: Object.keys(shifts || {}).length,
+    system: systemBackups.length,
   };
 
   return (
@@ -340,7 +498,7 @@ function Settings() {
             <h2 className="set-panel-title">{TABS.find(t => t.key === activeTab)?.label}</h2>
 
           </div>
-          {activeTab !== "rewards" && activeTab !== "batchSchedule" && (
+          {activeTab !== "rewards" && activeTab !== "batchSchedule" && activeTab !== "system" && (
             <div className="set-search">
               <SearchIcon />
               <input
@@ -625,6 +783,105 @@ function Settings() {
                 <PlusIcon />
                 {savingSchedule ? "Saving..." : "Save Batch Schedule"}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* System Backup / Restore / Rollback */}
+        {activeTab === "system" && (
+          <div className="set-rewards-form">
+            <p className="set-rewards-note">
+              A backup captures the entire system — drivers, vehicles, tickets, routes,
+              remittances, rewards, users, and every other record. Restoring or rolling back
+              replaces ALL current data with the chosen backup. A safety snapshot of the
+              current state is always taken automatically right before a restore or rollback,
+              so that action itself can be undone.
+            </p>
+
+            <div className="set-add-row">
+              <input
+                type="text"
+                className="set-input"
+                value={newBackupLabel}
+                onChange={(e) => setNewBackupLabel(e.target.value)}
+                placeholder="Optional label, e.g. Before July payroll run"
+              />
+              <button className="set-add-btn" onClick={handleCreateBackup} disabled={creatingBackup}>
+                <PlusIcon />
+                {creatingBackup ? "Backing up..." : "Create Backup"}
+              </button>
+              <input
+                ref={restoreUploadRef}
+                type="file"
+                accept="application/json"
+                style={{ display: "none" }}
+                onChange={handleRestoreUploadFile}
+              />
+              <button className="set-add-btn" onClick={handleRestoreUploadClick} disabled={uploadingRestore}>
+                <UploadIcon />
+                {uploadingRestore ? "Restoring..." : "Restore From File"}
+              </button>
+            </div>
+
+            <div className="set-table-wrap">
+              <table className="set-table">
+                <thead>
+                  <tr>
+                    <th>Backup</th>
+                    <th>Source</th>
+                    <th>Size</th>
+                    <th>Created</th>
+                    <th className="set-th-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {backupsLoading ? (
+                    <tr>
+                      <td colSpan="5" className="set-table-state">Loading backups...</td>
+                    </tr>
+                  ) : systemBackups.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="set-table-state">No backups yet</td>
+                    </tr>
+                  ) : (
+                    systemBackups.map(b => (
+                      <tr key={b.id} className="set-row">
+                        <td className="set-cell-label">{b.label || b.filename}</td>
+                        <td className="set-cell-meta">{b.source === "AUTO" ? "Auto (pre-restore)" : "Manual"}</td>
+                        <td className="set-cell-meta">{formatBytes(b.size_bytes)}</td>
+                        <td className="set-cell-meta">{new Date(b.created_at).toLocaleString()}</td>
+                        <td className="set-cell-actions">
+                          <button
+                            className="set-add-btn"
+                            onClick={() => handleDownloadBackup(b)}
+                            style={{ marginRight: 6 }}
+                          >
+                            <DownloadIcon />
+                            Download
+                          </button>
+                          <button
+                            className="set-add-btn"
+                            onClick={() => handleRollbackToBackup(b)}
+                            disabled={busyBackupId === b.id}
+                            style={{ marginRight: 6 }}
+                          >
+                            <RollbackIcon />
+                            {busyBackupId === b.id ? "Working..." : "Roll Back To This"}
+                          </button>
+                          <button
+                            className="set-delete-btn"
+                            onClick={() => handleDeleteBackup(b)}
+                            disabled={busyBackupId === b.id}
+                          >
+                            <DeleteIcon />
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

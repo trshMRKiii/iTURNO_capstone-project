@@ -345,6 +345,46 @@ export const apiService = {
     return this.delete(`/remittance/${id}/`);
   },
 
+  // system backup / restore
+  getSystemBackups() {
+    return this.get("/system/backups/");
+  },
+
+  createSystemBackup(label = "") {
+    return this.post("/system/backups/", { label });
+  },
+
+  deleteSystemBackup(id) {
+    return this.delete(`/system/backups/${id}/`);
+  },
+
+  restoreSystemBackup(id) {
+    return this.post(`/system/backups/${id}/restore/`);
+  },
+
+  async downloadSystemBackup(id, filename) {
+    const token = sessionStorage.getItem("accessToken");
+    const res = await fetch(`${API_BASE_URL}/system/backups/${id}/download/`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error(`Failed to download backup (HTTP ${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || `backup.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  restoreSystemBackupUpload(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return this.post("/system/backups/restore-upload/", formData);
+  },
+
 };
 
 //login

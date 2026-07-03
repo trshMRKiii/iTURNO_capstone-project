@@ -26,6 +26,12 @@
   gap: 12px;
 }
 
+.set-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .set-header-accent {
   width: 4px;
   height: 36px;

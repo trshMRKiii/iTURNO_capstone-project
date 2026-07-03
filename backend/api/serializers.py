@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, AuditLog
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, AuditLog, BackupRecord
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -359,6 +359,24 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
     def get_user_name(self, obj):
         user = obj.user
+        if not user:
+            return 'System'
+        full = f"{user.first_name} {user.last_name}".strip()
+        return full or user.username
+
+
+class BackupRecordSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BackupRecord
+        fields = [
+            'id', 'filename', 'label', 'source', 'size_bytes',
+            'created_by', 'created_by_name', 'created_at',
+        ]
+
+    def get_created_by_name(self, obj):
+        user = obj.created_by
         if not user:
             return 'System'
         full = f"{user.first_name} {user.last_name}".strip()

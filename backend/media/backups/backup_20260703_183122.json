@@ -1,0 +1,4441 @@
+[
+{
+  "model": "api.user",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$LM4lTBWfNv90uKHpUWjSPx$ARmUa/7ndH8N53xTngon/S0l2S8bThbkeNdgjA+NlH4=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "admin",
+    "first_name": "luke",
+    "last_name": "adam",
+    "email": "vhtdfgd@ya.com",
+    "is_staff": false,
+    "date_joined": "2026-06-26T09:50:41.050Z",
+    "role": "ADMIN",
+    "created_at": "2026-06-26T09:50:42.581Z",
+    "is_active": true,
+    "updated_at": "2026-06-28T06:33:16.035Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.user",
+  "pk": 2,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$lJ7G7d22U5EkscNmeivrCt$9F1iOyO/JH6dlZ1/yKtnnw1dk7UbGpzt+IVVFtBVX2E=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "Personnel1",
+    "first_name": "Chris",
+    "last_name": "Natan",
+    "email": "qwer@g.co",
+    "is_staff": false,
+    "date_joined": "2026-07-02T05:26:14.779Z",
+    "role": "PERSONNEL",
+    "created_at": "2026-07-02T05:26:16.193Z",
+    "is_active": true,
+    "updated_at": "2026-07-02T05:26:16.193Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.user",
+  "pk": 3,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$eljmRGXv4zmFDK9fEavccU$liEHFA8OwMTfIrzSy/f9ohQdbJeQ6dgkKREjkK8xT78=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "personnel2",
+    "first_name": "Dan",
+    "last_name": "Malvin",
+    "email": "personnel2@gmail.com",
+    "is_staff": false,
+    "date_joined": "2026-07-02T05:27:19.361Z",
+    "role": "PERSONNEL",
+    "created_at": "2026-07-02T05:27:21.288Z",
+    "is_active": true,
+    "updated_at": "2026-07-02T05:27:21.288Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 1,
+  "fields": {
+    "iwp_number": "eh4nu9",
+    "first_name": "rey",
+    "middle_name": "mark",
+    "last_name": "santos",
+    "gender": "MALE",
+    "birthdate": "2026-06-26",
+    "province": "La Union",
+    "city": "woet",
+    "barangay": "iowe",
+    "street": "venosr",
+    "photo": "driver_photos/cream_pasta_ukSSV0r.jpg",
+    "contact": "09999999999",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-06-26T10:00:58.317Z",
+    "updated_at": "2026-06-28T06:01:12.742Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 2,
+  "fields": {
+    "iwp_number": "bwoenr",
+    "first_name": "driver1",
+    "middle_name": "isa",
+    "last_name": "trial",
+    "gender": "FEMALE",
+    "birthdate": "2026-06-27",
+    "province": "La Union",
+    "city": "boj4n",
+    "barangay": "34on3",
+    "street": "sdfbon",
+    "photo": "driver_photos/e1be0581-6488-4210-b1bf-8b08ff6cb6b7.jpg",
+    "contact": "09999999999",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-06-26T16:01:19.451Z",
+    "updated_at": "2026-06-28T05:52:08.979Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 3,
+  "fields": {
+    "iwp_number": "woifeh",
+    "first_name": "driver2",
+    "middle_name": "ss",
+    "last_name": "asdpou",
+    "gender": "MALE",
+    "birthdate": "2026-06-27",
+    "province": "La Union",
+    "city": "owhow",
+    "barangay": "eobn",
+    "street": "seroin",
+    "photo": "",
+    "contact": "09999999999",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-06-27T02:03:24.726Z",
+    "updated_at": "2026-06-27T02:03:24.726Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 4,
+  "fields": {
+    "iwp_number": "3214",
+    "first_name": "Rence",
+    "middle_name": "D",
+    "last_name": "Natsu",
+    "gender": "MALE",
+    "birthdate": "1991-02-01",
+    "province": "La Union",
+    "city": "san fernando",
+    "barangay": "taboc",
+    "street": "",
+    "photo": "",
+    "contact": "09444555857",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:40:08.526Z",
+    "updated_at": "2026-07-02T03:40:08.526Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 5,
+  "fields": {
+    "iwp_number": "4561",
+    "first_name": "Daroy",
+    "middle_name": "Q",
+    "last_name": "Sanchez",
+    "gender": "MALE",
+    "birthdate": "1993-07-02",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "quinavite",
+    "street": "dos",
+    "photo": "",
+    "contact": "09887563214",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:41:21.046Z",
+    "updated_at": "2026-07-02T03:41:21.046Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 6,
+  "fields": {
+    "iwp_number": "9651",
+    "first_name": "Lex",
+    "middle_name": "R",
+    "last_name": "Javier",
+    "gender": "MALE",
+    "birthdate": "1998-08-07",
+    "province": "La Union",
+    "city": "naguillian",
+    "barangay": "east",
+    "street": "four",
+    "photo": "",
+    "contact": "09587441269",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:42:08.084Z",
+    "updated_at": "2026-07-02T03:42:08.084Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 7,
+  "fields": {
+    "iwp_number": "7993",
+    "first_name": "Karl",
+    "middle_name": "G",
+    "last_name": "Abuan",
+    "gender": "MALE",
+    "birthdate": "1996-02-10",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "west",
+    "street": "",
+    "photo": "",
+    "contact": "09558422591",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:43:13.184Z",
+    "updated_at": "2026-07-02T03:43:13.184Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 8,
+  "fields": {
+    "iwp_number": "6659",
+    "first_name": "Melis",
+    "middle_name": "J",
+    "last_name": "Cedrick",
+    "gender": "MALE",
+    "birthdate": "2000-12-08",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "north",
+    "street": "tres",
+    "photo": "",
+    "contact": "09663658887",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:44:11.402Z",
+    "updated_at": "2026-07-02T03:44:11.402Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 9,
+  "fields": {
+    "iwp_number": "1122",
+    "first_name": "Sandy",
+    "middle_name": "S",
+    "last_name": "Sandicole",
+    "gender": "FEMALE",
+    "birthdate": "2001-06-03",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "pudoc",
+    "street": "uno",
+    "photo": "",
+    "contact": "09777412254",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:45:16.301Z",
+    "updated_at": "2026-07-02T03:45:16.301Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 10,
+  "fields": {
+    "iwp_number": "7889",
+    "first_name": "Paul",
+    "middle_name": "K",
+    "last_name": "Sister",
+    "gender": "MALE",
+    "birthdate": "2002-09-05",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "calumbaya",
+    "street": "four",
+    "photo": "",
+    "contact": "09558744412",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:46:11.078Z",
+    "updated_at": "2026-07-02T03:46:11.078Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 11,
+  "fields": {
+    "iwp_number": "9886",
+    "first_name": "Angelo",
+    "middle_name": "B",
+    "last_name": "Goodboy",
+    "gender": "MALE",
+    "birthdate": "2003-02-02",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "ballay",
+    "street": "uno",
+    "photo": "",
+    "contact": "09666361247",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:47:18.789Z",
+    "updated_at": "2026-07-02T03:47:18.789Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 12,
+  "fields": {
+    "iwp_number": "3636",
+    "first_name": "Drex",
+    "middle_name": "C",
+    "last_name": "Charge",
+    "gender": "MALE",
+    "birthdate": "2004-04-08",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "dili",
+    "street": "four",
+    "photo": "",
+    "contact": "09558774447",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:48:09.184Z",
+    "updated_at": "2026-07-02T03:48:09.184Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 13,
+  "fields": {
+    "iwp_number": "1212",
+    "first_name": "Kyle",
+    "middle_name": "H",
+    "last_name": "Mallare",
+    "gender": "MALE",
+    "birthdate": "2005-04-08",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "baccuit norte",
+    "street": "dos",
+    "photo": "",
+    "contact": "09953669670",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:48:54.946Z",
+    "updated_at": "2026-07-02T03:48:54.946Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 14,
+  "fields": {
+    "iwp_number": "5656",
+    "first_name": "Tiffany",
+    "middle_name": "M",
+    "last_name": "Rapanut",
+    "gender": "MALE",
+    "birthdate": "2006-10-09",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "baccuit sur",
+    "street": "uno",
+    "photo": "",
+    "contact": "09953669685",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:49:46.996Z",
+    "updated_at": "2026-07-02T03:49:46.996Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 15,
+  "fields": {
+    "iwp_number": "7878",
+    "first_name": "Johnpaul",
+    "middle_name": "C",
+    "last_name": "Grande",
+    "gender": "MALE",
+    "birthdate": "2007-12-09",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "acao",
+    "street": "tres",
+    "photo": "",
+    "contact": "09953669699",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:50:38.021Z",
+    "updated_at": "2026-07-02T03:50:38.021Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 16,
+  "fields": {
+    "iwp_number": "4242",
+    "first_name": "Joshua",
+    "middle_name": "L",
+    "last_name": "Dizon",
+    "gender": "MALE",
+    "birthdate": "2008-08-02",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "sili",
+    "street": "six",
+    "photo": "",
+    "contact": "09953668888",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:51:37.346Z",
+    "updated_at": "2026-07-02T03:51:37.346Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 17,
+  "fields": {
+    "iwp_number": "8531",
+    "first_name": "Fritz",
+    "middle_name": "S",
+    "last_name": "Gagtan",
+    "gender": "MALE",
+    "birthdate": "2009-12-06",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "pagdalagan",
+    "street": "singko",
+    "photo": "",
+    "contact": "09553664456",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:52:49.816Z",
+    "updated_at": "2026-07-02T03:52:49.816Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 18,
+  "fields": {
+    "iwp_number": "9587",
+    "first_name": "Carlon",
+    "middle_name": "F",
+    "last_name": "Cacdac",
+    "gender": "MALE",
+    "birthdate": "2010-02-11",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "paringao",
+    "street": "dos",
+    "photo": "",
+    "contact": "09553668547",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:54:11.999Z",
+    "updated_at": "2026-07-02T03:54:11.999Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 19,
+  "fields": {
+    "iwp_number": "4213",
+    "first_name": "Aldrine",
+    "middle_name": "A",
+    "last_name": "Amor",
+    "gender": "MALE",
+    "birthdate": "2000-02-01",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "west",
+    "street": "uno",
+    "photo": "",
+    "contact": "09553664512",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:55:18.037Z",
+    "updated_at": "2026-07-02T03:55:18.037Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 20,
+  "fields": {
+    "iwp_number": "7541",
+    "first_name": "Marvin",
+    "middle_name": "A",
+    "last_name": "De Leon",
+    "gender": "MALE",
+    "birthdate": "2000-05-07",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "dili",
+    "street": "dos",
+    "photo": "",
+    "contact": "09953559842",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:56:22.019Z",
+    "updated_at": "2026-07-02T03:56:22.019Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 21,
+  "fields": {
+    "iwp_number": "2121",
+    "first_name": "Buknoy",
+    "middle_name": "E",
+    "last_name": "Bacani",
+    "gender": "MALE",
+    "birthdate": "2001-10-09",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "carmay",
+    "street": "tres",
+    "photo": "",
+    "contact": "09448771254",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:57:37.137Z",
+    "updated_at": "2026-07-02T03:57:37.138Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 22,
+  "fields": {
+    "iwp_number": "8459",
+    "first_name": "Daroy",
+    "middle_name": "S",
+    "last_name": "Jimz",
+    "gender": "MALE",
+    "birthdate": "2003-08-08",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "cabisilan",
+    "street": "dos",
+    "photo": "",
+    "contact": "09558774121",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:58:41.769Z",
+    "updated_at": "2026-07-02T03:58:41.769Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 23,
+  "fields": {
+    "iwp_number": "8888",
+    "first_name": "Junjun",
+    "middle_name": "W",
+    "last_name": "Matilda",
+    "gender": "MALE",
+    "birthdate": "2003-05-05",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "kamarunggayan",
+    "street": "uno",
+    "photo": "",
+    "contact": "09963328741",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T03:59:38.757Z",
+    "updated_at": "2026-07-02T03:59:38.757Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 24,
+  "fields": {
+    "iwp_number": "6666",
+    "first_name": "Ralph",
+    "middle_name": "M",
+    "last_name": "Hernandez",
+    "gender": "MALE",
+    "birthdate": "2001-12-04",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "cabisilan",
+    "street": "four",
+    "photo": "",
+    "contact": "09958887411",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:00:44.603Z",
+    "updated_at": "2026-07-02T04:00:44.603Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 25,
+  "fields": {
+    "iwp_number": "1111",
+    "first_name": "Joemar",
+    "middle_name": "R",
+    "last_name": "Ceo",
+    "gender": "MALE",
+    "birthdate": "2000-12-07",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "santiago",
+    "street": "uno",
+    "photo": "",
+    "contact": "09774885123",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:01:47.073Z",
+    "updated_at": "2026-07-02T04:01:47.073Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 26,
+  "fields": {
+    "iwp_number": "5555",
+    "first_name": "Nuri",
+    "middle_name": "A",
+    "last_name": "Dulatre",
+    "gender": "MALE",
+    "birthdate": "2003-04-07",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "central",
+    "street": "dos",
+    "photo": "",
+    "contact": "09988874121",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:02:36.628Z",
+    "updated_at": "2026-07-02T04:02:36.628Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 27,
+  "fields": {
+    "iwp_number": "3333",
+    "first_name": "Aaron",
+    "middle_name": "G",
+    "last_name": "Defender",
+    "gender": "MALE",
+    "birthdate": "2000-10-08",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "carmay",
+    "street": "tres",
+    "photo": "",
+    "contact": "09887441426",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:03:19.818Z",
+    "updated_at": "2026-07-02T04:03:19.818Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 28,
+  "fields": {
+    "iwp_number": "3336",
+    "first_name": "Kyle",
+    "middle_name": "T",
+    "last_name": "Surrender",
+    "gender": "MALE",
+    "birthdate": "2001-07-09",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "palintucang",
+    "street": "four",
+    "photo": "",
+    "contact": "09887445475",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:05:18.269Z",
+    "updated_at": "2026-07-02T04:05:18.269Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 29,
+  "fields": {
+    "iwp_number": "7789",
+    "first_name": "Kaboy",
+    "middle_name": "E",
+    "last_name": "Galagang",
+    "gender": "MALE",
+    "birthdate": "2000-12-11",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "natividad",
+    "street": "four",
+    "photo": "",
+    "contact": "09968885478",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:06:21.617Z",
+    "updated_at": "2026-07-02T04:06:21.617Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 30,
+  "fields": {
+    "iwp_number": "8512",
+    "first_name": "Randy",
+    "middle_name": "D",
+    "last_name": "Conception",
+    "gender": "MALE",
+    "birthdate": "2003-12-04",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "taytay",
+    "street": "four",
+    "photo": "",
+    "contact": "09998775512",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:07:13.302Z",
+    "updated_at": "2026-07-02T04:07:13.302Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 31,
+  "fields": {
+    "iwp_number": "7789",
+    "first_name": "Stand",
+    "middle_name": "L",
+    "last_name": "Deretso",
+    "gender": "MALE",
+    "birthdate": "2000-09-10",
+    "province": "La Union",
+    "city": "bauang",
+    "barangay": "kalangga",
+    "street": "tres",
+    "photo": "",
+    "contact": "09887444454",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:08:00.543Z",
+    "updated_at": "2026-07-02T04:08:00.543Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 32,
+  "fields": {
+    "iwp_number": "4458",
+    "first_name": "Mark",
+    "middle_name": "A",
+    "last_name": "Tejano",
+    "gender": "MALE",
+    "birthdate": "2000-12-12",
+    "province": "La Union",
+    "city": "san fernando",
+    "barangay": "poro",
+    "street": "tres",
+    "photo": "",
+    "contact": "09988887454",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:08:57.624Z",
+    "updated_at": "2026-07-02T04:08:57.624Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 33,
+  "fields": {
+    "iwp_number": "9996",
+    "first_name": "Clark",
+    "middle_name": "P",
+    "last_name": "Butz",
+    "gender": "MALE",
+    "birthdate": "2000-12-06",
+    "province": "La Union",
+    "city": "san fernando",
+    "barangay": "cattay",
+    "street": "uno",
+    "photo": "",
+    "contact": "09556663621",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:10:06.920Z",
+    "updated_at": "2026-07-02T04:10:06.920Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 34,
+  "fields": {
+    "iwp_number": "6669",
+    "first_name": "Prex",
+    "middle_name": "C",
+    "last_name": "Lenovo",
+    "gender": "MALE",
+    "birthdate": "2003-02-08",
+    "province": "La Union",
+    "city": "naguillian",
+    "barangay": "gusing",
+    "street": "uno",
+    "photo": "",
+    "contact": "09663332254",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:11:01.401Z",
+    "updated_at": "2026-07-02T04:11:01.401Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 35,
+  "fields": {
+    "iwp_number": "5575",
+    "first_name": "Carlon",
+    "middle_name": "W",
+    "last_name": "Estico",
+    "gender": "MALE",
+    "birthdate": "2001-05-10",
+    "province": "La Union",
+    "city": "sanfernando",
+    "barangay": "carlatan",
+    "street": "tres",
+    "photo": "",
+    "contact": "09987444512",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:11:51.069Z",
+    "updated_at": "2026-07-02T04:11:51.069Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 36,
+  "fields": {
+    "iwp_number": "1556",
+    "first_name": "Ralph",
+    "middle_name": "A",
+    "last_name": "Batumbakal",
+    "gender": "MALE",
+    "birthdate": "1953-04-25",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Butubut Oeste",
+    "street": "Syete",
+    "photo": "",
+    "contact": "09558746216",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:32:09.316Z",
+    "updated_at": "2026-07-02T04:32:09.316Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 37,
+  "fields": {
+    "iwp_number": "2548",
+    "first_name": "Joemar",
+    "middle_name": "R",
+    "last_name": "Matikas",
+    "gender": "MALE",
+    "birthdate": "1978-10-25",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Butubut Norte",
+    "street": "Tres",
+    "photo": "",
+    "contact": "09548113873",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:33:01.859Z",
+    "updated_at": "2026-07-02T04:33:01.859Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 38,
+  "fields": {
+    "iwp_number": "2548",
+    "first_name": "Jhon",
+    "middle_name": "L",
+    "last_name": "Cruz",
+    "gender": "MALE",
+    "birthdate": "1998-08-14",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Butubut Sur",
+    "street": "Uno",
+    "photo": "",
+    "contact": "09541547812",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:33:53.998Z",
+    "updated_at": "2026-07-02T04:33:53.998Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 39,
+  "fields": {
+    "iwp_number": "1856",
+    "first_name": "Kobe",
+    "middle_name": "B",
+    "last_name": "Bryant",
+    "gender": "MALE",
+    "birthdate": "2000-10-04",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Bulbulala",
+    "street": "kwatro",
+    "photo": "",
+    "contact": "09515318135",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:34:55.435Z",
+    "updated_at": "2026-07-02T04:34:55.435Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 40,
+  "fields": {
+    "iwp_number": "8745",
+    "first_name": "Wardell",
+    "middle_name": "S",
+    "last_name": "Curry",
+    "gender": "MALE",
+    "birthdate": "2000-11-21",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Camilo Osias",
+    "street": "sais",
+    "photo": "",
+    "contact": "09578424251",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:35:53.885Z",
+    "updated_at": "2026-07-02T04:35:53.885Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 41,
+  "fields": {
+    "iwp_number": "5846",
+    "first_name": "Jonathan",
+    "middle_name": "A",
+    "last_name": "Kuminga",
+    "gender": "MALE",
+    "birthdate": "1999-07-08",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Nalasin",
+    "street": "singko",
+    "photo": "",
+    "contact": "09045484235",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:37:16.264Z",
+    "updated_at": "2026-07-02T04:37:16.264Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 42,
+  "fields": {
+    "iwp_number": "2482",
+    "first_name": "Austin",
+    "middle_name": "S",
+    "last_name": "Reaves",
+    "gender": "MALE",
+    "birthdate": "1998-12-23",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Pagleddegan",
+    "street": "uno",
+    "photo": "",
+    "contact": "09455487145",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:38:12.763Z",
+    "updated_at": "2026-07-02T04:38:12.763Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 43,
+  "fields": {
+    "iwp_number": "0248",
+    "first_name": "Luca",
+    "middle_name": "A",
+    "last_name": "Donkik",
+    "gender": "MALE",
+    "birthdate": "1995-05-03",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Butubut Este",
+    "street": "tres",
+    "photo": "",
+    "contact": "09215532845",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:39:12.261Z",
+    "updated_at": "2026-07-02T04:39:12.261Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 44,
+  "fields": {
+    "iwp_number": "2548",
+    "first_name": "Jimmy",
+    "middle_name": "S",
+    "last_name": "Butler",
+    "gender": "MALE",
+    "birthdate": "1954-06-02",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Calliat",
+    "street": "dos",
+    "photo": "",
+    "contact": "09432318354",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:40:13.351Z",
+    "updated_at": "2026-07-02T04:40:13.351Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 45,
+  "fields": {
+    "iwp_number": "1655",
+    "first_name": "Lebron",
+    "middle_name": "K",
+    "last_name": "James",
+    "gender": "MALE",
+    "birthdate": "1969-12-05",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Patpata",
+    "street": "tres",
+    "photo": "",
+    "contact": "09512544858",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:41:08.626Z",
+    "updated_at": "2026-07-02T04:41:08.626Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 46,
+  "fields": {
+    "iwp_number": "1256",
+    "first_name": "Bronny",
+    "middle_name": "K",
+    "last_name": "James",
+    "gender": "MALE",
+    "birthdate": "2002-11-25",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Cabua-An",
+    "street": "kwatro",
+    "photo": "",
+    "contact": "09784656845",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:42:04.560Z",
+    "updated_at": "2026-07-02T04:42:04.560Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 47,
+  "fields": {
+    "iwp_number": "5795",
+    "first_name": "Buddy",
+    "middle_name": "S",
+    "last_name": "Hield",
+    "gender": "MALE",
+    "birthdate": "2000-12-25",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Napaset",
+    "street": "uno",
+    "photo": "",
+    "contact": "09451284651",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:43:49.620Z",
+    "updated_at": "2026-07-02T04:43:49.620Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 48,
+  "fields": {
+    "iwp_number": "8978",
+    "first_name": "Anthony",
+    "middle_name": "A",
+    "last_name": "Davis",
+    "gender": "MALE",
+    "birthdate": "1999-04-29",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "San Pablo",
+    "street": "tres",
+    "photo": "",
+    "contact": "09745127417",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:44:41.816Z",
+    "updated_at": "2026-07-02T04:44:41.816Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 49,
+  "fields": {
+    "iwp_number": "8768",
+    "first_name": "Bam",
+    "middle_name": "S",
+    "last_name": "Adebayo",
+    "gender": "MALE",
+    "birthdate": "1995-11-24",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Pagbennecan",
+    "street": "kwatro",
+    "photo": "",
+    "contact": "09745132465",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:45:41.906Z",
+    "updated_at": "2026-07-02T04:45:41.907Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 50,
+  "fields": {
+    "iwp_number": "7865",
+    "first_name": "Steve",
+    "middle_name": "S",
+    "last_name": "Kerr",
+    "gender": "MALE",
+    "birthdate": "1994-06-23",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Nagsabaran Sur",
+    "street": "tres",
+    "photo": "",
+    "contact": "09745124123",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-07-02T04:46:59.683Z",
+    "updated_at": "2026-07-02T04:46:59.683Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1,
+  "fields": {
+    "origin": "Bacnotan",
+    "is_active": true,
+    "created_at": "2026-06-26T10:01:36.087Z",
+    "updated_at": "2026-06-26T10:01:36.087Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 2,
+  "fields": {
+    "origin": "San Juan",
+    "is_active": true,
+    "created_at": "2026-06-27T08:30:16.888Z",
+    "updated_at": "2026-06-27T08:30:16.888Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 3,
+  "fields": {
+    "origin": "Bauang",
+    "is_active": true,
+    "created_at": "2026-07-02T03:25:29.440Z",
+    "updated_at": "2026-07-02T03:25:29.440Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 4,
+  "fields": {
+    "origin": "Naguilian",
+    "is_active": true,
+    "created_at": "2026-07-02T03:25:37.296Z",
+    "updated_at": "2026-07-02T03:25:37.296Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 5,
+  "fields": {
+    "origin": "Luna",
+    "is_active": true,
+    "created_at": "2026-07-02T03:25:42.863Z",
+    "updated_at": "2026-07-02T03:25:42.863Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 1,
+  "fields": {
+    "plate_number": "ornw",
+    "transportation_id": 1,
+    "franchise_number": "3i0gn",
+    "route": 1,
+    "operator_address": "g304ni",
+    "qr_code": "gi50ng40",
+    "status": "AVAILABLE",
+    "active_driver": 1,
+    "is_archived": false,
+    "created_at": "2026-06-26T10:03:38.899Z",
+    "updated_at": "2026-07-02T03:30:10.759Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 2,
+  "fields": {
+    "plate_number": "e5jndt",
+    "transportation_id": 1,
+    "franchise_number": "rtsje",
+    "route": 1,
+    "operator_address": "ej6e5",
+    "qr_code": "dhr6h",
+    "status": "AVAILABLE",
+    "active_driver": 2,
+    "is_archived": false,
+    "created_at": "2026-06-27T01:56:22.147Z",
+    "updated_at": "2026-07-02T06:10:43.715Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 3,
+  "fields": {
+    "plate_number": "KSJ-874",
+    "transportation_id": 2,
+    "franchise_number": "fr0-1",
+    "route": 2,
+    "operator_address": "sdfbon, 34on3, boj4n, La Union",
+    "qr_code": "QR-KSJ-874-MR1O5FNJ",
+    "status": "AVAILABLE",
+    "active_driver": 2,
+    "is_archived": false,
+    "created_at": "2026-07-01T06:02:43.760Z",
+    "updated_at": "2026-07-02T06:11:00.240Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 4,
+  "fields": {
+    "plate_number": "NPM-1237",
+    "transportation_id": 1,
+    "franchise_number": "1234",
+    "route": 1,
+    "operator_address": "",
+    "qr_code": "QR-NPM-1237-MR2YF3T9",
+    "status": "AVAILABLE",
+    "active_driver": null,
+    "is_archived": false,
+    "created_at": "2026-07-02T03:37:57.296Z",
+    "updated_at": "2026-07-02T03:37:57.296Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 5,
+  "fields": {
+    "plate_number": "HSA-3284",
+    "transportation_id": 1,
+    "franchise_number": "sadsf",
+    "route": 1,
+    "operator_address": "tres, carlatan, sanfernando, La Union",
+    "qr_code": "QR-HSA-3284-MR2ZQ8RP",
+    "status": "AVAILABLE",
+    "active_driver": 35,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:14:36.549Z",
+    "updated_at": "2026-07-02T04:14:36.549Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 6,
+  "fields": {
+    "plate_number": "SAW-1235",
+    "transportation_id": 1,
+    "franchise_number": "afece",
+    "route": 4,
+    "operator_address": "uno, gusing, naguillian, La Union",
+    "qr_code": "QR-SAW-1235-MR2ZQUBE",
+    "status": "AVAILABLE",
+    "active_driver": 34,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:15:04.472Z",
+    "updated_at": "2026-07-03T07:00:51.875Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 7,
+  "fields": {
+    "plate_number": "KAP-3629",
+    "transportation_id": 1,
+    "franchise_number": "fasfe",
+    "route": 2,
+    "operator_address": "uno, cattay, san fernando, La Union",
+    "qr_code": "QR-KAP-3629-MR2ZREKZ",
+    "status": "AVAILABLE",
+    "active_driver": 33,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:15:30.742Z",
+    "updated_at": "2026-07-02T04:21:05.889Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 8,
+  "fields": {
+    "plate_number": "ASF-2143",
+    "transportation_id": 1,
+    "franchise_number": "sadge",
+    "route": 2,
+    "operator_address": "tres, poro, san fernando, La Union",
+    "qr_code": "QR-ASF-2143-MR2ZSIJ4",
+    "status": "AVAILABLE",
+    "active_driver": 32,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:16:22.574Z",
+    "updated_at": "2026-07-02T04:16:22.574Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 9,
+  "fields": {
+    "plate_number": "KSH-0483",
+    "transportation_id": 1,
+    "franchise_number": "kdfep",
+    "route": 3,
+    "operator_address": "tres, kalangga, bauang, La Union",
+    "qr_code": "QR-KSH-0483-MR2ZSWV6",
+    "status": "AVAILABLE",
+    "active_driver": 31,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:16:41.090Z",
+    "updated_at": "2026-07-02T06:10:48.833Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 10,
+  "fields": {
+    "plate_number": "DHS-0836",
+    "transportation_id": 1,
+    "franchise_number": "egwse",
+    "route": 3,
+    "operator_address": "four, taytay, bauang, La Union",
+    "qr_code": "QR-DHS-0836-MR2ZTLXJ",
+    "status": "AVAILABLE",
+    "active_driver": 30,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:17:13.571Z",
+    "updated_at": "2026-07-02T06:20:43.582Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 11,
+  "fields": {
+    "plate_number": "VBD-6538",
+    "transportation_id": 1,
+    "franchise_number": "asfew",
+    "route": 3,
+    "operator_address": "four, natividad, bauang, La Union",
+    "qr_code": "QR-VBD-6538-MR2ZU7N5",
+    "status": "AVAILABLE",
+    "active_driver": 29,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:17:41.711Z",
+    "updated_at": "2026-07-02T04:17:41.711Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 12,
+  "fields": {
+    "plate_number": "BDJ-2364",
+    "transportation_id": 1,
+    "franchise_number": "bejio",
+    "route": 5,
+    "operator_address": "four, palintucang, bauang, La Union",
+    "qr_code": "QR-BDJ-2364-MR2ZUQ4W",
+    "status": "AVAILABLE",
+    "active_driver": 28,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:18:05.686Z",
+    "updated_at": "2026-07-02T04:21:18.626Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 13,
+  "fields": {
+    "plate_number": "TRV-1465",
+    "transportation_id": 1,
+    "franchise_number": "heydg",
+    "route": 5,
+    "operator_address": "tres, carmay, bauang, La Union",
+    "qr_code": "QR-TRV-1465-MR2ZVBNR",
+    "status": "AVAILABLE",
+    "active_driver": 27,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:18:33.575Z",
+    "updated_at": "2026-07-03T08:06:30.256Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 14,
+  "fields": {
+    "plate_number": "HAS-6386",
+    "transportation_id": 1,
+    "franchise_number": "grjhv",
+    "route": 3,
+    "operator_address": "dos, central, bauang, La Union",
+    "qr_code": "QR-HAS-6386-MR2ZVUZN",
+    "status": "AVAILABLE",
+    "active_driver": 26,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:18:58.631Z",
+    "updated_at": "2026-07-02T04:18:58.631Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 16,
+  "fields": {
+    "plate_number": "FBE-8034",
+    "transportation_id": 1,
+    "franchise_number": "vbdsje",
+    "route": 5,
+    "operator_address": "uno, santiago, bauang, La Union",
+    "qr_code": "QR-FBE-8034-MR2ZXAXI",
+    "status": "AVAILABLE",
+    "active_driver": 25,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:20:05.942Z",
+    "updated_at": "2026-07-02T04:21:26.531Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 17,
+  "fields": {
+    "plate_number": "BAS-3476",
+    "transportation_id": 1,
+    "franchise_number": "asbdj",
+    "route": 3,
+    "operator_address": "four, cabisilan, bauang, La Union",
+    "qr_code": "QR-BAS-3476-MR2ZXVTH",
+    "status": "AVAILABLE",
+    "active_driver": 24,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:20:33.010Z",
+    "updated_at": "2026-07-02T06:10:50.888Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 18,
+  "fields": {
+    "plate_number": "VAH-3467",
+    "transportation_id": 1,
+    "franchise_number": "bdsfje",
+    "route": 3,
+    "operator_address": "uno, kamarunggayan, bauang, La Union",
+    "qr_code": "QR-VAH-3467-MR2ZYB3G",
+    "status": "AVAILABLE",
+    "active_driver": 23,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:20:52.809Z",
+    "updated_at": "2026-07-02T04:20:52.809Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 19,
+  "fields": {
+    "plate_number": "ASB-7437",
+    "transportation_id": 1,
+    "franchise_number": "asvae",
+    "route": 3,
+    "operator_address": "dos, cabisilan, bauang, La Union",
+    "qr_code": "QR-ASB-7437-MR2ZZWO7",
+    "status": "AVAILABLE",
+    "active_driver": 22,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:22:07.436Z",
+    "updated_at": "2026-07-02T04:22:07.436Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 20,
+  "fields": {
+    "plate_number": "SAF-8643",
+    "transportation_id": 1,
+    "franchise_number": "ieheu",
+    "route": 3,
+    "operator_address": "tres, carmay, bauang, La Union",
+    "qr_code": "QR-SAF-8643-MR300KM3",
+    "status": "AVAILABLE",
+    "active_driver": 21,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:22:38.455Z",
+    "updated_at": "2026-07-02T04:22:38.455Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 21,
+  "fields": {
+    "plate_number": "SAV-6462",
+    "transportation_id": 1,
+    "franchise_number": "bdsie",
+    "route": 5,
+    "operator_address": "dos, dili, bauang, La Union",
+    "qr_code": "QR-SAV-6462-MR301433",
+    "status": "AVAILABLE",
+    "active_driver": 20,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:23:03.701Z",
+    "updated_at": "2026-07-02T04:23:03.701Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 22,
+  "fields": {
+    "plate_number": "BCE-8963",
+    "transportation_id": 1,
+    "franchise_number": "bhewe",
+    "route": 2,
+    "operator_address": "uno, west, bauang, La Union",
+    "qr_code": "QR-BCE-8963-MR301NP8",
+    "status": "AVAILABLE",
+    "active_driver": 19,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:23:29.116Z",
+    "updated_at": "2026-07-02T04:23:29.116Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 23,
+  "fields": {
+    "plate_number": "GRW-4762",
+    "transportation_id": 1,
+    "franchise_number": "babeh",
+    "route": 5,
+    "operator_address": "dos, paringao, bauang, La Union",
+    "qr_code": "QR-GRW-4762-MR3028M1",
+    "status": "AVAILABLE",
+    "active_driver": 18,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:23:56.217Z",
+    "updated_at": "2026-07-02T04:23:56.217Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 24,
+  "fields": {
+    "plate_number": "BDS-6347",
+    "transportation_id": 1,
+    "franchise_number": "shkeo",
+    "route": 1,
+    "operator_address": "singko, pagdalagan, bauang, La Union",
+    "qr_code": "QR-BDS-6347-MR302YRL",
+    "status": "AVAILABLE",
+    "active_driver": 17,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:24:30.116Z",
+    "updated_at": "2026-07-02T04:24:30.116Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 25,
+  "fields": {
+    "plate_number": "BDJ-8373",
+    "transportation_id": 1,
+    "franchise_number": "navhe",
+    "route": 1,
+    "operator_address": "six, sili, bauang, La Union",
+    "qr_code": "QR-BDJ-8373-MR303HS1",
+    "status": "AVAILABLE",
+    "active_driver": 16,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:24:54.755Z",
+    "updated_at": "2026-07-02T04:24:54.755Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 26,
+  "fields": {
+    "plate_number": "VCJ-3264",
+    "transportation_id": 1,
+    "franchise_number": "asvbd",
+    "route": 5,
+    "operator_address": "tres, acao, bauang, La Union",
+    "qr_code": "QR-VCJ-3264-MR303YPE",
+    "status": "AVAILABLE",
+    "active_driver": 15,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:25:16.695Z",
+    "updated_at": "2026-07-02T06:10:53.066Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 27,
+  "fields": {
+    "plate_number": "DVS-7328",
+    "transportation_id": 2,
+    "franchise_number": "vasjwq",
+    "route": 2,
+    "operator_address": "uno, baccuit sur, bauang, La Union",
+    "qr_code": "QR-DVS-7328-MR304L7E",
+    "status": "AVAILABLE",
+    "active_driver": 14,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:25:45.848Z",
+    "updated_at": "2026-07-02T04:25:45.848Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 28,
+  "fields": {
+    "plate_number": "GHA-6732",
+    "transportation_id": 2,
+    "franchise_number": "basvj",
+    "route": 5,
+    "operator_address": "uno, baccuit sur, bauang, La Union",
+    "qr_code": "QR-GHA-6732-MR305L2Q",
+    "status": "AVAILABLE",
+    "active_driver": 14,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:26:32.428Z",
+    "updated_at": "2026-07-03T00:07:40.109Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 29,
+  "fields": {
+    "plate_number": "SAV-8632",
+    "transportation_id": 2,
+    "franchise_number": "vsaj3",
+    "route": 2,
+    "operator_address": "dos, baccuit norte, bauang, La Union",
+    "qr_code": "QR-SAV-8632-MR30609E",
+    "status": "AVAILABLE",
+    "active_driver": 13,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:26:52.014Z",
+    "updated_at": "2026-07-02T04:26:52.014Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 30,
+  "fields": {
+    "plate_number": "VSA-8623",
+    "transportation_id": 2,
+    "franchise_number": "vjsaw",
+    "route": 5,
+    "operator_address": "four, dili, bauang, La Union",
+    "qr_code": "QR-VSA-8623-MR306IT0",
+    "status": "AVAILABLE",
+    "active_driver": 12,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:27:16.056Z",
+    "updated_at": "2026-07-02T04:27:16.056Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 31,
+  "fields": {
+    "plate_number": "NSG-6329",
+    "transportation_id": 2,
+    "franchise_number": "bahse",
+    "route": 5,
+    "operator_address": "uno, ballay, bauang, La Union",
+    "qr_code": "QR-NSG-6329-MR306YEP",
+    "status": "AVAILABLE",
+    "active_driver": 11,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:27:36.269Z",
+    "updated_at": "2026-07-02T04:27:36.269Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 32,
+  "fields": {
+    "plate_number": "ASV-3258",
+    "transportation_id": 2,
+    "franchise_number": "vsaje",
+    "route": 4,
+    "operator_address": "four, calumbaya, bauang, La Union",
+    "qr_code": "QR-ASV-3258-MR307HCW",
+    "status": "AVAILABLE",
+    "active_driver": 10,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:28:00.838Z",
+    "updated_at": "2026-07-03T07:00:53.591Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 33,
+  "fields": {
+    "plate_number": "VAP-9327",
+    "transportation_id": 2,
+    "franchise_number": "dasbe",
+    "route": 3,
+    "operator_address": "uno, pudoc, bauang, La Union",
+    "qr_code": "QR-VAP-9327-MR3080Z9",
+    "status": "AVAILABLE",
+    "active_driver": 9,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:28:26.266Z",
+    "updated_at": "2026-07-02T04:28:26.266Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 34,
+  "fields": {
+    "plate_number": "BHJ-2374",
+    "transportation_id": 2,
+    "franchise_number": "vadsj",
+    "route": 4,
+    "operator_address": "tres, north, bauang, La Union",
+    "qr_code": "QR-BHJ-2374-MR308JXF",
+    "status": "AVAILABLE",
+    "active_driver": 8,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:28:50.827Z",
+    "updated_at": "2026-07-02T06:20:47.038Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 35,
+  "fields": {
+    "plate_number": "VHH-9637",
+    "transportation_id": 2,
+    "franchise_number": "vasjwq",
+    "route": 3,
+    "operator_address": "west, bauang, La Union",
+    "qr_code": "QR-VHH-9637-MR3097UB",
+    "status": "AVAILABLE",
+    "active_driver": 7,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:29:21.814Z",
+    "updated_at": "2026-07-02T04:29:21.814Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 36,
+  "fields": {
+    "plate_number": "VAJ-8923",
+    "transportation_id": 2,
+    "franchise_number": "ashjdw",
+    "route": 2,
+    "operator_address": "four, east, naguillian, La Union",
+    "qr_code": "QR-VAJ-8923-MR309LHS",
+    "status": "AVAILABLE",
+    "active_driver": 6,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:29:39.507Z",
+    "updated_at": "2026-07-02T04:29:39.508Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 37,
+  "fields": {
+    "plate_number": "VSJ-8632",
+    "transportation_id": 1,
+    "franchise_number": "vwias",
+    "route": 2,
+    "operator_address": "dos, quinavite, bauang, La Union",
+    "qr_code": "QR-VSJ-8632-MR30A741",
+    "status": "AVAILABLE",
+    "active_driver": 5,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:30:07.524Z",
+    "updated_at": "2026-07-02T04:30:07.524Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 38,
+  "fields": {
+    "plate_number": "AKG-8694",
+    "transportation_id": 1,
+    "franchise_number": "vasjge",
+    "route": 5,
+    "operator_address": "taboc, san fernando, La Union",
+    "qr_code": "QR-AKG-8694-MR30AQGY",
+    "status": "AVAILABLE",
+    "active_driver": 4,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:30:32.605Z",
+    "updated_at": "2026-07-02T04:30:32.605Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 39,
+  "fields": {
+    "plate_number": "FJD-7642",
+    "transportation_id": 1,
+    "franchise_number": "AFSDF",
+    "route": 5,
+    "operator_address": "tres, Nagsabaran Sur, Balaoan, La Union",
+    "qr_code": "QR-FJD-7642-MR30Y3XF",
+    "status": "AVAILABLE",
+    "active_driver": 50,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:48:43.160Z",
+    "updated_at": "2026-07-02T04:48:43.160Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 40,
+  "fields": {
+    "plate_number": "EFD-143",
+    "transportation_id": 1,
+    "franchise_number": "DROES",
+    "route": 1,
+    "operator_address": "four, taytay, bauang, La Union",
+    "qr_code": "QR-EFD-143-MR30Z2ZR",
+    "status": "AVAILABLE",
+    "active_driver": 30,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:49:28.640Z",
+    "updated_at": "2026-07-02T06:10:45.942Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 44,
+  "fields": {
+    "plate_number": "SGD-543",
+    "transportation_id": 1,
+    "franchise_number": "SDGFD",
+    "route": 5,
+    "operator_address": "four, dili, bauang, La Union",
+    "qr_code": "QR-SGD-543-MR311GL3",
+    "status": "AVAILABLE",
+    "active_driver": 12,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:51:19.507Z",
+    "updated_at": "2026-07-02T04:51:19.507Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 45,
+  "fields": {
+    "plate_number": "SDG-458",
+    "transportation_id": 1,
+    "franchise_number": "SDFGL",
+    "route": 4,
+    "operator_address": "tres, carmay, bauang, La Union",
+    "qr_code": "QR-SDG-458-MR312QRD",
+    "status": "QUEUED",
+    "active_driver": 27,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:52:19.349Z",
+    "updated_at": "2026-07-03T08:13:36.186Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 46,
+  "fields": {
+    "plate_number": "DFD-345",
+    "transportation_id": 1,
+    "franchise_number": "SDFKY",
+    "route": 5,
+    "operator_address": "tres, Butubut Este, Balaoan, La Union",
+    "qr_code": "QR-DFD-345-MR3139IE",
+    "status": "AVAILABLE",
+    "active_driver": 43,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:52:43.660Z",
+    "updated_at": "2026-07-02T04:52:43.660Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 47,
+  "fields": {
+    "plate_number": "DFG-135",
+    "transportation_id": 1,
+    "franchise_number": "HKFRE",
+    "route": 5,
+    "operator_address": "four, taytay, bauang, La Union",
+    "qr_code": "QR-DFG-135-MR313Y1Z",
+    "status": "AVAILABLE",
+    "active_driver": 30,
+    "is_archived": false,
+    "created_at": "2026-07-02T04:53:15.463Z",
+    "updated_at": "2026-07-02T06:10:55.164Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101014",
+  "fields": {
+    "vehicle": 1,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-30T06:02:46.298Z",
+    "dispatched_at": "2026-06-30T06:02:48.728Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-30T06:02:46.298Z",
+    "updated_at": "2026-06-30T13:47:01.935Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101015",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-30T10:20:15.901Z",
+    "dispatched_at": "2026-06-30T10:20:37.318Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-30T10:20:15.901Z",
+    "updated_at": "2026-06-30T13:47:01.978Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101016",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T04:15:22.311Z",
+    "dispatched_at": "2026-07-01T04:15:50.682Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T04:15:22.311Z",
+    "updated_at": "2026-07-01T14:00:26.885Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101017",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T04:30:50.686Z",
+    "dispatched_at": "2026-07-01T04:30:53.775Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T04:30:50.686Z",
+    "updated_at": "2026-07-01T14:00:27.022Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101018",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T04:30:57.871Z",
+    "dispatched_at": "2026-07-01T04:30:59.839Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T04:30:57.871Z",
+    "updated_at": "2026-07-01T14:00:27.129Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101019",
+  "fields": {
+    "vehicle": 2,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T04:31:24.822Z",
+    "dispatched_at": "2026-07-01T04:32:10.353Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T04:31:24.822Z",
+    "updated_at": "2026-07-01T14:00:27.238Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101020",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T04:32:24.640Z",
+    "dispatched_at": "2026-07-01T04:32:27Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T04:32:24.640Z",
+    "updated_at": "2026-07-01T14:00:27.360Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101021",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T04:42:42.344Z",
+    "dispatched_at": "2026-07-01T04:44:15.868Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T04:42:42.344Z",
+    "updated_at": "2026-07-01T14:00:27.486Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101022",
+  "fields": {
+    "vehicle": 2,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T04:42:45.400Z",
+    "dispatched_at": "2026-07-01T04:45:11.681Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T04:42:45.400Z",
+    "updated_at": "2026-07-01T14:00:27.616Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101023",
+  "fields": {
+    "vehicle": 1,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T05:29:47.131Z",
+    "dispatched_at": "2026-07-01T05:29:51.708Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T05:29:47.131Z",
+    "updated_at": "2026-07-01T14:00:27.741Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101024",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T05:34:13.570Z",
+    "dispatched_at": "2026-07-01T05:34:17.324Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T05:34:13.571Z",
+    "updated_at": "2026-07-01T14:00:27.900Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101025",
+  "fields": {
+    "vehicle": 3,
+    "driver": 2,
+    "active_user": 1,
+    "route": 2,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-01T14:00:13.769Z",
+    "dispatched_at": "2026-07-01T14:10:21.450Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-01T14:00:13.769Z",
+    "updated_at": "2026-07-01T14:10:27.647Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101026",
+  "fields": {
+    "vehicle": 3,
+    "driver": 2,
+    "active_user": 1,
+    "route": 2,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T03:12:24.849Z",
+    "dispatched_at": "2026-07-02T03:14:22.987Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T03:12:24.850Z",
+    "updated_at": "2026-07-02T06:16:27.990Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101027",
+  "fields": {
+    "vehicle": 3,
+    "driver": 2,
+    "active_user": 1,
+    "route": 2,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T03:17:31.748Z",
+    "dispatched_at": "2026-07-02T06:11:00.316Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T03:17:31.749Z",
+    "updated_at": "2026-07-02T06:16:28.086Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101028",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T03:25:02.091Z",
+    "dispatched_at": "2026-07-02T03:30:10.794Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T03:25:02.092Z",
+    "updated_at": "2026-07-02T06:16:28.168Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101029",
+  "fields": {
+    "vehicle": 2,
+    "driver": 3,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T03:29:05.700Z",
+    "dispatched_at": "2026-07-02T06:10:43.788Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T03:29:05.700Z",
+    "updated_at": "2026-07-02T06:16:28.240Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101030",
+  "fields": {
+    "vehicle": 6,
+    "driver": 34,
+    "active_user": null,
+    "route": 4,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T05:13:37.376Z",
+    "dispatched_at": "2026-07-02T06:10:58.281Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T05:13:37.376Z",
+    "updated_at": "2026-07-02T06:16:28.306Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101031",
+  "fields": {
+    "vehicle": 17,
+    "driver": 24,
+    "active_user": null,
+    "route": 3,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T05:15:44.128Z",
+    "dispatched_at": "2026-07-02T06:10:50.930Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T05:15:44.128Z",
+    "updated_at": "2026-07-02T06:16:28.377Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101032",
+  "fields": {
+    "vehicle": 40,
+    "driver": 30,
+    "active_user": 2,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T05:28:29.338Z",
+    "dispatched_at": "2026-07-02T06:10:45.974Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T05:28:29.338Z",
+    "updated_at": "2026-07-02T06:16:28.448Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101033",
+  "fields": {
+    "vehicle": 47,
+    "driver": 30,
+    "active_user": 3,
+    "route": 5,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T05:29:22.191Z",
+    "dispatched_at": "2026-07-02T06:10:55.202Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T05:29:22.191Z",
+    "updated_at": "2026-07-02T06:16:28.525Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101034",
+  "fields": {
+    "vehicle": 26,
+    "driver": 15,
+    "active_user": null,
+    "route": 5,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T05:36:45.134Z",
+    "dispatched_at": "2026-07-02T06:10:53.102Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T05:36:45.134Z",
+    "updated_at": "2026-07-02T06:16:28.605Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101035",
+  "fields": {
+    "vehicle": 9,
+    "driver": 31,
+    "active_user": 3,
+    "route": 3,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T06:10:27.897Z",
+    "dispatched_at": "2026-07-02T06:10:48.910Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T06:10:27.898Z",
+    "updated_at": "2026-07-02T06:16:28.679Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101036",
+  "fields": {
+    "vehicle": 45,
+    "driver": 27,
+    "active_user": 3,
+    "route": 4,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T06:11:09.308Z",
+    "dispatched_at": "2026-07-02T06:20:48.518Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T06:11:09.308Z",
+    "updated_at": "2026-07-03T00:26:08.430Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101037",
+  "fields": {
+    "vehicle": 32,
+    "driver": 10,
+    "active_user": 3,
+    "route": 4,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T06:11:39.644Z",
+    "dispatched_at": "2026-07-02T06:20:45.487Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-02T06:11:39.644Z",
+    "updated_at": "2026-07-03T00:26:09.973Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101038",
+  "fields": {
+    "vehicle": 34,
+    "driver": 8,
+    "active_user": 1,
+    "route": 4,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T06:20:12.498Z",
+    "dispatched_at": "2026-07-02T06:20:47.071Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-02T06:20:12.498Z",
+    "updated_at": "2026-07-03T00:26:11.439Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101039",
+  "fields": {
+    "vehicle": 10,
+    "driver": 30,
+    "active_user": 1,
+    "route": 3,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-02T06:20:35.810Z",
+    "dispatched_at": "2026-07-02T06:20:43.621Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-02T06:20:35.811Z",
+    "updated_at": "2026-07-03T00:26:12.908Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101040",
+  "fields": {
+    "vehicle": 28,
+    "driver": 14,
+    "active_user": 1,
+    "route": 5,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-03T00:07:17.903Z",
+    "dispatched_at": "2026-07-03T00:07:40.196Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-03T00:07:17.903Z",
+    "updated_at": "2026-07-03T00:26:14.661Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101041",
+  "fields": {
+    "vehicle": 6,
+    "driver": 34,
+    "active_user": 1,
+    "route": 4,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-03T00:30:41.180Z",
+    "dispatched_at": "2026-07-03T07:00:51.933Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-03T00:30:41.180Z",
+    "updated_at": "2026-07-03T07:01:01.577Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101042",
+  "fields": {
+    "vehicle": 32,
+    "driver": 10,
+    "active_user": 1,
+    "route": 4,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-07-03T00:33:10.116Z",
+    "dispatched_at": "2026-07-03T07:00:53.633Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-07-03T00:33:10.116Z",
+    "updated_at": "2026-07-03T07:01:01.698Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101043",
+  "fields": {
+    "vehicle": 13,
+    "driver": 27,
+    "active_user": 1,
+    "route": 5,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "DISPATCHED",
+    "collection_amount": "10.00",
+    "is_verified": false,
+    "issued_at": "2026-07-03T08:05:04.842Z",
+    "dispatched_at": "2026-07-03T08:06:30.297Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-03T08:05:04.842Z",
+    "updated_at": "2026-07-03T08:06:30.333Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "1898101044",
+  "fields": {
+    "vehicle": 45,
+    "driver": 27,
+    "active_user": 1,
+    "route": 4,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "ISSUED",
+    "collection_amount": "10.00",
+    "is_verified": false,
+    "issued_at": "2026-07-03T08:13:36.089Z",
+    "dispatched_at": null,
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-07-03T08:13:36.089Z",
+    "updated_at": "2026-07-03T08:13:36.089Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1000",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-26T15:51:51.126Z",
+    "dispatched_at": "2026-06-26T15:51:59.009Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-26T15:51:51.126Z",
+    "updated_at": "2026-06-26T15:52:41.528Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1001",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-26T15:52:16.402Z",
+    "dispatched_at": "2026-06-26T15:52:21.696Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-26T15:52:16.402Z",
+    "updated_at": "2026-06-26T15:52:43.123Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1002",
+  "fields": {
+    "vehicle": 1,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-26T16:01:35.631Z",
+    "dispatched_at": "2026-06-26T16:01:40.864Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-06-26T16:01:35.631Z",
+    "updated_at": "2026-06-26T16:03:05.588Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1003",
+  "fields": {
+    "vehicle": 1,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-26T16:01:50.066Z",
+    "dispatched_at": "2026-06-26T16:01:55.369Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-06-26T16:01:50.066Z",
+    "updated_at": "2026-06-26T16:03:06.845Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1004",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-26T16:02:08.029Z",
+    "dispatched_at": "2026-06-26T16:02:11.777Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-06-26T16:02:08.030Z",
+    "updated_at": "2026-06-26T16:03:08.311Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1005",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-26T16:13:26.677Z",
+    "dispatched_at": "2026-06-26T16:13:32.489Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-06-26T16:13:26.678Z",
+    "updated_at": "2026-06-26T16:14:17.429Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1006",
+  "fields": {
+    "vehicle": 1,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-26T16:13:53.932Z",
+    "dispatched_at": "2026-06-26T16:14:08.301Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_1",
+    "created_at": "2026-06-26T16:13:53.932Z",
+    "updated_at": "2026-06-26T16:14:19.643Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1007",
+  "fields": {
+    "vehicle": 1,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-27T02:19:48.957Z",
+    "dispatched_at": "2026-06-27T02:20:11.023Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-27T02:19:48.957Z",
+    "updated_at": "2026-06-27T02:27:06.509Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1008",
+  "fields": {
+    "vehicle": 1,
+    "driver": 3,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "CANCELLED",
+    "collection_amount": "10.00",
+    "is_verified": false,
+    "issued_at": "2026-06-27T02:25:03.596Z",
+    "dispatched_at": null,
+    "nullified_at": null,
+    "reason": "kakain",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-27T02:25:03.596Z",
+    "updated_at": "2026-06-27T02:25:29.209Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101001",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-27T08:24:00.273Z",
+    "dispatched_at": "2026-06-27T08:24:36.819Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-27T08:24:00.273Z",
+    "updated_at": "2026-06-27T08:24:42.544Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101002",
+  "fields": {
+    "vehicle": 2,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-27T10:31:21.581Z",
+    "dispatched_at": "2026-06-27T10:31:44.416Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-27T10:31:21.581Z",
+    "updated_at": "2026-06-27T10:31:52.292Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101003",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-28T06:33:26.199Z",
+    "dispatched_at": "2026-06-28T06:33:59.082Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-28T06:33:26.200Z",
+    "updated_at": "2026-06-28T06:35:40.804Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101004",
+  "fields": {
+    "vehicle": 2,
+    "driver": 2,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-28T06:34:05.409Z",
+    "dispatched_at": "2026-06-28T06:35:34.655Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-28T06:34:05.409Z",
+    "updated_at": "2026-06-28T06:35:40.884Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101005",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-28T08:52:21.756Z",
+    "dispatched_at": "2026-06-28T08:52:32.757Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-28T08:52:21.756Z",
+    "updated_at": "2026-06-28T22:12:50.922Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101006",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-28T22:10:01.427Z",
+    "dispatched_at": "2026-06-28T22:10:18.475Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-28T22:10:01.427Z",
+    "updated_at": "2026-06-28T22:12:46.690Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101007",
+  "fields": {
+    "vehicle": 2,
+    "driver": 2,
+    "active_user": null,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-29T01:09:27.406Z",
+    "dispatched_at": "2026-06-29T01:11:34.329Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-29T01:09:27.406Z",
+    "updated_at": "2026-06-29T01:52:55.465Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101008",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-29T01:49:46.747Z",
+    "dispatched_at": "2026-06-29T01:51:00.179Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-29T01:49:46.747Z",
+    "updated_at": "2026-06-29T01:52:55.568Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101009",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "CANCELLED",
+    "collection_amount": "10.00",
+    "is_verified": false,
+    "issued_at": "2026-06-29T01:58:28.585Z",
+    "dispatched_at": null,
+    "nullified_at": null,
+    "reason": ".",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-29T01:58:28.585Z",
+    "updated_at": "2026-06-29T01:58:52.616Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101010",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "CANCELLED",
+    "collection_amount": "10.00",
+    "is_verified": false,
+    "issued_at": "2026-06-29T01:59:39.355Z",
+    "dispatched_at": null,
+    "nullified_at": null,
+    "reason": "kakain",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-29T01:59:39.355Z",
+    "updated_at": "2026-06-29T01:59:47.895Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101011",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-29T05:25:52.122Z",
+    "dispatched_at": "2026-06-29T05:26:12.652Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-29T05:25:52.122Z",
+    "updated_at": "2026-06-29T06:58:46.011Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101012",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-30T03:52:10.015Z",
+    "dispatched_at": "2026-06-30T03:52:22.425Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-30T03:52:10.015Z",
+    "updated_at": "2026-06-30T13:47:01.830Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898101013",
+  "fields": {
+    "vehicle": 2,
+    "driver": 3,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": 6,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-30T05:19:07.440Z",
+    "dispatched_at": "2026-06-30T05:19:14.296Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-30T05:19:07.441Z",
+    "updated_at": "2026-06-30T13:47:01.886Z"
+  }
+},
+{
+  "model": "api.ticket",
+  "pk": "Ticket-1898105001",
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "active_user": 1,
+    "route": 1,
+    "mode": "QUEUE",
+    "series": null,
+    "remittance_batch": null,
+    "status": "COLLECTED",
+    "collection_amount": "10.00",
+    "is_verified": true,
+    "issued_at": "2026-06-29T06:19:06.632Z",
+    "dispatched_at": "2026-06-29T06:19:21.026Z",
+    "nullified_at": null,
+    "reason": "",
+    "is_late": false,
+    "intended_batch": "",
+    "batch": "BATCH_2",
+    "created_at": "2026-06-29T06:19:06.632Z",
+    "updated_at": "2026-06-29T06:58:46.099Z"
+  }
+},
+{
+  "model": "api.requisition",
+  "pk": 10,
+  "fields": {
+    "date_requested": "2026-06-27T08:17:35.179Z",
+    "requested_by": 1,
+    "approved_by": null,
+    "status": "PENDING",
+    "total_value": "40000.00",
+    "created_at": "2026-06-27T08:17:35.179Z",
+    "updated_at": "2026-06-27T08:17:35.179Z"
+  }
+},
+{
+  "model": "api.ticketseries",
+  "pk": 6,
+  "fields": {
+    "series_no": "1898101001-1898105000",
+    "ticket_form": 2,
+    "pad_no": "1080",
+    "box_no": "",
+    "start_no": "1898101045",
+    "end_no": "1898105000",
+    "qty": 4,
+    "unit_value": "0.00",
+    "total_value": "40000.00",
+    "requisition": 10,
+    "issued_to": null,
+    "date_issued": null,
+    "beginning_balance": 3922,
+    "beginning_balance_date": "2026-07-03",
+    "created_at": "2026-06-27T08:17:35.235Z",
+    "updated_at": "2026-07-03T08:13:36.076Z"
+  }
+},
+{
+  "model": "api.ticketprice",
+  "pk": 1,
+  "fields": {
+    "amount": "10.00",
+    "effective_date": "2026-06-26T10:05:51.122Z"
+  }
+},
+{
+  "model": "api.puvtype",
+  "pk": 1,
+  "fields": {
+    "name": "Jeepney"
+  }
+},
+{
+  "model": "api.puvtype",
+  "pk": 2,
+  "fields": {
+    "name": "UV"
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 1,
+  "fields": {
+    "name": "Cash TIcket@2",
+    "price": "2.00"
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 2,
+  "fields": {
+    "name": "Cash Ticket@10",
+    "price": "10.00"
+  }
+},
+{
+  "model": "api.remittancebatch",
+  "pk": 1,
+  "fields": {
+    "issued_by": 1,
+    "issued_at": "2026-06-27T02:31:37.374Z",
+    "total_amount": "60.00",
+    "status": "OPEN"
+  }
+},
+{
+  "model": "api.remittancebatch",
+  "pk": 2,
+  "fields": {
+    "issued_by": 1,
+    "issued_at": "2026-06-28T06:36:05.154Z",
+    "total_amount": "20.00",
+    "status": "OPEN"
+  }
+},
+{
+  "model": "api.remittancebatch",
+  "pk": 3,
+  "fields": {
+    "issued_by": 1,
+    "issued_at": "2026-06-28T07:35:19.546Z",
+    "total_amount": "20.00",
+    "status": "OPEN"
+  }
+},
+{
+  "model": "api.remittancebatch",
+  "pk": 4,
+  "fields": {
+    "issued_by": 1,
+    "issued_at": "2026-07-02T06:18:36.755Z",
+    "total_amount": "100.00",
+    "status": "OPEN"
+  }
+},
+{
+  "model": "api.remittancebatch",
+  "pk": 5,
+  "fields": {
+    "issued_by": 1,
+    "issued_at": "2026-07-02T06:18:47.518Z",
+    "total_amount": "100.00",
+    "status": "OPEN"
+  }
+},
+{
+  "model": "api.remittancebatch",
+  "pk": 6,
+  "fields": {
+    "issued_by": 1,
+    "issued_at": "2026-07-03T07:01:47.685Z",
+    "total_amount": "30.00",
+    "status": "OPEN"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 1,
+  "fields": {
+    "batch": 1,
+    "type": "bill",
+    "denomination": 1000,
+    "quantity": 1,
+    "deposit_amount": "1000.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 2,
+  "fields": {
+    "batch": 1,
+    "type": "coin",
+    "denomination": 0,
+    "quantity": 600,
+    "deposit_amount": "600.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 3,
+  "fields": {
+    "batch": 1,
+    "type": "bill",
+    "denomination": 1000,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 4,
+  "fields": {
+    "batch": 2,
+    "type": "bill",
+    "denomination": 20,
+    "quantity": 1,
+    "deposit_amount": "20.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 5,
+  "fields": {
+    "batch": 3,
+    "type": "bill",
+    "denomination": 20,
+    "quantity": 1,
+    "deposit_amount": "20.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 6,
+  "fields": {
+    "batch": 4,
+    "type": "bill",
+    "denomination": 1000,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 7,
+  "fields": {
+    "batch": 4,
+    "type": "bill",
+    "denomination": 500,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 8,
+  "fields": {
+    "batch": 4,
+    "type": "bill",
+    "denomination": 200,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 9,
+  "fields": {
+    "batch": 5,
+    "type": "bill",
+    "denomination": 1000,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 10,
+  "fields": {
+    "batch": 5,
+    "type": "bill",
+    "denomination": 500,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 11,
+  "fields": {
+    "batch": 5,
+    "type": "bill",
+    "denomination": 200,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 12,
+  "fields": {
+    "batch": 5,
+    "type": "bill",
+    "denomination": 100,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 13,
+  "fields": {
+    "batch": 5,
+    "type": "bill",
+    "denomination": 50,
+    "quantity": 1,
+    "deposit_amount": "50.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 14,
+  "fields": {
+    "batch": 5,
+    "type": "bill",
+    "denomination": 20,
+    "quantity": 2,
+    "deposit_amount": "40.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 15,
+  "fields": {
+    "batch": 5,
+    "type": "coin",
+    "denomination": 0,
+    "quantity": 10,
+    "deposit_amount": "10.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 16,
+  "fields": {
+    "batch": 6,
+    "type": "bill",
+    "denomination": 1000,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 17,
+  "fields": {
+    "batch": 6,
+    "type": "bill",
+    "denomination": 500,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 18,
+  "fields": {
+    "batch": 6,
+    "type": "bill",
+    "denomination": 200,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 19,
+  "fields": {
+    "batch": 6,
+    "type": "bill",
+    "denomination": 100,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 20,
+  "fields": {
+    "batch": 6,
+    "type": "bill",
+    "denomination": 50,
+    "quantity": 0,
+    "deposit_amount": "0.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 21,
+  "fields": {
+    "batch": 6,
+    "type": "bill",
+    "denomination": 20,
+    "quantity": 1,
+    "deposit_amount": "20.00"
+  }
+},
+{
+  "model": "api.deposit",
+  "pk": 22,
+  "fields": {
+    "batch": 6,
+    "type": "coin",
+    "denomination": 0,
+    "quantity": 10,
+    "deposit_amount": "10.00"
+  }
+},
+{
+  "model": "api.collection",
+  "pk": 1,
+  "fields": {
+    "batch": 1,
+    "ticket_form_no": "Cash Ticket@10",
+    "from_no": "6991",
+    "to_no": "0",
+    "amount": "60.00"
+  }
+},
+{
+  "model": "api.collection",
+  "pk": 2,
+  "fields": {
+    "batch": 1,
+    "ticket_form_no": "",
+    "from_no": "0",
+    "to_no": "0",
+    "amount": "0.00"
+  }
+},
+{
+  "model": "api.collection",
+  "pk": 3,
+  "fields": {
+    "batch": 2,
+    "ticket_form_no": "Cash Ticket@10",
+    "from_no": "3996",
+    "to_no": "0",
+    "amount": "20.00"
+  }
+},
+{
+  "model": "api.collection",
+  "pk": 4,
+  "fields": {
+    "batch": 3,
+    "ticket_form_no": "Cash Ticket@10",
+    "from_no": "8996",
+    "to_no": "0",
+    "amount": "20.00"
+  }
+},
+{
+  "model": "api.collection",
+  "pk": 5,
+  "fields": {
+    "batch": 4,
+    "ticket_form_no": "Cash Ticket@10",
+    "from_no": "39500",
+    "to_no": "0",
+    "amount": "100.00"
+  }
+},
+{
+  "model": "api.collection",
+  "pk": 6,
+  "fields": {
+    "batch": 5,
+    "ticket_form_no": "Cash Ticket@10",
+    "from_no": "39500",
+    "to_no": "0",
+    "amount": "100.00"
+  }
+},
+{
+  "model": "api.collection",
+  "pk": 7,
+  "fields": {
+    "batch": 6,
+    "ticket_form_no": "Cash Ticket@10",
+    "from_no": "39220",
+    "to_no": "0",
+    "amount": "30.00"
+  }
+},
+{
+  "model": "api.rewardconfig",
+  "pk": 1,
+  "fields": {
+    "points_per_queue": 10,
+    "daily_bonus_4_threshold": 4,
+    "daily_bonus_4_points": 20,
+    "daily_bonus_5_threshold": 5,
+    "daily_bonus_5_points": 40,
+    "streak_bonus_days": 5,
+    "streak_bonus_points": 50,
+    "monthly_bonus_days": 20,
+    "monthly_bonus_points": 100,
+    "points_per_redemption": 1000,
+    "peso_value_per_redemption": "500.00",
+    "max_redemptions_per_year": 2,
+    "cooldown_months": 6,
+    "updated_at": "2026-07-03T09:20:20.406Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 1,
+  "fields": {
+    "driver": 1,
+    "total_points": 18,
+    "redemptions_this_year": 0,
+    "last_redemption_date": "2026-07-01",
+    "current_streak": 4,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-06-28T22:09:35.927Z",
+    "updated_at": "2026-07-02T03:25:02.127Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 2,
+  "fields": {
+    "driver": 2,
+    "total_points": 32,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 4,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-06-28T22:09:43.648Z",
+    "updated_at": "2026-07-02T03:17:31.786Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 3,
+  "fields": {
+    "driver": 3,
+    "total_points": 11,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 1,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-06-28T22:09:45.373Z",
+    "updated_at": "2026-07-02T03:29:05.741Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 4,
+  "fields": {
+    "driver": 34,
+    "total_points": 20,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 2,
+    "last_queue_date": "2026-07-03",
+    "created_at": "2026-07-02T05:13:37.395Z",
+    "updated_at": "2026-07-03T00:30:41.213Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 5,
+  "fields": {
+    "driver": 24,
+    "total_points": 10,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 1,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-07-02T05:15:44.142Z",
+    "updated_at": "2026-07-02T05:15:44.165Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 6,
+  "fields": {
+    "driver": 30,
+    "total_points": 30,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 1,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-07-02T05:28:29.355Z",
+    "updated_at": "2026-07-02T06:20:35.853Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 7,
+  "fields": {
+    "driver": 15,
+    "total_points": 10,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 1,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-07-02T05:36:45.152Z",
+    "updated_at": "2026-07-02T05:36:45.182Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 8,
+  "fields": {
+    "driver": 31,
+    "total_points": 10,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 1,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-07-02T06:10:27.919Z",
+    "updated_at": "2026-07-02T06:10:27.953Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 9,
+  "fields": {
+    "driver": 27,
+    "total_points": 30,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 2,
+    "last_queue_date": "2026-07-03",
+    "created_at": "2026-07-02T06:11:09.336Z",
+    "updated_at": "2026-07-03T08:13:36.121Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 10,
+  "fields": {
+    "driver": 10,
+    "total_points": 20,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 2,
+    "last_queue_date": "2026-07-03",
+    "created_at": "2026-07-02T06:11:39.660Z",
+    "updated_at": "2026-07-03T00:33:10.146Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 11,
+  "fields": {
+    "driver": 8,
+    "total_points": 10,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 1,
+    "last_queue_date": "2026-07-02",
+    "created_at": "2026-07-02T06:20:12.521Z",
+    "updated_at": "2026-07-02T06:20:12.556Z"
+  }
+},
+{
+  "model": "api.driverrewardprofile",
+  "pk": 12,
+  "fields": {
+    "driver": 14,
+    "total_points": 10,
+    "redemptions_this_year": 0,
+    "last_redemption_date": null,
+    "current_streak": 1,
+    "last_queue_date": "2026-07-03",
+    "created_at": "2026-07-03T00:07:17.918Z",
+    "updated_at": "2026-07-03T00:07:17.945Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 1,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-29",
+    "created_at": "2026-06-28T22:10:01.438Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 2,
+  "fields": {
+    "profile": 2,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-29",
+    "created_at": "2026-06-29T01:09:27.422Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 3,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-29",
+    "created_at": "2026-06-29T01:49:46.773Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 4,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-29",
+    "created_at": "2026-06-29T01:58:28.603Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 5,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-29",
+    "created_at": "2026-06-29T01:59:39.373Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 6,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-29",
+    "created_at": "2026-06-29T05:25:52.150Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 7,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-29",
+    "created_at": "2026-06-29T06:19:06.657Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 8,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-30",
+    "created_at": "2026-06-30T03:52:10.028Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 9,
+  "fields": {
+    "profile": 3,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-30",
+    "created_at": "2026-06-30T05:19:07.456Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 10,
+  "fields": {
+    "profile": 2,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-30",
+    "created_at": "2026-06-30T06:02:46.319Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 11,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 1,
+    "description": "Queue logged on 2026-06-30",
+    "created_at": "2026-06-30T10:20:15.911Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 12,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-01",
+    "created_at": "2026-07-01T05:34:13.587Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 13,
+  "fields": {
+    "profile": 1,
+    "type": "REDEMPTION",
+    "points": -10,
+    "description": "Redeemed 10 pts for ₱500.00",
+    "created_at": "2026-07-01T05:34:48.983Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 14,
+  "fields": {
+    "profile": 2,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-01",
+    "created_at": "2026-07-01T14:00:13.807Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 15,
+  "fields": {
+    "profile": 2,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T03:12:24.874Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 16,
+  "fields": {
+    "profile": 2,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T03:17:31.767Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 17,
+  "fields": {
+    "profile": 1,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T03:25:02.108Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 18,
+  "fields": {
+    "profile": 3,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T03:29:05.719Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 19,
+  "fields": {
+    "profile": 4,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T05:13:37.406Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 20,
+  "fields": {
+    "profile": 5,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T05:15:44.150Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 21,
+  "fields": {
+    "profile": 6,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T05:28:29.365Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 22,
+  "fields": {
+    "profile": 6,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T05:29:22.208Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 23,
+  "fields": {
+    "profile": 7,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T05:36:45.164Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 24,
+  "fields": {
+    "profile": 8,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T06:10:27.930Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 25,
+  "fields": {
+    "profile": 9,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T06:11:09.350Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 26,
+  "fields": {
+    "profile": 10,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T06:11:39.670Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 27,
+  "fields": {
+    "profile": 11,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T06:20:12.532Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 28,
+  "fields": {
+    "profile": 6,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-02",
+    "created_at": "2026-07-02T06:20:35.829Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 29,
+  "fields": {
+    "profile": 12,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-03",
+    "created_at": "2026-07-03T00:07:17.926Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 30,
+  "fields": {
+    "profile": 4,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-03",
+    "created_at": "2026-07-03T00:30:41.195Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 31,
+  "fields": {
+    "profile": 10,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-03",
+    "created_at": "2026-07-03T00:33:10.130Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 32,
+  "fields": {
+    "profile": 9,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-03",
+    "created_at": "2026-07-03T08:05:04.864Z"
+  }
+},
+{
+  "model": "api.pointstransaction",
+  "pk": 33,
+  "fields": {
+    "profile": 9,
+    "type": "QUEUE",
+    "points": 10,
+    "description": "Queue logged on 2026-07-03",
+    "created_at": "2026-07-03T08:13:36.103Z"
+  }
+},
+{
+  "model": "api.redemption",
+  "pk": 1,
+  "fields": {
+    "profile": 1,
+    "points_redeemed": 10,
+    "peso_value": "500.00",
+    "status": "APPROVED",
+    "approved_by": 1,
+    "created_at": "2026-07-01T05:34:48.993Z",
+    "updated_at": "2026-07-01T05:34:48.993Z"
+  }
+},
+{
+  "model": "api.auditlog",
+  "pk": 2,
+  "fields": {
+    "user": 1,
+    "action": "UPDATE",
+    "model_name": "RewardConfig",
+    "object_id": "1",
+    "object_repr": "Reward configuration",
+    "changes": {
+      "points_per_redemption": 1000,
+      "peso_value_per_redemption": 500,
+      "max_redemptions_per_year": 3,
+      "cooldown_months": 6
+    },
+    "created_at": "2026-07-03T08:04:22.268Z"
+  }
+},
+{
+  "model": "api.auditlog",
+  "pk": 8,
+  "fields": {
+    "user": 1,
+    "action": "UPDATE",
+    "model_name": "RewardConfig",
+    "object_id": "1",
+    "object_repr": "Reward configuration",
+    "changes": {
+      "points_per_redemption": 1000,
+      "peso_value_per_redemption": 500,
+      "max_redemptions_per_year": 2,
+      "cooldown_months": 6
+    },
+    "created_at": "2026-07-03T09:20:20.417Z"
+  }
+},
+{
+  "model": "api.auditlog",
+  "pk": 10,
+  "fields": {
+    "user": null,
+    "action": "UPDATE",
+    "model_name": "System",
+    "object_id": "2",
+    "object_repr": "Restored from backup_20260703_182936.json",
+    "changes": {
+      "restored_backup_id": 2,
+      "safety_backup_id": 3
+    },
+    "created_at": "2026-07-03T10:29:37.276Z"
+  }
+},
+{
+  "model": "api.roaminglog",
+  "pk": 1,
+  "fields": {
+    "vehicle": 2,
+    "driver": 2,
+    "recorded_by": 1,
+    "notes": "Recorded via mobile QR scan",
+    "recorded_at": "2026-06-27T10:29:45.705Z"
+  }
+},
+{
+  "model": "api.roaminglog",
+  "pk": 2,
+  "fields": {
+    "vehicle": 1,
+    "driver": 1,
+    "recorded_by": 1,
+    "notes": "Recorded via mobile QR scan",
+    "recorded_at": "2026-07-02T03:17:57.787Z"
+  }
+},
+{
+  "model": "api.roaminglog",
+  "pk": 3,
+  "fields": {
+    "vehicle": 21,
+    "driver": 20,
+    "recorded_by": 1,
+    "notes": "Recorded via mobile QR scan",
+    "recorded_at": "2026-07-02T05:15:16.380Z"
+  }
+},
+{
+  "model": "api.roaminglog",
+  "pk": 4,
+  "fields": {
+    "vehicle": 17,
+    "driver": 24,
+    "recorded_by": 1,
+    "notes": "Recorded via mobile QR scan",
+    "recorded_at": "2026-07-02T05:15:32.331Z"
+  }
+},
+{
+  "model": "api.roaminglog",
+  "pk": 5,
+  "fields": {
+    "vehicle": 37,
+    "driver": 5,
+    "recorded_by": 2,
+    "notes": "Recorded via mobile QR scan",
+    "recorded_at": "2026-07-02T05:28:00.224Z"
+  }
+},
+{
+  "model": "api.roaminglog",
+  "pk": 6,
+  "fields": {
+    "vehicle": 47,
+    "driver": 30,
+    "recorded_by": 3,
+    "notes": "Recorded via mobile QR scan",
+    "recorded_at": "2026-07-02T05:30:35.033Z"
+  }
+},
+{
+  "model": "api.roaminglog",
+  "pk": 7,
+  "fields": {
+    "vehicle": 6,
+    "driver": 34,
+    "recorded_by": 3,
+    "notes": "Recorded via mobile QR scan",
+    "recorded_at": "2026-07-02T06:11:48.294Z"
+  }
+}
+]

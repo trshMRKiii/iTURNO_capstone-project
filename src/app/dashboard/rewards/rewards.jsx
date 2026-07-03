@@ -5,6 +5,37 @@ import "../../../styles/Rewards.css";
 
 const PAGE_SIZE = 10;
 
+const BACKEND_URL =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000"
+    : `http://${window.location.hostname}:8000`;
+
+export function driverPhotoUrl(driver) {
+  if (!driver?.photo) return null;
+  return driver.photo.startsWith("http") ? driver.photo : `${BACKEND_URL}${driver.photo}`;
+}
+
+export function DriverAvatar({ driver, className }) {
+  const [broken, setBroken] = useState(false);
+  const url = driverPhotoUrl(driver);
+
+  if (url && !broken) {
+    return (
+      <img
+        className={className}
+        src={url}
+        alt={`${driver.first_name} ${driver.last_name}`}
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  return (
+    <div className={className}>
+      {driver.last_name?.[0]}{driver.first_name?.[0]}
+    </div>
+  );
+}
+
 export default function Rewards() {
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
@@ -85,9 +116,7 @@ export default function Rewards() {
                 className="rw-driver-item"
                 onClick={() => setSelectedDriver(d)}
               >
-                <div className="rw-driver-avatar">
-                  {d.last_name?.[0]}{d.first_name?.[0]}
-                </div>
+                <DriverAvatar driver={d} className="rw-driver-avatar" />
                 <div className="rw-driver-info">
                   <span className="rw-driver-name">{d.last_name}, {d.first_name}</span>
                   <span className="rw-driver-sub">{d.iwp_number || "No IWP"}</span>
