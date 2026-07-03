@@ -62,6 +62,13 @@ def issue_late_ticket(request):
             active_user=request.user if request.user.is_authenticated else None,
         )
 
+        from ..rewards import award_queue_point
+        try:
+            award_queue_point(ticket.driver, queue_date=issued_at.date())
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
+
         serializer = TicketSerializer(ticket)
         return Response({
             "message": "Late ticket issued successfully",
@@ -93,7 +100,7 @@ def transaction_logs(request):
             'route': t.route_name,
             'amount': float(t.collection_amount or 0),
             'timestamp': local_dt.strftime('%Y-%m-%d %H:%M:%S'),
-            'user': t.active_user.username if t.active_user else 'System',
+            'user': t.active_user.get_full_name() or t.active_user.username if t.active_user else 'System',
             'batch': get_batch(t),
         })
 
@@ -140,14 +147,13 @@ def dashboard_stats(request):
 @api_view(['GET'])
 def vehicle_records(request):
     try:
-        vehicles = Vehicle.objects.select_related('route', 'active_driver').order_by('code')
+        vehicles = Vehicle.objects.select_related('route', 'active_driver').order_by('plate_number')
 
         data = []
         for v in vehicles:
             try:
                 record = {
                     'id': v.id,
-                    'code': v.code,
                     'plate_number': v.plate_number,
                     'route': v.route.full_name if v.route else '—',
                     'driver': v.active_driver.name if v.active_driver else '—',

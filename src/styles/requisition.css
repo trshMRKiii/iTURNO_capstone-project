@@ -82,8 +82,9 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--shadow-sm);
+  -webkit-overflow-scrolling: touch;
 }
 
 .req-table {
@@ -227,6 +228,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   width: 680px;
+  max-width: calc(100vw - 32px);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -681,4 +683,56 @@
   color: var(--text-primary);
   border-top: 2px solid var(--border);
   background: var(--bg-page);
+}
+
+.req-delete-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #e74c3c;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.req-delete-btn:hover {
+  background: #c0392b;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .req-page {
+    padding: 16px;
+  }
+
+  .req-grid-2,
+  .req-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .req-modal {
+    width: 100%;
+    max-width: calc(100vw - 16px);
+  }
+
+  .req-modal-body,
+  .req-modal-header,
+  .req-modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .req-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .req-table th,
+  .req-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
 }

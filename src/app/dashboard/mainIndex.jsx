@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, NavLink } from "react-router-dom";
+import { Routes, Route, NavLink, useLocation } from "react-router-dom";
 import Dashboard from "./Dashboard";
 import Dispatch from "./dispatch/dispatch";
 import Requisition from "./requisition/requisition"
 import Ticket from "./ticket/ticket";
 import Collections from "./collection/collection";
 import Remittance from "./remittance/remittance"
-import Vehicles from "./vehicle/vehicle";
-import Drivers from "./driver/driver";
+import Registry from "./registry/registry";
 import StaffRegistry from "./user/user";
 import Reports from "./report/report";
+import Rewards from "./rewards/rewards";
 import Settings from "./settings/settings"
 import {
   CollectionsIcon,
   DashboardIcon,
   DispatchIcon,
-  DriverIcon,
   RemittanceIcon,
   ReportIcon,
   RequisitionIcon,
+  RewardsIcon,
   SettingsIcon,
   TicketIcon,
   UserIcon,
@@ -31,15 +31,15 @@ import sfcLogo from "../../pictures/sfc-nobg-logo.png";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", Icon: DashboardIcon },
-  { to: "/dashboard/Requisition", label: "Requisition", Icon: RequisitionIcon },
-  { to: "/dashboard/Ticket", label: "Ticket", Icon: TicketIcon },
+  { to: "/dashboard/Requisition", label: "Ticket Requisition", Icon: RequisitionIcon },
+  { to: "/dashboard/Ticket", label: "Ticket Issuance", Icon: TicketIcon },
   { to: "/dashboard/Dispatch", label: "Dispatch", Icon: DispatchIcon },
   { to: "/dashboard/Collections", label: "Transaction", Icon: CollectionsIcon },
   { to: "/dashboard/Remittance", label: "Remittance", Icon: RemittanceIcon },
-  { to: "/dashboard/Vehicles", label: "Vehicles Registry", Icon: VehicleIcon },
-  { to: "/dashboard/Drivers", label: "Drivers Registry", Icon: DriverIcon },
-  { to: "/dashboard/StaffRegistry", label: "Staff Registry", Icon: UserIcon },
+  { to: "/dashboard/Registry", label: "Fleet & Driver", Icon: VehicleIcon },
+  { to: "/dashboard/StaffRegistry", label: "User Management", Icon: UserIcon },
   { to: "/dashboard/Reports", label: "Reports", Icon: ReportIcon },
+  { to: "/dashboard/Rewards", label: "Rewards", Icon: RewardsIcon },
   { to: "/dashboard/Settings", label: "Settings", Icon: SettingsIcon },
 ];
 
@@ -51,28 +51,32 @@ const ROLE_NAV = {
     "/dashboard/Dispatch",
     "/dashboard/Collections",
     "/dashboard/Remittance",
-    "/dashboard/Vehicles",
-    "/dashboard/Drivers",
+    "/dashboard/Registry",
     "/dashboard/StaffRegistry",
     "/dashboard/Reports",
+    "/dashboard/Rewards",
     "/dashboard/Settings",
   ],
   MANAGER: [
     "/dashboard",
     "/dashboard/Collections",
-    "/dashboard/Vehicles",
-    "/dashboard/Drivers",
+    "/dashboard/Registry",
     "/dashboard/StaffRegistry",
     "/dashboard/Reports",
+    "/dashboard/Rewards",
+    "/dashboard/Settings",
   ],
   SUPERVISOR: [
     "/dashboard",
+    "/dashboard/Requisition",
     "/dashboard/Ticket",
     "/dashboard/Dispatch",
     "/dashboard/Collections",
-    "/dashboard/Vehicles",
-    "/dashboard/Drivers",
+    "/dashboard/Remittance",
+    "/dashboard/Registry",
     "/dashboard/Reports",
+    "/dashboard/Rewards",
+    "/dashboard/Settings",
   ],
   PERSONNEL: [
     "/dashboard",
@@ -87,8 +91,14 @@ function mainIndex() {
   const [dark, setDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const showToast = useToast();
   const showConfirm = useConfirm();
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   // dark/light
   useEffect(() => {
@@ -136,7 +146,54 @@ function mainIndex() {
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <header className="mobile-header">
+        <button
+          type="button"
+          className="mobile-nav-toggle"
+          onClick={() => setMobileNavOpen((open) => !open)}
+          aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={mobileNavOpen}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {mobileNavOpen ? (
+              <>
+                <line x1="18" x2="6" y1="6" y2="18" />
+                <line x1="6" x2="18" y1="6" y2="18" />
+              </>
+            ) : (
+              <>
+                <line x1="4" x2="20" y1="6" y2="6" />
+                <line x1="4" x2="20" y1="12" y2="12" />
+                <line x1="4" x2="20" y1="18" y2="18" />
+              </>
+            )}
+          </svg>
+        </button>
+
+        <div className="mobile-header-brand">
+          <img src={sfcLogo} alt="SFC Logo" className="mobile-header-logo" />
+          <span className="mobile-header-name">North Central Terminal</span>
+        </div>
+      </header>
+
+      {mobileNavOpen && (
+        <div
+          className="mobile-nav-overlay"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
+      <aside className={`sidebar${mobileNavOpen ? " sidebar-open" : ""}`}>
         {/* Brand header */}
         <div className="sidebar-brand">
           <div className="sidebar-brand-icon">
@@ -264,10 +321,10 @@ function mainIndex() {
             path="Remittance"
             element={<Remittance />}
           />
-          <Route path="Vehicles" element={<Vehicles />} />
-          <Route path="Drivers" element={<Drivers />} />
+          <Route path="Registry" element={<Registry />} />
           <Route path="StaffRegistry" element={<StaffRegistry />} />
           <Route path="Reports" element={<Reports />} />
+          <Route path="Rewards" element={<Rewards />} />
           <Route path="Settings" element={<Settings />} />
         </Routes>
       </main>

@@ -3,7 +3,11 @@ import { useDriver } from "../../../lib/useDriver";
 import { getDriverCode, getDriverDisplayName } from "../../../lib/driver-utils";
 import "../../../styles/Driver.css";
 
-function Driver() {
+function capitalizeWords(value) {
+  return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+}
+
+function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd }) {
   const {
     drivers,
     loading,
@@ -20,7 +24,15 @@ function Driver() {
     handleDelete,
   } = useDriver();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [internalSearch, setInternalSearch] = useState("");
+  const searchTerm = embedded ? externalSearch : internalSearch;
+  const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  React.useEffect(() => {
+    if (exposeAdd) exposeAdd(handleAdd);
+  }, [exposeAdd, handleAdd]);
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
 
@@ -58,6 +70,17 @@ function Driver() {
 
     return haystack.includes(q);
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedDrivers = filteredDrivers.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <div className="drv-page">
@@ -125,7 +148,7 @@ function Driver() {
           <table className="drv-table">
             <thead>
               <tr>
-                {["Code", "Full Name", "Contact No.", "Status", "Actions"].map(
+                {["IWP", "Full Name", "Contact No.", "Address", "Status", "Actions"].map(
                   (h) => (
                     <th key={h}>{h}</th>
                   ),
@@ -135,7 +158,7 @@ function Driver() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="drv-table-state">
+                  <td colSpan="6" className="drv-table-state">
                     <div className="drv-loading-dots">
                       <div />
                       <div />
@@ -145,7 +168,7 @@ function Driver() {
                 </tr>
               ) : filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="drv-table-state">
+                  <td colSpan="6" className="drv-table-state">
                     <svg
                       width="32"
                       height="32"
@@ -166,13 +189,18 @@ function Driver() {
                   </td>
                 </tr>
               ) : (
-                filteredDrivers.map((driver) => (
+                paginatedDrivers.map((driver) => (
                   <tr key={driver.id} className="drv-row">
                     <td>
                       <span className="drv-code">{getDriverCode(driver)}</span>
                     </td>
                     <td className="drv-td-name">{getDriverDisplayName(driver)}</td>
                     <td className="drv-td-contact">{driver.contact || "—"}</td>
+                    <td className="drv-td-contact">
+                      {[driver.barangay, driver.city, driver.province]
+                        .filter(Boolean)
+                        .join(", ") || "—"}
+                    </td>
                     <td>
                       <div className="drv-status-group">
                         <span
@@ -233,6 +261,27 @@ function Driver() {
             </tbody>
           </table>
         </div>
+        {!loading && filteredDrivers.length > 0 && totalPages > 1 && (
+          <div className="drv-pagination">
+            <button
+              className="drv-page-btn"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+            >
+              Prev
+            </button>
+            <span className="drv-page-info">
+              Page {safePage} of {totalPages}
+            </span>
+            <button
+              className="drv-page-btn"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
@@ -329,14 +378,21 @@ function Driver() {
                     />
                   </label>
                 </div>
-                {editing && (
-                  <div className="drv-profile-hero-info">
-                    <span className="drv-profile-code">{form.code}</span>
+                <div className="drv-profile-hero-info">
+                  <span className="drv-profile-hero-name">
+                    {[form.first_name, form.middle_name, form.last_name]
+                      .filter(Boolean)
+                      .join(" ") || "New Driver"}
+                  </span>
+                  <div className="drv-profile-hero-tags">
+                    {editing && (
+                      <span className="drv-profile-code">{form.code}</span>
+                    )}
                     <span className={`drv-status ${form.status === "ACTIVE" ? "drv-status--active" : "drv-status--inactive"}`}>
                       {form.status === "ACTIVE" ? "Active" : "Inactive"}
                     </span>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Personal Information */}
@@ -357,7 +413,7 @@ function Driver() {
                       placeholder="First name"
                       value={form.first_name}
                       onChange={(e) =>
-                        setForm({ ...form, first_name: e.target.value })
+                        setForm({ ...form, first_name: capitalizeWords(e.target.value) })
                       }
                     />
                   </div>
@@ -368,7 +424,7 @@ function Driver() {
                       className="drv-input"
                       placeholder="Last name"
                       value={form.last_name}
-                      onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                      onChange={(e) => setForm({ ...form, last_name: capitalizeWords(e.target.value) })}
                     />
                   </div>
                   <div className="drv-field">
@@ -379,7 +435,10 @@ function Driver() {
                       placeholder="Middle name"
                       value={form.middle_name || ""}
                       onChange={(e) =>
-                        setForm({ ...form, middle_name: e.target.value || null })
+                        setForm({
+                          ...form,
+                          middle_name: capitalizeWords(e.target.value) || null,
+                        })
                       }
                     />
                   </div>

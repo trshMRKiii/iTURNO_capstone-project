@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import jsQR from "jsqr";
 import { useMobileScan } from "./useMobileScan";
 import "../../styles/MobileScan.css";
@@ -12,6 +13,8 @@ function MobileScan() {
     setMode,
     selectedSeriesId,
     setSelectedSeriesId,
+    ticketQuantity,
+    setTicketQuantity,
     activeDrivers,
     availableSeries,
     ticketFee,
@@ -24,12 +27,26 @@ function MobileScan() {
     reset,
   } = useMobileScan();
 
+  const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState(null);
+  const [photoZoomOpen, setPhotoZoomOpen] = useState(false);
+  const [photoBroken, setPhotoBroken] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const rafRef = useRef(null);
+
+  const BACKEND_URL =
+    window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://localhost:8000"
+      : `http://${window.location.hostname}:8000`;
+
+  const driverPhotoUrl = selectedDriver?.photo
+    ? selectedDriver.photo.startsWith("http")
+      ? selectedDriver.photo
+      : `${BACKEND_URL}${selectedDriver.photo}`
+    : null;
 
   const stopScanner = useCallback(() => {
     if (rafRef.current) {
@@ -114,6 +131,10 @@ function MobileScan() {
     return () => stopScanner();
   }, [stopScanner]);
 
+  useEffect(() => {
+    setPhotoBroken(false);
+  }, [selectedDriver]);
+
   if (loading) {
     return (
       <div className="ms-page">
@@ -125,8 +146,16 @@ function MobileScan() {
   return (
     <div className="ms-page">
       <header className="ms-header">
-        <h1 className="ms-title">iTURNO Mobile</h1>
-        <p className="ms-subtitle">Scan QR to issue ticket or log roaming</p>
+        <button className="ms-back-btn" onClick={() => navigate(-1)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
+        <div>
+          <h1 className="ms-title">iTURNO Mobile</h1>
+          <p className="ms-subtitle">Scan QR to issue ticket or log roaming</p>
+        </div>
       </header>
 
       {result && (
@@ -227,10 +256,16 @@ function MobileScan() {
                   value="ROAM"
                   checked={mode === "ROAM"}
                   onChange={() => setMode("ROAM")}
+                  disabled={scannedVehicle.status === "QUEUED"}
                 />
                 <span className="ms-radio-dot" />
                 <span>Roam (Log Only)</span>
               </label>
+              {scannedVehicle.status === "QUEUED" && (
+                <span className="ms-field-hint">
+                  Vehicle is already in the queue — roaming cannot be logged.
+                </span>
+              )}
             </div>
           </div>
 
@@ -256,15 +291,41 @@ function MobileScan() {
             </div>
           )}
 
+          {/* Quantity (only for QUEUE mode) */}
+          {mode === "QUEUE" && (
+            <div className="ms-field">
+              <span className="ms-label">Quantity</span>
+              <input
+                type="number"
+                className="ms-select"
+                min={1}
+                value={ticketQuantity}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setTicketQuantity(Number.isNaN(val) ? 1 : Math.max(1, val));
+                }}
+              />
+            </div>
+          )}
+
           {/* Driver Select */}
           <div className="ms-field">
             <span className="ms-label">Driver</span>
             {selectedDriver && (
-              <div className="ms-driver-badge">
-                <span className="ms-driver-avatar">
-                  {selectedDriver.name.charAt(0)}
-                </span>
-                <span>{selectedDriver.name}</span>
+              <div className="ms-driver-card">
+                {driverPhotoUrl && !photoBroken ? (
+                  <img
+                    className="ms-driver-photo"
+                    src={driverPhotoUrl}
+                    alt={selectedDriver.name}
+                    onClick={() => setPhotoZoomOpen(true)}
+                    onError={() => setPhotoBroken(true)}
+                  />
+                ) : (
+                  <span className="ms-driver-avatar">
+                    {selectedDriver.name.charAt(0)}
+                  </span>
+                )}
               </div>
             )}
             <select
@@ -290,9 +351,27 @@ function MobileScan() {
             {submitting
               ? "Submitting..."
               : mode === "QUEUE"
-                ? "Issue Ticket"
+                ? ticketQuantity > 1
+                  ? `Issue ${ticketQuantity} Tickets`
+                  : "Issue Ticket"
                 : "Log Roaming"}
           </button>
+        </div>
+      )}
+
+      {photoZoomOpen && driverPhotoUrl && !photoBroken && (
+        <div className="ms-lightbox" onClick={() => setPhotoZoomOpen(false)}>
+          <button
+            className="ms-lightbox-close"
+            onClick={() => setPhotoZoomOpen(false)}
+          >
+            ×
+          </button>
+          <img
+            className="ms-lightbox-img"
+            src={driverPhotoUrl}
+            alt={selectedDriver?.name}
+          />
         </div>
       )}
     </div>

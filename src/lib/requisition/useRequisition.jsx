@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiService } from "../api-service";
+import { useToast, useConfirm } from "../../components/ui/ToastConfirmContext";
 
 const EMPTY_SERIES = {
   ticket_form: "",
@@ -12,6 +13,8 @@ const EMPTY_SERIES = {
 };
 
 export function useRequisition() {
+  const showToast = useToast();
+  const showConfirm = useConfirm();
   const [requisitions, setRequisitions] = useState([]);
   const [ticketForms, setTicketForms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,15 +68,16 @@ export function useRequisition() {
     const getPcs = (s) => {
       const start = parseInt(s.start_no) || 0;
       const end = parseInt(s.end_no) || 0;
-      return end > start ? end - start : 0;
+      return end >= start ? end - start + 1 : 0;
     };
 
     const enriched = allSeries.map((s) => {
       const pcs = getPcs(s);
+      const remaining = s.remaining ?? pcs;
       const price = parseFloat(s.ticket_form_price) || 0;
-      return { ...s, pcs, current_value: pcs * price };
+      return { ...s, pcs, remaining, beginning: s.beginning ?? pcs, current_value: remaining * price };
     });
-    const totalStock = enriched.reduce((sum, s) => sum + s.pcs, 0);
+    const totalStock = enriched.reduce((sum, s) => sum + s.remaining, 0);
     const totalValue = enriched.reduce((sum, s) => sum + s.current_value, 0);
     const activeSeries = enriched.length > 0 ? enriched[0] : null;
     const hasStock = totalStock > 0;
@@ -84,7 +88,7 @@ export function useRequisition() {
       if (!byDenomination[key]) {
         byDenomination[key] = { label: key, totalQty: 0, totalValue: 0, series: [] };
       }
-      byDenomination[key].totalQty += s.pcs;
+      byDenomination[key].totalQty += s.remaining;
       byDenomination[key].totalValue += s.current_value;
       byDenomination[key].series.push(s);
     }
@@ -95,10 +99,25 @@ export function useRequisition() {
     return { totalStock, totalValue, activeSeries, hasStock, stockLevel, allStock: enriched, byDenomination };
   }, [allSeries]);
 
+  const getNextStartNo = useCallback((ticketFormId) => {
+    if (!ticketFormId) return "";
+    const matching = allSeries.filter((s) => String(s.ticket_form) === String(ticketFormId));
+    if (matching.length === 0) return "";
+    const lastEndNo = Math.max(...matching.map((s) => parseInt(s.end_no) || 0));
+    return lastEndNo > 0 ? String(lastEndNo + 1) : "";
+  }, [allSeries]);
+
   const updateSeriesItem = (index, field, value) => {
     setSeriesItems((prev) => {
       const copy = [...prev];
       const updated = { ...copy[index], [field]: value };
+
+      if (field === "ticket_form") {
+        const nextStart = getNextStartNo(value);
+        if (nextStart) {
+          updated.start_no = nextStart;
+        }
+      }
 
       if (field === "ticket_form" || field === "qty" || field === "start_no") {
         const form = ticketForms.find((tf) => String(tf.id) === String(updated.ticket_form));
@@ -192,6 +211,20 @@ export function useRequisition() {
     }
   };
 
+  const handleDelete = async (id) => {
+    const confirmed = await showConfirm("Are you sure you want to delete this requisition?");
+    if (!confirmed) return;
+    try {
+      await apiService.delete(`/requisitions/${id}/`);
+      await fetchRequisitions();
+      showToast("Requisition deleted successfully");
+    } catch (err) {
+      const message = err.message || "Failed to delete requisition";
+      setError(message);
+      showToast(message, "info");
+    }
+  };
+
   return {
     requisitions,
     ticketForms,
@@ -208,6 +241,7 @@ export function useRequisition() {
     handleSave,
     handleApprove,
     handleIssue,
+    handleDelete,
     refresh: fetchRequisitions,
     allSeries,
     inventory,

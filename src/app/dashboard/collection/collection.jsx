@@ -14,7 +14,6 @@ function Collection({ userRole }) {
     shifts,
     loading: shiftsLoading,
     error: shiftsError,
-    updateShifts,
   } = useShifts();
   const {
     tickets,
@@ -30,14 +29,13 @@ function Collection({ userRole }) {
     handleVerifyBatch,
     handleVerifyTicket,
     isBatchVerifiable,
+    isBatchEnded,
   } = useCollection(shifts);
 
   const [activeTab, setActiveTab] = useState("collection");
   const [currentPage, setCurrentPage] = useState(1);
   const [isUnverifiedModalOpen, setIsUnverifiedModalOpen] = useState(false);
   const [confirmingBatchKey, setConfirmingBatchKey] = useState(null);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [editingShifts, setEditingShifts] = useState({});
 
   const [roamingLogs, setRoamingLogs] = useState([]);
   const [roamingLoading, setRoamingLoading] = useState(false);
@@ -127,55 +125,6 @@ function Collection({ userRole }) {
     }
   };
 
-  const formatLabel = (name, startHour, endHour) => {
-    const start =
-      startHour < 12
-        ? `${startHour}am`
-        : startHour === 12
-          ? "12pm"
-          : `${startHour - 12}pm`;
-    const end =
-      endHour < 12
-        ? `${endHour}am`
-        : endHour === 12
-          ? "12pm"
-          : `${endHour - 12}pm`;
-    return `${name} (${start}-${end})`;
-  };
-
-  const handleScheduleFieldChange = (key, field, value) => {
-    setEditingShifts((prev) => {
-      const updated = {
-        ...prev,
-        [key]: {
-          ...prev[key],
-          [field]:
-            field === "startHour" || field === "endHour"
-              ? Number(value)
-              : value,
-        },
-      };
-      // Recalculate label if startHour or endHour changed
-      if (field === "startHour" || field === "endHour") {
-        updated[key].label = formatLabel(
-          updated[key].name,
-          updated[key].startHour,
-          updated[key].endHour,
-        );
-      }
-      return updated;
-    });
-  };
-
-  const handleSaveSchedule = async () => {
-    try {
-      await updateShifts(editingShifts);
-      setIsScheduleModalOpen(false);
-    } catch (err) {
-      console.error("Failed to save schedule", err);
-    }
-  };
-
   const batchKeys = Object.keys(shifts || {});
 
   return (
@@ -187,45 +136,9 @@ function Collection({ userRole }) {
           <div>
             <h1 className="col-title">Tally &amp; Collections</h1>
             <p className="col-subtitle">
-              Automated revenue recording — ₱10 per dispatch
+              Automated revenue recording
             </p>
           </div>
-        </div>
-        <div>
-          <button
-            className="col-schedule-btn"
-            onClick={() => {
-              setEditingShifts(JSON.parse(JSON.stringify(shifts)));
-              setIsScheduleModalOpen(true);
-            }}
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-            Batch Schedule
-            <span className="col-schedule-btn__edit">
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-              Edit
-            </span>
-          </button>
         </div>
       </div>
 
@@ -278,6 +191,8 @@ function Collection({ userRole }) {
                   batchKey={shift.name}
                   onVerify={handleVerifyBatchWithConfirm}
                   verifyingBatch={verifyingBatch}
+                  userRole={userRole}
+                  isBatchEnded={isBatchEnded(shift.name)}
                 />
               );
             })
@@ -422,7 +337,7 @@ function Collection({ userRole }) {
                             className={`col-table-row ${ticket.is_late ? "col-table-row--late" : ""}`}
                           >
                             <td>
-                              <span className="col-id-badge">#{ticket.id}</span>
+                              <span className="col-id-badge">{ticket.id.replace(/^TICKET-/i, '')}</span>
                             </td>
                             <td>
                               <div className="col-batch-cell">
@@ -562,7 +477,7 @@ function Collection({ userRole }) {
                   <table className="col-table">
                     <thead>
                       <tr>
-                        {["#", "Vehicle", "Driver", "Recorded By", "Time", "Notes"].map((h) => (
+                        {["Vehicle", "Driver", "Recorded By", "Time", "Notes"].map((h) => (
                           <th key={h}>{h}</th>
                         ))}
                       </tr>
@@ -587,7 +502,7 @@ function Collection({ userRole }) {
                       ) : (
                         currentRoaming.map((log) => (
                           <tr key={log.id} className="col-table-row">
-                            <td><span className="col-id-badge">#{log.id}</span></td>
+                            
                             <td>
                               {log.vehicle_plate ? (
                                 <span className="col-plate">{log.vehicle_plate}</span>
@@ -772,7 +687,7 @@ function Collection({ userRole }) {
                         return (
                           <tr key={ticket.id} className="col-table-row">
                             <td>
-                              <span className="col-id-badge">#{ticket.id}</span>
+                              <span className="col-id-badge">{ticket.id.replace(/^TICKET-/i, '')}</span>
                             </td>
                             <td>
                               <div className="col-batch-cell">
@@ -822,187 +737,6 @@ function Collection({ userRole }) {
         </div>
       )}
 
-      {isScheduleModalOpen && (
-        <div
-          className="col-sched-overlay"
-          onClick={() => setIsScheduleModalOpen(false)}
-        >
-          <div className="col-sched-modal" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="col-sched-modal-header">
-              <div className="col-sched-modal-header-left">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#c9a84c"
-                  strokeWidth="2"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                <h2 className="col-sched-modal-title">Edit Batch Schedule</h2>
-              </div>
-              <button
-                type="button"
-                className="col-sched-modal-close"
-                onClick={() => setIsScheduleModalOpen(false)}
-                aria-label="Close"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                >
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="col-sched-modal-body">
-              {Object.entries(editingShifts).map(([key, shift], idx, arr) => (
-                <div
-                  key={key}
-                  className={`col-sched-batch-block${idx < arr.length - 1 ? " col-sched-batch-block--bordered" : ""}`}
-                >
-                  {/* Current schedule display — mirrors ticket-price-current */}
-                  <div className="col-sched-batch-label-row">
-                    <span className="col-sched-batch-name">{shift.name}</span>
-                    <span className="col-sched-batch-preview">
-                      {shift.label}
-                    </span>
-                  </div>
-
-                  {/* Start & End hour inputs side-by-side */}
-                  <div className="col-sched-hours-row">
-                    <div className="col-sched-field">
-                      <label className="col-sched-label">Start Hour</label>
-                      <div className="col-sched-input-wrap">
-                        <span className="col-sched-input-prefix">
-                          <svg
-                            width="13"
-                            height="13"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12" />
-                          </svg>
-                        </span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="23"
-                          className="col-sched-input"
-                          value={shift.startHour}
-                          onChange={(e) =>
-                            handleScheduleFieldChange(
-                              key,
-                              "startHour",
-                              e.target.value,
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="col-sched-hours-divider">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        opacity="0.4"
-                      >
-                        <path d="M5 12h14" />
-                        <path d="m12 5 7 7-7 7" />
-                      </svg>
-                    </div>
-
-                    <div className="col-sched-field">
-                      <label className="col-sched-label">End Hour</label>
-                      <div className="col-sched-input-wrap">
-                        <span className="col-sched-input-prefix">
-                          <svg
-                            width="13"
-                            height="13"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 12 16 14" />
-                          </svg>
-                        </span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="23"
-                          className="col-sched-input"
-                          value={shift.endHour}
-                          onChange={(e) =>
-                            handleScheduleFieldChange(
-                              key,
-                              "endHour",
-                              e.target.value,
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <p className="col-sched-note">
-                Changes take effect immediately after saving. Tickets already
-                issued retain their original batch assignment.
-              </p>
-            </div>
-
-            {/* Footer */}
-            <div className="col-sched-modal-footer">
-              <button
-                type="button"
-                className="col-sched-modal-btn col-sched-modal-btn--cancel"
-                onClick={() => setIsScheduleModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="col-sched-modal-btn col-sched-modal-btn--submit"
-                onClick={handleSaveSchedule}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                Save Schedule
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {isRoamingModalOpen && (
         <div className="col-sched-overlay" onClick={() => setIsRoamingModalOpen(false)}>
           <div className="col-sched-modal" onClick={(e) => e.stopPropagation()}>

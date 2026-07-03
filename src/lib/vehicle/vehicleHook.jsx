@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../api-service";
-import { useConfirm } from "../../components/ui/ToastConfirmContext";
+import { useConfirm, useToast } from "../../components/ui/ToastConfirmContext";
 
 export const DESTINATION = "San Fernando";
 
@@ -25,6 +25,23 @@ export const STATUS_LABEL = {
   AVAILABLE: "Available",
   ON_TRIP: "On Trip",
   MAINTENANCE: "Under Maintenance",
+};
+
+// Formats free-typed input into LLL-1234 as the user types, auto-inserting the dash.
+export const formatPlateNumber = (value) => {
+  const clean = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const letters = clean.slice(0, 3).replace(/[0-9]/g, "");
+  const digits = clean.slice(letters.length, letters.length + 4).replace(/[^0-9]/g, "");
+  if (!letters) return "";
+  return digits ? `${letters}-${digits}` : letters;
+};
+
+// Builds a display address string from a driver's location fields.
+export const buildDriverAddress = (driver) => {
+  if (!driver) return "";
+  return [driver.street, driver.barangay, driver.city, driver.province]
+    .filter(Boolean)
+    .join(", ");
 };
 
 // field wrapper for modal
@@ -148,6 +165,7 @@ export function useVehicle() {
   const [routeError, setRouteError] = useState("");
 
   const showConfirm = useConfirm();
+  const showToast = useToast();
 
   useEffect(() => {
     fetchDrivers();
@@ -321,8 +339,10 @@ export function useVehicle() {
     try {
       await apiService.deleteVehicle(id);
       fetchVehicles();
+      showToast("Vehicle record deleted successfully");
     } catch (err) {
       setError(err.message);
+      showToast(err.message || "Failed to delete vehicle", "info");
     }
   };
 
@@ -332,6 +352,7 @@ export function useVehicle() {
     vehicles,
     drivers,
     routes,
+    activeDrivers,
     loading,
     error,
     editing,
@@ -344,7 +365,6 @@ export function useVehicle() {
     setNewOrigin,
     routeError,
     selectedRoute,
-    activeDrivers,
     transportationTypes,
     handleSubmit,
     handleEdit,

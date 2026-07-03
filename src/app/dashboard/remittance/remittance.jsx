@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import CreateBatchForm from "../../../lib/remittance/createRemittance";
 import ViewRemittance from "../../../lib/remittance/viewRemittance";
 import { useRemittance } from "../../../lib/remittance/useRemittance";
+import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import "../../../styles/Remittance.css";
 
 const STATUS_COLOR = {
@@ -17,10 +18,27 @@ export default function Remittance() {
     loading,
     error,
     handleSaveBatch,
+    handleDeleteBatch,
   } = useRemittance();
+
+  const showToast = useToast();
+  const showConfirm = useConfirm();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewBatch, setViewBatch] = useState(null);
+
+  const handleDeleteClick = async (batch) => {
+    const ok = await showConfirm(
+      `Delete remittance batch #${batch.id}? This action cannot be undone.`
+    );
+    if (!ok) return;
+    try {
+      await handleDeleteBatch(batch.id);
+      showToast("Remittance batch deleted", "success");
+    } catch {
+      showToast("Failed to delete remittance batch", "info");
+    }
+  };
 
   const filteredBatches = batches.filter((b) => {
     const q = searchTerm.toLowerCase().trim();
@@ -84,7 +102,7 @@ export default function Remittance() {
           <table className="rem-table">
             <thead>
               <tr>
-                {["Batch ID", "Issued By", "Issued At", "Total Amount", "Status", "Actions"].map((h) => (
+                {["Issued By", "Issued At", "Total Amount", "Actions"].map((h) => (
                   <th key={h}>{h}</th>
                 ))}
               </tr>
@@ -117,9 +135,7 @@ export default function Remittance() {
               ) : (
                 filteredBatches.map((b) => (
                   <tr key={b.id} className="rem-row">
-                    <td>
-                      <span className="rem-batch-id">{b.id}</span>
-                    </td>
+                    
                     <td className="rem-td-meta">{b.issued_by_name}</td>
                     <td className="rem-td-meta">
                       {new Date(b.issued_at).toLocaleDateString("en-US", {
@@ -137,11 +153,7 @@ export default function Remittance() {
                         ₱{Number(b.total_amount).toLocaleString()}
                       </span>
                     </td>
-                    <td>
-                      <span className={`rem-status ${STATUS_COLOR[b.status] || "rem-status--open"}`}>
-                        {b.status}
-                      </span>
-                    </td>
+                    
                     <td>
                       <div className="rem-actions">
                         <button className="rem-btn rem-btn--view" onClick={() => setViewBatch(b)}>
@@ -150,6 +162,13 @@ export default function Remittance() {
                             <circle cx="12" cy="12" r="3" />
                           </svg>
                           View
+                        </button>
+                        <button className="rem-btn rem-btn--delete" onClick={() => handleDeleteClick(b)}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          Delete
                         </button>
                       </div>
                     </td>

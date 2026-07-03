@@ -1,8 +1,96 @@
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../../lib/api-service";
+import { useToast } from "../../../components/ui/ToastConfirmContext";
+import { useShifts } from "../../../lib/useShifts";
 import "../../../styles/Settings.css";
 
+const TABS = [
+  {
+    key: "puv",
+    label: "PUV Types",
+    description: "Vehicle classifications used across the system",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="1" y="3" width="15" height="13" rx="1" />
+        <path d="M16 8h4l3 3v5h-7V8z" />
+        <circle cx="5.5" cy="18.5" r="2.5" />
+        <circle cx="18.5" cy="18.5" r="2.5" />
+      </svg>
+    ),
+  },
+  {
+    key: "routes",
+    label: "Routes",
+    description: "Origin points connected to the terminal",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="10" r="3" />
+        <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z" />
+      </svg>
+    ),
+  },
+  {
+    key: "ticketForms",
+    label: "Ticket Forms",
+    description: "Ticket types and their corresponding prices",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+    ),
+  },
+  {
+    key: "rewards",
+    label: "Rewards",
+    description: "Points redemption rules for the driver rewards program",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+        <path d="M4 22h16" />
+        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+      </svg>
+    ),
+  },
+  {
+    key: "batchSchedule",
+    label: "Batch Schedule",
+    description: "Start and end hours for each collection batch",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+  },
+];
+
+const DeleteIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M5 12h14" /><path d="M12 5v14" />
+  </svg>
+);
+
+const SearchIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.35-4.35" />
+  </svg>
+);
+
 function Settings() {
+  const [activeTab, setActiveTab] = useState("puv");
+
   const [puvTypes, setPuvTypes] = useState([]);
   const [newType, setNewType] = useState("");
 
@@ -13,10 +101,77 @@ function Settings() {
   const [newTicketForm, setNewTicketForm] = useState("");
   const [newTicketFormPrice, setNewTicketFormPrice] = useState("");
 
-  const [denominations, setDenominations] = useState([]);
-  const [newDenomLabel, setNewDenomLabel] = useState("");
-  const [newDenomValue, setNewDenomValue] = useState("");
-  const [newDenomType, setNewDenomType] = useState("bill");
+  const [rewardConfig, setRewardConfig] = useState(null);
+  const [rewardForm, setRewardForm] = useState({
+    points_per_redemption: "",
+    peso_value_per_redemption: "",
+    max_redemptions_per_year: "",
+    cooldown_months: "",
+  });
+  const [savingRewardConfig, setSavingRewardConfig] = useState(false);
+  const showToast = useToast();
+
+  const [search, setSearch] = useState("");
+
+  const {
+    shifts,
+    loading: shiftsLoading,
+    error: shiftsError,
+    updateShifts,
+  } = useShifts();
+  const [editingShifts, setEditingShifts] = useState({});
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  useEffect(() => {
+    if (shifts && Object.keys(shifts).length > 0) {
+      setEditingShifts(JSON.parse(JSON.stringify(shifts)));
+    }
+  }, [shifts]);
+
+  const formatLabel = (name, startHour, endHour) => {
+    const start =
+      startHour < 12
+        ? `${startHour}am`
+        : startHour === 12
+          ? "12pm"
+          : `${startHour - 12}pm`;
+    const end =
+      endHour < 12
+        ? `${endHour}am`
+        : endHour === 12
+          ? "12pm"
+          : `${endHour - 12}pm`;
+    return `${name} (${start}-${end})`;
+  };
+
+  const handleScheduleFieldChange = (key, field, value) => {
+    setEditingShifts((prev) => {
+      const updated = {
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [field]: field === "startHour" || field === "endHour" ? Number(value) : value,
+        },
+      };
+      if (field === "startHour" || field === "endHour") {
+        updated[key].label = formatLabel(updated[key].name, updated[key].startHour, updated[key].endHour);
+      }
+      return updated;
+    });
+  };
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      await updateShifts(editingShifts);
+      showToast?.("Batch schedule saved", "success");
+    } catch (err) {
+      console.error("Failed to save schedule", err);
+      showToast?.("Failed to save batch schedule", "info");
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
 
   useEffect(() => {
     apiService.getPUVTypes()
@@ -32,6 +187,15 @@ function Settings() {
       setNewType("");
     } catch (err) {
       console.error("Failed to create:", err);
+    }
+  };
+
+  const handleDeletePUVType = async (id) => {
+    try {
+      await apiService.deletePUVType(id);
+      setPuvTypes(puvTypes.filter(pt => pt.id !== id));
+    } catch (err) {
+      console.error("Failed to delete PUV type:", err);
     }
   };
 
@@ -89,35 +253,56 @@ function Settings() {
   };
 
   useEffect(() => {
-    apiService.getDenominations()
-      .then(setDenominations)
-      .catch(err => console.error("Failed to load denominations:", err));
+    apiService.getRewardConfig()
+      .then((cfg) => {
+        setRewardConfig(cfg);
+        setRewardForm({
+          points_per_redemption: cfg.points_per_redemption,
+          peso_value_per_redemption: cfg.peso_value_per_redemption,
+          max_redemptions_per_year: cfg.max_redemptions_per_year,
+          cooldown_months: cfg.cooldown_months,
+        });
+      })
+      .catch(err => console.error("Failed to load reward config:", err));
   }, []);
 
-  const handleAddDenomination = async () => {
-    if (!newDenomLabel.trim() || !newDenomValue) return;
+  const handleSaveRewardConfig = async () => {
+    setSavingRewardConfig(true);
     try {
-      const created = await apiService.createDenomination({
-        label: newDenomLabel,
-        value: parseFloat(newDenomValue),
-        type: newDenomType,
+      const updated = await apiService.updateRewardConfig({
+        points_per_redemption: parseInt(rewardForm.points_per_redemption, 10) || 0,
+        peso_value_per_redemption: parseFloat(rewardForm.peso_value_per_redemption) || 0,
+        max_redemptions_per_year: parseInt(rewardForm.max_redemptions_per_year, 10) || 0,
+        cooldown_months: parseInt(rewardForm.cooldown_months, 10) || 0,
       });
-      setDenominations([...denominations, created]);
-      setNewDenomLabel("");
-      setNewDenomValue("");
-      setNewDenomType("bill");
+      setRewardConfig(updated);
+      showToast?.("Reward settings saved", "success");
     } catch (err) {
-      console.error("Failed to create denomination:", err);
+      console.error("Failed to save reward config:", err);
+      showToast?.("Failed to save reward settings", "info");
+    } finally {
+      setSavingRewardConfig(false);
     }
   };
 
-  const handleDeleteDenomination = async (id) => {
-    try {
-      await apiService.deleteDenomination(id);
-      setDenominations(denominations.filter(d => d.id !== id));
-    } catch (err) {
-      console.error("Failed to delete denomination:", err);
-    }
+  // reset search when switching tabs
+  const switchTab = (key) => {
+    setActiveTab(key);
+    setSearch("");
+  };
+
+  const q = search.trim().toLowerCase();
+
+  const filteredPuvTypes = puvTypes.filter(pt => !q || pt.name?.toLowerCase().includes(q));
+  const filteredRoutes = routes.filter(r => !q || r.full_name?.toLowerCase().includes(q));
+  const filteredTicketForms = ticketForms.filter(tf => !q || tf.name?.toLowerCase().includes(q));
+
+  const counts = {
+    puv: puvTypes.length,
+    routes: routes.length,
+    ticketForms: ticketForms.length,
+    rewards: rewardConfig ? 1 : 0,
+    batchSchedule: Object.keys(shifts || {}).length,
   };
 
   return (
@@ -133,30 +318,75 @@ function Settings() {
         </div>
       </div>
 
-      <div className="set-sections">
-        {/* PUV Types */}
-        <div className="set-card">
-          <div className="set-card-header">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2">
-              <rect x="1" y="3" width="15" height="13" rx="1" />
-              <path d="M16 8h4l3 3v5h-7V8z" />
-              <circle cx="5.5" cy="18.5" r="2.5" />
-              <circle cx="18.5" cy="18.5" r="2.5" />
-            </svg>
-            <h2 className="set-card-title">PUV Types</h2>
+      {/* Tabs */}
+      <div className="set-tabs">
+        {TABS.map(tab => (
+          <button
+            key={tab.key}
+            className={`set-tab ${activeTab === tab.key ? "set-tab-active" : ""}`}
+            onClick={() => switchTab(tab.key)}
+          >
+            <span className="set-tab-icon">{tab.icon}</span>
+            <span>{tab.label}</span>
+            <span className="set-tab-count">{counts[tab.key]}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Panel */}
+      <div className="set-panel">
+        <div className="set-panel-toolbar">
+          <div className="set-panel-heading">
+            <h2 className="set-panel-title">{TABS.find(t => t.key === activeTab)?.label}</h2>
+
           </div>
-          <div className="set-card-body">
-            {puvTypes.length === 0 ? (
-              <div className="set-empty">No PUV types configured</div>
-            ) : (
-              <ul className="set-list">
-                {puvTypes.map(pt => (
-                  <li key={pt.id} className="set-list-item">
-                    <span className="set-item-label">{pt.name}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+          {activeTab !== "rewards" && activeTab !== "batchSchedule" && (
+            <div className="set-search">
+              <SearchIcon />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={`Search ${TABS.find(t => t.key === activeTab)?.label.toLowerCase()}...`}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* PUV Types */}
+        {activeTab === "puv" && (
+          <>
+            <div className="set-table-wrap">
+              <table className="set-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th className="set-th-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPuvTypes.length === 0 ? (
+                    <tr>
+                      <td colSpan="2" className="set-table-state">
+                        {puvTypes.length === 0 ? "No PUV types configured" : "No matches found"}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPuvTypes.map(pt => (
+                      <tr key={pt.id} className="set-row">
+                        <td className="set-cell-label">{pt.name}</td>
+                        <td className="set-cell-actions">
+                          <button className="set-delete-btn" onClick={() => handleDeletePUVType(pt.id)}>
+                            <DeleteIcon />
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
             <div className="set-add-row">
               <input
                 type="text"
@@ -166,43 +396,47 @@ function Settings() {
                 placeholder="New PUV Type"
               />
               <button className="set-add-btn" onClick={handleAddPUVType}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12h14" /><path d="M12 5v14" />
-                </svg>
+                <PlusIcon />
                 Add
               </button>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* Routes */}
-        <div className="set-card">
-          <div className="set-card-header">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2">
-              <circle cx="12" cy="10" r="3" />
-              <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z" />
-            </svg>
-            <h2 className="set-card-title">Routes</h2>
-          </div>
-          <div className="set-card-body">
-            {routes.length === 0 ? (
-              <div className="set-empty">No routes configured</div>
-            ) : (
-              <ul className="set-list">
-                {routes.map(route => (
-                  <li key={route.id} className="set-list-item">
-                    <span className="set-item-label">{route.full_name}</span>
-                    <button className="set-delete-btn" onClick={() => handleDeleteRoute(route.id)}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      </svg>
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+        {activeTab === "routes" && (
+          <>
+            <div className="set-table-wrap">
+              <table className="set-table">
+                <thead>
+                  <tr>
+                    <th>Route</th>
+                    <th className="set-th-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRoutes.length === 0 ? (
+                    <tr>
+                      <td colSpan="2" className="set-table-state">
+                        {routes.length === 0 ? "No routes configured" : "No matches found"}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRoutes.map(route => (
+                      <tr key={route.id} className="set-row">
+                        <td className="set-cell-label">{route.full_name}</td>
+                        <td className="set-cell-actions">
+                          <button className="set-delete-btn" onClick={() => handleDeleteRoute(route.id)}>
+                            <DeleteIcon />
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
             <div className="set-add-row">
               <input
                 type="text"
@@ -212,46 +446,49 @@ function Settings() {
                 placeholder="New Route Origin"
               />
               <button className="set-add-btn" onClick={handleAddRoute}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12h14" /><path d="M12 5v14" />
-                </svg>
+                <PlusIcon />
                 Add Route
               </button>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* Ticket Forms */}
-        <div className="set-card">
-          <div className="set-card-header">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            <h2 className="set-card-title">Ticket Forms</h2>
-          </div>
-          <div className="set-card-body">
-            {ticketForms.length === 0 ? (
-              <div className="set-empty">No ticket forms configured</div>
-            ) : (
-              <ul className="set-list">
-                {ticketForms.map(tf => (
-                  <li key={tf.id} className="set-list-item">
-                    <div>
-                      <span className="set-item-label">{tf.name}</span>
-                      <span className="set-item-meta">₱{Number(tf.price || 0).toFixed(2)}</span>
-                    </div>
-                    <button className="set-delete-btn" onClick={() => handleDeleteTicketForm(tf.id)}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      </svg>
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+        {activeTab === "ticketForms" && (
+          <>
+            <div className="set-table-wrap">
+              <table className="set-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th className="set-th-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTicketForms.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="set-table-state">
+                        {ticketForms.length === 0 ? "No ticket forms configured" : "No matches found"}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTicketForms.map(tf => (
+                      <tr key={tf.id} className="set-row">
+                        <td className="set-cell-label">{tf.name}</td>
+                        <td className="set-cell-meta">₱{Number(tf.price || 0).toFixed(2)}</td>
+                        <td className="set-cell-actions">
+                          <button className="set-delete-btn" onClick={() => handleDeleteTicketForm(tf.id)}>
+                            <DeleteIcon />
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
             <div className="set-add-row">
               <input
                 type="text"
@@ -269,76 +506,128 @@ function Settings() {
                 style={{ maxWidth: 120 }}
               />
               <button className="set-add-btn" onClick={handleAddTicketForm}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12h14" /><path d="M12 5v14" />
-                </svg>
+                <PlusIcon />
                 Add Ticket Form
               </button>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Denominations */}
-        <div className="set-card">
-          <div className="set-card-header">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2">
-              <line x1="12" y1="1" x2="12" y2="23" />
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-            <h2 className="set-card-title">Denominations (Monetary)</h2>
-          </div>
-          <div className="set-card-body">
-            {denominations.length === 0 ? (
-              <div className="set-empty">No denominations configured</div>
-            ) : (
-              <ul className="set-list">
-                {denominations.map(d => (
-                  <li key={d.id} className="set-list-item">
-                    <div>
-                      <span className="set-item-label">{d.label}</span>
-                      <span className="set-item-meta">₱{d.value}</span>
-                      <span className="set-denom-badge">{d.type}</span>
-                    </div>
-                    <button className="set-delete-btn" onClick={() => handleDeleteDenomination(d.id)}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      </svg>
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+        {/* Rewards */}
+        {activeTab === "rewards" && (
+          <div className="set-rewards-form">
+            <p className="set-rewards-note">
+              Drivers earn 1 point per queue logged, plus a +3 bonus for 4 queues in a day
+              (replaced by +5 if they reach 5+ that same day), +10 for a 5-day consecutive
+              queue streak, and +30 for being active 20+ days in a month. The settings below
+              only control redemption: how many points are needed, how much they're worth in
+              pesos, and the yearly limit and cooldown between redemptions.
+            </p>
             <div className="set-add-row">
-              <input
-                type="text"
-                className="set-input"
-                value={newDenomLabel}
-                onChange={(e) => setNewDenomLabel(e.target.value)}
-                placeholder="Label (e.g. 1000 Peso Bill)"
-              />
-              <input
-                type="number"
-                className="set-input"
-                value={newDenomValue}
-                onChange={(e) => setNewDenomValue(e.target.value)}
-                placeholder="Value"
-                style={{ maxWidth: 120 }}
-              />
-              <select className="set-select" value={newDenomType} onChange={(e) => setNewDenomType(e.target.value)}>
-                <option value="bill">Bill</option>
-                <option value="coin">Coin</option>
-              </select>
-              <button className="set-add-btn" onClick={handleAddDenomination}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12h14" /><path d="M12 5v14" />
-                </svg>
-                Add
+              <label className="set-field">
+                <span className="set-field-label">Points per redemption</span>
+                <input
+                  type="number"
+                  className="set-input"
+                  value={rewardForm.points_per_redemption}
+                  onChange={(e) => setRewardForm({ ...rewardForm, points_per_redemption: e.target.value })}
+                  placeholder="1000"
+                />
+              </label>
+              <label className="set-field">
+                <span className="set-field-label">Peso value (₱)</span>
+                <input
+                  type="number"
+                  className="set-input"
+                  value={rewardForm.peso_value_per_redemption}
+                  onChange={(e) => setRewardForm({ ...rewardForm, peso_value_per_redemption: e.target.value })}
+                  placeholder="500"
+                />
+              </label>
+            </div>
+            <div className="set-add-row">
+              <label className="set-field">
+                <span className="set-field-label">Max redemptions per year</span>
+                <input
+                  type="number"
+                  className="set-input"
+                  value={rewardForm.max_redemptions_per_year}
+                  onChange={(e) => setRewardForm({ ...rewardForm, max_redemptions_per_year: e.target.value })}
+                  placeholder="2"
+                />
+              </label>
+              <label className="set-field">
+                <span className="set-field-label">Cooldown (months)</span>
+                <input
+                  type="number"
+                  className="set-input"
+                  value={rewardForm.cooldown_months}
+                  onChange={(e) => setRewardForm({ ...rewardForm, cooldown_months: e.target.value })}
+                  placeholder="6"
+                />
+              </label>
+            </div>
+            <div className="set-add-row">
+              <button className="set-add-btn" onClick={handleSaveRewardConfig} disabled={savingRewardConfig}>
+                <PlusIcon />
+                {savingRewardConfig ? "Saving..." : "Save Rewards Settings"}
               </button>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Batch Schedule */}
+        {activeTab === "batchSchedule" && (
+          <div className="set-rewards-form">
+            {shiftsLoading ? (
+              <p className="set-rewards-note">Loading schedule...</p>
+            ) : Object.keys(editingShifts).length === 0 ? (
+              <p className="set-rewards-note">No shift configuration found.</p>
+            ) : (
+              Object.entries(editingShifts).map(([key, shift]) => (
+                <div key={key} className="set-add-row" style={{ alignItems: "flex-end" }}>
+                  <label className="set-field">
+                    <span className="set-field-label">{shift.name} — {shift.label}</span>
+                  </label>
+                  <label className="set-field">
+                    <span className="set-field-label">Start Hour</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      className="set-input"
+                      value={shift.startHour}
+                      onChange={(e) => handleScheduleFieldChange(key, "startHour", e.target.value)}
+                    />
+                  </label>
+                  <label className="set-field">
+                    <span className="set-field-label">End Hour</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      className="set-input"
+                      value={shift.endHour}
+                      onChange={(e) => handleScheduleFieldChange(key, "endHour", e.target.value)}
+                    />
+                  </label>
+                </div>
+              ))
+            )}
+            {(shiftsError) && (
+              <p className="set-rewards-note" style={{ color: "#c0392b" }}>{shiftsError}</p>
+            )}
+            <p className="set-rewards-note">
+              Changes take effect immediately after saving. Tickets already issued retain their original batch assignment.
+            </p>
+            <div className="set-add-row">
+              <button className="set-add-btn" onClick={handleSaveSchedule} disabled={savingSchedule || Object.keys(editingShifts).length === 0}>
+                <PlusIcon />
+                {savingSchedule ? "Saving..." : "Save Batch Schedule"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

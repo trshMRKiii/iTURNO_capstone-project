@@ -24,6 +24,7 @@ function Requisition() {
     handleSave,
     allSeries,
     inventory,
+    handleDelete,
   } = useRequisition();
 
   const [expandedId, setExpandedId] = useState(null);
@@ -172,20 +173,21 @@ function Requisition() {
                               <table className="req-series-table">
                                 <thead>
                                   <tr>
-                                    <th>Type (Form No.)</th>
-                                    <th className="text-right">From</th>
-                                    <th className="text-right">To</th>
+                                    <th>Series No.</th>
+                                    
+                                    <th className="text-right">Beginning</th>
+                                    <th className="text-right">Remaining</th>
                                     <th className="text-right">Amount</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {d.series.map((ts) => (
-                                    <tr key={ts.id}>
-                                      <td>{ts.ticket_form_label || "—"}</td>
-                                      <td className="text-right">{Number(ts.start_no || 0).toLocaleString()}</td>
-                                      <td className="text-right">{Number(ts.end_no || 0).toLocaleString()}</td>
-                                      <td className="text-right">{formatCurrency(ts.current_value)}</td>
-                                    </tr>
+                                      <tr key={ts.id}>
+                                        <td>{ts.series_no || "—"}</td>
+                                        <td className="text-right">{(ts.beginning ?? ts.pcs ?? 0).toLocaleString()}</td>
+                                        <td className="text-right">{(ts.remaining ?? ts.pcs ?? 0).toLocaleString()}</td>
+                                        <td className="text-right">{formatCurrency(ts.current_value)}</td>
+                                      </tr>
                                   ))}
                                 </tbody>
                               </table>
@@ -226,11 +228,12 @@ function Requisition() {
               <table className="req-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
+                    
                     <th>Date</th>
                     <th>Requested By</th>
                     <th>Series Count</th>
                     <th className="text-right">Total Amount</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -240,7 +243,7 @@ function Requisition() {
                         onClick={() => toggleExpand(req.id)}
                         style={{ cursor: "pointer" }}
                       >
-                        <td>#{req.id}</td>
+
                         <td>
                           {new Date(req.date_requested).toLocaleDateString("en-PH", {
                             year: "numeric",
@@ -253,20 +256,31 @@ function Requisition() {
                         <td className="text-right">
                           {formatCurrency(req.total_value)}
                         </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="req-delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(req.id);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
                       </tr>
 
                       {expandedId === req.id &&
                         req.ticket_series &&
                         req.ticket_series.length > 0 && (
                           <tr className="req-series-row">
-                            <td colSpan={5}>
+                            <td colSpan={6}>
                               <table className="req-series-table">
                                 <thead>
                                   <tr>
                                     <th>Series No.</th>
                                     <th>Ticket Form</th>
-                                    <th>Pad No.</th>
-                                    <th>Box No.</th>
+                                    
                                     <th>QTY</th>
                                     <th>Total Amount</th>
                                   </tr>
@@ -276,8 +290,7 @@ function Requisition() {
                                     <tr key={ts.id}>
                                       <td>{ts.series_no}</td>
                                       <td>{ts.ticket_form_label || "—"}</td>
-                                      <td>{ts.pad_no || "—"}</td>
-                                      <td>{ts.box_no || "—"}</td>
+                                      
                                       <td>{ts.qty}</td>
                                       <td>{formatCurrency(ts.total_value)}</td>
                                     </tr>

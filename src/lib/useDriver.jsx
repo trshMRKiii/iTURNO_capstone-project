@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiService } from "./api-service";
-import { useConfirm } from "../components/ui/ToastConfirmContext";
+import { useConfirm, useToast } from "../components/ui/ToastConfirmContext";
 import { buildDriverPayload, normalizeDriverForm } from "./driver-utils";
 
 const EMPTY_FORM = {
@@ -46,6 +46,7 @@ export function useDriver() {
   const [form, setForm] = useState(EMPTY_FORM);
 
   const showConfirm = useConfirm();
+  const showToast = useToast();
 
   useEffect(() => {
     fetchDrivers();
@@ -127,17 +128,21 @@ export function useDriver() {
 
   const handleDelete = async (id) => {
     if (isDriverOnActiveTicket(id)) {
-      alert(
+      showToast(
         "Cannot delete this driver — they have an active ticket. Resolve the ticket first.",
+        "info",
       );
       return;
     }
-    if (!confirm("Are you sure you want to remove this driver record?")) return;
+    const confirmed = await showConfirm("Are you sure you want to remove this driver record?");
+    if (!confirmed) return;
     try {
       await apiService.deleteDriver(id);
       fetchDrivers();
+      showToast("Driver record deleted successfully");
     } catch (err) {
       setError(err.message);
+      showToast(err.message || "Failed to delete driver", "info");
     }
   };
 

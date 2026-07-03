@@ -301,24 +301,48 @@ export const apiService = {
     return this.delete(`/ticket-forms/${id}/`);
   },
 
-  getDenominations() {
-    return this.get("/denominations/");
-  },
-
-  createDenomination(data) {
-    return this.post("/denominations/", data);
-  },
-
-  deleteDenomination(id) {
-    return this.delete(`/denominations/${id}/`);
-  },
-
   getRoamingLogs() {
     return this.get("/roaming-logs/");
   },
 
   createRoamingLog(data) {
     return this.post("/roaming-logs/", data);
+  },
+
+  getRewardSummary(driverId) {
+    return this.get(`/rewards/${driverId}/`);
+  },
+
+  getRewardHistory(driverId, params = '') {
+    return this.get(`/rewards/${driverId}/history/${params}`);
+  },
+
+  getRewardRedemptions(driverId) {
+    return this.get(`/rewards/${driverId}/redemptions/`);
+  },
+
+  redeemReward(driverId) {
+    return this.post(`/rewards/${driverId}/redeem/`);
+  },
+
+  getRewardLeaderboard() {
+    return this.get("/rewards/leaderboard/");
+  },
+
+  getAllRewardRedemptions(params = '') {
+    return this.get(`/rewards/redemptions/${params}`);
+  },
+
+  getRewardConfig() {
+    return this.get("/rewards/config/");
+  },
+
+  updateRewardConfig(data) {
+    return this.put("/rewards/config/", data);
+  },
+
+  deleteRemittanceBatch(id) {
+    return this.delete(`/remittance/${id}/`);
   },
 
 };

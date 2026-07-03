@@ -36,6 +36,18 @@ export function useRemittance() {
     }
   };
 
+  // Delete a batch
+  const handleDeleteBatch = async (id) => {
+    try {
+      await apiService.deleteRemittanceBatch(id);
+      setBatches((prev) => prev.filter((b) => b.id !== id));
+    } catch (err) {
+      console.error("Failed to delete batch", err);
+      setError("Failed to delete remittance batch");
+      throw err;
+    }
+  };
+
   return {
     showModal,
     setShowModal,
@@ -43,5 +55,6 @@ export function useRemittance() {
     loading,
     error,
     handleSaveBatch,
+    handleDeleteBatch,
   };
 }

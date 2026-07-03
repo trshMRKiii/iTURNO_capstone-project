@@ -9,29 +9,31 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { exportPDF } from "../../../lib/report/exportPDF";
 import { DataTable } from "../../../components/ui/dataTable";
 import {
-  peso,
   STATUS_COLORS,
   today,
   exportCSV,
   SummaryCard,
 } from "../../../lib/report/reportHook";
+import { exportTablePDF } from "../../../lib/report/exportPDF";
 
-import CollectionRecords from "../../../lib/report/tables/CollectionRecords";
 import TransactionLogs from "../../../lib/report/tables/TransactionLogs";
-import VehicleRecords from "../../../lib/report/tables/VehicleRecords";
-import DriverRecords from "../../../lib/report/tables/DriverRecords";
-
+import FleetRecords from "../../../lib/report/tables/FleetRecords";
+import RewardRedemptions from "../../../lib/report/tables/RewardRedemptions";
+import { getDriverCode } from "../../../lib/driver-utils";
 import "../../../styles/Report.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000/api"
+    : `http://${window.location.hostname}:8000/api`);
 
 export default function Report() {
   const [filters, setFilters] = useState({
-    startDate: today,
-    endDate: today,
+    startDate: "",
+    endDate: "",
     batch: "all",
   });
   const [summary, setSummary] = useState(null);
@@ -47,6 +49,11 @@ export default function Report() {
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [showAllVehicles, setShowAllVehicles] = useState(false);
   const [showAllDrivers, setShowAllDrivers] = useState(false);
+  const [roaming, setRoaming] = useState([]);
+  const [roamingTotal, setRoamingTotal] = useState(0);
+  const [showAllRoaming, setShowAllRoaming] = useState(false);
+  const [redemptions, setRedemptions] = useState([]);
+  const [redemptionsTotal, setRedemptionsTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -112,16 +119,51 @@ export default function Report() {
     }
   }, []);
 
+  const fetchRoaming = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/roaming-logs/`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : data.results || [];
+      setRoaming(list);
+      setRoamingTotal(data.count ?? list.length);
+    } catch {
+      console.error("Failed to load roaming logs");
+    }
+  }, []);
+
+  const fetchRedemptions = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/rewards/redemptions/`);
+      const data = await res.json();
+      const list = data.redemptions || [];
+      setRedemptions(list);
+      setRedemptionsTotal(list.length);
+    } catch {
+      console.error("Failed to load reward redemptions");
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
     fetchLogs();
     fetchVehicles();
     fetchDrivers();
+    fetchRoaming();
+    fetchRedemptions();
   }, []);
 
-  const filteredCollections = collections.filter((r) => {
-    if (filters.batch === "batch1") return r.batch === "Batch 1";
-    if (filters.batch === "batch2") return r.batch === "Batch 2";
+  const filteredLogs = logs.filter((l) => {
+    const d = l.timestamp ? l.timestamp.slice(0, 10) : "";
+    if (filters.startDate && d < filters.startDate) return false;
+    if (filters.endDate && d > filters.endDate) return false;
+    return true;
+  });
+
+  const filteredRoaming = roaming.filter((r) => {
+    if (!r.recorded_at) return true;
+    const d = r.recorded_at.slice(0, 10);
+    if (filters.startDate && d < filters.startDate) return false;
+    if (filters.endDate && d > filters.endDate) return false;
     return true;
   });
 
@@ -141,60 +183,68 @@ export default function Report() {
     setTimeout(() => fetchData(), 0);
   };
 
-  const handleExportCSV = () =>
-    exportCSV(
-      filteredCollections.map((r) => ({
-        Date: r.issued_at,
-        Batch: r.batch,
-        "Ticket ID": r.id,
-        Driver: r.driver,
-        Vehicle: r.vehicle,
-        Route: r.route,
-        "Amount (PHP)": r.collection_amount || 0,
-      })),
-      `collection_report_${Date.now()}.csv`,
-    );
+  const buildVehicleExportRow = (v) => ({
+    "Plate Number": v.plate_number,
+    Route: v.route_detail
+      ? `${v.route_detail.origin} - San Fernando`
+      : v.route || "—",
+    Transportation: v.transportation_name || v.transportation_id || "—",
+    "Franchise #": v.franchise_number || "—",
+    "QR Code": v.qr_code || "—",
+    "Active Driver": v.active_driver_name || "Unassigned",
+    Status: v.status,
+  });
 
-  const handleExportLogsCSV = () =>
-    exportCSV(
-      logs.map((l) => ({
-        Timestamp: l.timestamp,
-        "Ticket ID": l.ticket_id,
-        Action: l.action,
-        Driver: l.driver,
-        Vehicle: l.vehicle,
-        Route: l.route,
-        Batch: l.batch,
-        "Amount (PHP)": l.amount,
-        User: l.user,
-      })),
-      `transaction_logs_${Date.now()}.csv`,
-    );
+  const buildDriverExportRow = (d) => ({
+    IWP: getDriverCode(d),
+    "First Name": d.first_name || "—",
+    "Middle Name": d.middle_name || "—",
+    "Last Name": d.last_name || "—",
+    Gender: d.gender || "—",
+    Birthdate: d.birthdate || "—",
+    Province: d.province || "—",
+    City: d.city || "—",
+    Barangay: d.barangay || "—",
+    Street: d.street || "—",
+    "Contact No.": d.contact || "—",
+    Status: d.status === "ACTIVE" ? "Active" : "Inactive",
+  });
 
   const handleExportVehiclesCSV = () =>
     exportCSV(
-      vehicles.map((v) => ({
-        Code: v.code,
-        "Plate Number": v.plate_number,
-        Route: v.route_detail
-          ? `${v.route_detail.origin} - San Fernando`
-          : v.route,
-        Driver: v.active_driver_name || "—",
-      })),
+      vehicles.map(buildVehicleExportRow),
       `vehicle_records_${Date.now()}.csv`,
     );
 
   const handleExportDriversCSV = () =>
     exportCSV(
-      drivers.map((d) => ({
-        Code: d.code,
-        Name: d.name,
-        "Contact Number": d.contact_number,
-      })),
+      drivers.map(buildDriverExportRow),
       `driver_records_${Date.now()}.csv`,
     );
 
-  const handleExportPDF = () => exportPDF(filteredCollections, filters);
+  const handleExportVehiclesPDF = () =>
+    exportTablePDF(vehicles.map(buildVehicleExportRow), "Vehicle Records");
+
+  const handleExportDriversPDF = () =>
+    exportTablePDF(drivers.map(buildDriverExportRow), "Driver Records");
+
+  const buildRedemptionExportRow = (r) => ({
+    Date: r.created_at ? r.created_at.slice(0, 10) : "—",
+    Driver: r.driver_name || "—",
+    "Points Redeemed": r.points_redeemed,
+    "Peso Value": r.peso_value,
+    Status: r.status,
+    "Approved By": r.approved_by_name || "—",
+  });
+
+  const handleExportRedemptionsCSV = () =>
+    exportCSV(
+      redemptions.map(buildRedemptionExportRow),
+      `reward_redemptions_${Date.now()}.csv`,
+    );
+
+  const handleExportRedemptionsPDF = () =>
+    exportTablePDF(redemptions.map(buildRedemptionExportRow), "Reward Redemptions");
 
   return (
     <div className="rpt-page">
@@ -203,7 +253,7 @@ export default function Report() {
         <div className="rpt-header-left">
           <div className="rpt-header-accent" />
           <div>
-            <h1 className="rpt-title">Collection Reports</h1>
+            <h1 className="rpt-title">Report Logs</h1>
             <p className="rpt-subtitle">
               View and export collection data per batch and period.
             </p>
@@ -289,157 +339,32 @@ export default function Report() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="rpt-summary-row">
-        <SummaryCard
-          label="Batch 1 (AM)"
-          count={summary?.batch1?.count ?? 0}
-          total={summary?.batch1?.total ?? 0}
-        />
-        <SummaryCard
-          label="Batch 2 (PM)"
-          count={summary?.batch2?.count ?? 0}
-          total={summary?.batch2?.total ?? 0}
-        />
-        <SummaryCard
-          label="Today"
-          count={summary?.today?.count ?? 0}
-          total={summary?.today?.total ?? 0}
-        />
-        <div className="rpt-grand-card">
-          <span className="rpt-grand-label">Grand Total</span>
-          <div className="rpt-grand-count">
-            {summary?.total_tickets ?? 0}
-            <span className="rpt-grand-unit">tickets</span>
-          </div>
-          <div className="rpt-grand-amount">
-            {peso(summary?.grand_total ?? 0)}
-          </div>
-        </div>
-      </div>
-
-      {/* Line Chart */}
-      <div className="rpt-card">
-        <div className="rpt-card-header">
-          <span className="rpt-card-title">
-            Daily Collections — Batch 1 vs Batch 2
-          </span>
-          <span className="rpt-chart-badge">All time</span>
-        </div>
-        {chartData.length === 0 ? (
-          <div className="rpt-empty">No chart data for this period.</div>
-        ) : (
-          <div className="rpt-chart-body">
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart
-                data={chartData}
-                margin={{ top: 8, right: 24, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(201,168,76,0.15)"
-                />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: "#c9a84c" }}
-                />
-                <YAxis tick={{ fontSize: 11, fill: "#c9a84c" }} />
-                <Tooltip
-                  contentStyle={{
-                    fontSize: 12,
-                    borderRadius: 8,
-                    border: "1px solid rgba(201,168,76,0.3)",
-                    background: "var(--bg-surface)",
-                    color: "var(--text-primary)",
-                  }}
-                  formatter={(value, name) =>
-                    name.includes("total") ? peso(value) : `${value} tickets`
-                  }
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line
-                  type="monotone"
-                  dataKey="batch1_count"
-                  name="Batch 1 — Tickets"
-                  stroke="#c9a84c"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="batch2_count"
-                  name="Batch 2 — Tickets"
-                  stroke="#2d3e5f"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="batch1_total"
-                  name="Batch 1 — Collection (₱)"
-                  stroke="rgba(201,168,76,0.45)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="batch2_total"
-                  name="Batch 2 — Collection (₱)"
-                  stroke="rgba(45,62,95,0.45)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      {/* Child table sections — style props kept for backward compat but unused */}
-      <CollectionRecords
-        filters={filters}
-        setFilters={setFilters}
-        showAllCollections={showAllCollections}
-        setShowAllCollections={setShowAllCollections}
-        filteredCollections={filteredCollections}
-        visibleCollections={
-          showAllCollections
-            ? filteredCollections
-            : filteredCollections.slice(0, 5)
-        }
-        handleExportCSV={handleExportCSV}
-        handleExportPDF={handleExportPDF}
-        peso={peso}
-      />
-
       <TransactionLogs
-        logsTotal={logsTotal}
-        showAllLogs={showAllLogs}
-        filteredLogs={logs}
-        setShowAllLogs={setShowAllLogs}
-        visibleLogs={showAllLogs ? logs : logs.slice(0, 5)}
-        handleExportLogsCSV={handleExportLogsCSV}
+        filteredLogs={filteredLogs}
         STATUS_COLORS={STATUS_COLORS}
+        roaming={filteredRoaming}
       />
 
-      <VehicleRecords
+      <FleetRecords
         vehiclesTotal={vehiclesTotal}
         showAllVehicles={showAllVehicles}
         setShowAllVehicles={setShowAllVehicles}
         visibleVehicles={showAllVehicles ? vehicles : vehicles.slice(0, 5)}
         handleExportVehiclesCSV={handleExportVehiclesCSV}
-      />
-
-      <DriverRecords
+        handleExportVehiclesPDF={handleExportVehiclesPDF}
         driversTotal={driversTotal}
         showAllDrivers={showAllDrivers}
         setShowAllDrivers={setShowAllDrivers}
         visibleDrivers={showAllDrivers ? drivers : drivers.slice(0, 5)}
         handleExportDriversCSV={handleExportDriversCSV}
+        handleExportDriversPDF={handleExportDriversPDF}
+      />
+
+      <RewardRedemptions
+        redemptions={redemptions}
+        redemptionsTotal={redemptionsTotal}
+        handleExportRedemptionsCSV={handleExportRedemptionsCSV}
+        handleExportRedemptionsPDF={handleExportRedemptionsPDF}
       />
     </div>
   );

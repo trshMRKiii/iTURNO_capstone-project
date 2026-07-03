@@ -1,5 +1,8 @@
 import { DataTable } from "../../../components/ui/dataTable";
 import { useState } from "react";
+import ReportTableModal from "./ReportTableModal";
+
+const COLUMNS = ["IWP Number", "Name", "Contact Number"];
 
 export default function DriverRecords({
   driversTotal,
@@ -7,13 +10,10 @@ export default function DriverRecords({
   setShowAllDrivers,
   visibleDrivers,
   handleExportDriversCSV,
-  cardStyle,
-  cardHeaderStyle,
-  cardTitleStyle,
-  btnExport,
-  btnSecondary,
 }) {
   const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+
   const searched = visibleDrivers.filter((d) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -21,13 +21,33 @@ export default function DriverRecords({
       .some((val) => val && String(val).toLowerCase().includes(q));
   });
 
+  const preview = showAllDrivers ? searched.slice(0, 5) : searched;
+
+  const renderRow = (d, idx, { rowClass, cellClass }) => (
+    <tr key={d.id} className={rowClass}>
+      <td className={`${cellClass} rpt-mono`}>{d.iwp_number || d.id}</td>
+      <td className={`${cellClass} rpt-bold`}>{d.name}</td>
+      <td className={cellClass}>{d.contact}</td>
+    </tr>
+  );
+
+  const handleViewAll = () => {
+    setShowAllDrivers(true);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setShowAllDrivers(false);
+  };
+
   return (
     <div className="rpt-card rpt-section">
       <div className="rpt-card-header">
         <div className="rpt-card-header-left">
           <span className="rpt-card-title">Driver Records</span>
           <span className="rpt-record-count">
-            {searched.length} of {driversTotal} records
+            {preview.length} of {driversTotal} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
@@ -39,8 +59,8 @@ export default function DriverRecords({
             onChange={(e) => setSearch(e.target.value)}
           />
           {driversTotal > 5 && (
-            <button className="rpt-btn rpt-btn--secondary" onClick={() => setShowAllDrivers((v) => !v)}>
-              {showAllDrivers ? "Show Less" : "View All"}
+            <button className="rpt-btn rpt-btn--secondary" onClick={handleViewAll}>
+              View All
             </button>
           )}
           <button className="rpt-btn-export rpt-btn-export--green" onClick={handleExportDriversCSV}>
@@ -53,17 +73,18 @@ export default function DriverRecords({
         </div>
       </div>
 
-      <DataTable
-        columns={["IWP Number", "Name", "Contact Number"]}
-        data={searched}
-        rowRenderer={(d, idx, { rowClass, cellClass }) => (
-          <tr key={d.id} className={rowClass}>
-            <td className={`${cellClass} rpt-mono`}>{d.iwp_number || d.id}</td>
-            <td className={`${cellClass} rpt-bold`}>{d.name}</td>
-            <td className={cellClass}>{d.contact}</td>
-          </tr>
-        )}
-      />
+      <DataTable columns={COLUMNS} data={preview} rowRenderer={renderRow} />
+
+      {showModal && (
+        <ReportTableModal
+          title="Driver Records"
+          subtitle="Complete registered driver roster"
+          count={searched.length}
+          onClose={handleCloseModal}
+        >
+          <DataTable columns={COLUMNS} data={searched} rowRenderer={renderRow} />
+        </ReportTableModal>
+      )}
     </div>
   );
 }

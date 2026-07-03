@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Denomination, Requisition, TicketSeries, RoamingLog
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -75,7 +75,7 @@ class VehicleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehicle
         fields = [
-            'id', 'code', 'plate_number', 'transportation_id', 'transportation_name', 'franchise_number',
+            'id', 'plate_number', 'transportation_id', 'transportation_name', 'franchise_number',
             'route', 'route_detail', 'operator_address', 'qr_code',
             'status', 'active_driver', 'active_driver_name',
             'is_archived', 'created_at', 'updated_at',
@@ -173,11 +173,6 @@ class TicketFormSerializer(serializers.ModelSerializer):
         model = TicketForm
         fields = ['id', 'name', 'price']
 
-class DenominationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Denomination
-        fields = ['id', 'value', 'label', 'type']
-
 class DepositSerializer(serializers.ModelSerializer):
     class Meta:
         model = Deposit
@@ -192,6 +187,37 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
     ticket_form_label = serializers.CharField(source='ticket_form.name', read_only=True, allow_null=True)
     ticket_form_price = serializers.DecimalField(source='ticket_form.price', read_only=True, allow_null=True, max_digits=10, decimal_places=2)
     issued_to_name = serializers.CharField(source='issued_to.username', read_only=True, allow_null=True)
+    beginning = serializers.SerializerMethodField()
+    remaining = serializers.SerializerMethodField()
+
+    def _get_original_pcs(self, obj):
+        start = int(obj.start_no or 0)
+        end = int(obj.end_no or 0)
+        return max(end - start + 1, 0)
+
+    def _get_tickets_issued(self, obj, before_date=None):
+        qs = obj.tickets.all()
+        if before_date:
+            qs = qs.filter(issued_at__date__lt=before_date)
+        return qs.count()
+
+    def get_beginning(self, obj):
+        from datetime import date
+        today = date.today()
+        if obj.beginning_balance is not None and obj.beginning_balance_date == today:
+            return obj.beginning_balance
+        original = self._get_original_pcs(obj)
+        tickets_before_today = self._get_tickets_issued(obj, before_date=today)
+        beginning = max(original - tickets_before_today, 0)
+        obj.beginning_balance = beginning
+        obj.beginning_balance_date = today
+        obj.save(update_fields=['beginning_balance', 'beginning_balance_date'])
+        return beginning
+
+    def get_remaining(self, obj):
+        original = self._get_original_pcs(obj)
+        total_issued = self._get_tickets_issued(obj)
+        return max(original - total_issued, 0)
 
     class Meta:
         model = TicketSeries
@@ -200,6 +226,7 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
             'pad_no', 'box_no', 'start_no', 'end_no', 'qty',
             'unit_value', 'total_value', 'requisition',
             'issued_to', 'issued_to_name', 'date_issued',
+            'beginning', 'remaining',
             'created_at', 'updated_at',
         ]
 
@@ -255,6 +282,69 @@ class RoamingLogSerializer(serializers.ModelSerializer):
         if obj.driver:
             return f"{obj.driver.last_name}, {obj.driver.first_name}".strip()
         return None
+
+class PointsTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PointsTransaction
+        fields = ['id', 'type', 'points', 'description', 'created_at']
+
+
+class RedemptionSerializer(serializers.ModelSerializer):
+    approved_by_name = serializers.SerializerMethodField()
+    driver_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Redemption
+        fields = ['id', 'points_redeemed', 'peso_value', 'status', 'approved_by', 'approved_by_name', 'driver_name', 'created_at']
+
+    def get_approved_by_name(self, obj):
+        if obj.approved_by:
+            full = f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip()
+            return full or obj.approved_by.username
+        return None
+
+    def get_driver_name(self, obj):
+        driver = obj.profile.driver
+        return f"{driver.last_name}, {driver.first_name}".strip()
+
+
+class RewardConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RewardConfig
+        fields = [
+            'id', 'points_per_redemption', 'peso_value_per_redemption',
+            'max_redemptions_per_year', 'cooldown_months', 'updated_at',
+        ]
+
+
+class DriverRewardProfileSerializer(serializers.ModelSerializer):
+    driver_name = serializers.SerializerMethodField()
+    can_redeem = serializers.SerializerMethodField()
+    redeem_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DriverRewardProfile
+        fields = [
+            'id', 'driver', 'driver_name', 'total_points',
+            'current_streak', 'last_queue_date',
+            'redemptions_this_year', 'last_redemption_date',
+            'can_redeem', 'redeem_message',
+            'created_at', 'updated_at',
+        ]
+
+    def get_driver_name(self, obj):
+        return f"{obj.driver.last_name}, {obj.driver.first_name}".strip()
+
+    def get_can_redeem(self, obj):
+        from .rewards import can_redeem
+        eligible, _ = can_redeem(obj)
+        return eligible
+
+    def get_redeem_message(self, obj):
+        from .rewards import can_redeem
+        _, msg = can_redeem(obj)
+        return msg
+
 
 class RemittanceBatchSerializer(serializers.ModelSerializer):
     collections = CollectionSerializer(many=True)

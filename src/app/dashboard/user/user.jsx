@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../../lib/api-service";
-import { useConfirm } from "../../../components/ui/ToastConfirmContext";
+import { useConfirm, useToast } from "../../../components/ui/ToastConfirmContext";
 import "../../../styles/User.css";
 
 const EMPTY_FORM = {
@@ -40,6 +40,7 @@ function User() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const showConfirm = useConfirm();
+  const showToast = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -145,8 +146,10 @@ function User() {
     try {
       await apiService.deleteUser(id);
       fetchUsers();
+      showToast("Staff account deleted successfully");
     } catch (err) {
       setError(err.message);
+      showToast(err.message || "Failed to delete staff account", "info");
     }
   };
 
@@ -226,7 +229,7 @@ function User() {
             <thead>
               <tr>
                 {[
-                  "ID",
+                  
                   "Full Name",
                   "Email Address",
                   "Role",
@@ -274,9 +277,7 @@ function User() {
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="usr-row">
-                    <td>
-                      <span className="usr-id-badge">#{user.id}</span>
-                    </td>
+                   
                     <td className="usr-td-name">
                       {user.first_name} {user.last_name}
                     </td>
@@ -346,7 +347,7 @@ function User() {
       {/* Modal */}
       {isModalOpen && (
         <div className="usr-overlay" onClick={closeModal}>
-          <div className="usr-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="usr-modal usr-modal--profile" onClick={(e) => e.stopPropagation()}>
             <div className="usr-modal-header">
               <div className="usr-modal-header-left">
                 <svg
@@ -362,7 +363,7 @@ function User() {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
                 <h2 className="usr-modal-title">
-                  {editing ? "Edit Staff Account" : "Register Staff Account"}
+                  {editing ? "Staff Profile" : "Register Staff Account"}
                 </h2>
               </div>
               <button
@@ -385,97 +386,156 @@ function User() {
             </div>
 
             <form onSubmit={handleSubmit} className="usr-modal-body">
-              <div className="usr-form-grid">
-                <Field label="First Name">
+              {/* Staff hero section */}
+              <div className="usr-profile-hero">
+                <div className="usr-profile-avatar">
+                  {(form.first_name?.[0] || "") + (form.last_name?.[0] || "") || (
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  )}
+                </div>
+                <div className="usr-profile-hero-info">
+                  <span className="usr-profile-hero-name">
+                    {[form.first_name, form.last_name].filter(Boolean).join(" ") ||
+                      "New Staff"}
+                  </span>
+                  <div className="usr-profile-hero-tags">
+                    <span
+                      className={`usr-role ${ROLE_CLASS[form.role] || "usr-role--personnel"}`}
+                    >
+                      {form.role}
+                    </span>
+                    <span
+                      className={`usr-status ${form.is_active ? "usr-status--active" : "usr-status--inactive"}`}
+                    >
+                      {form.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Information */}
+              <div className="usr-profile-section">
+                <h3 className="usr-profile-section-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  Personal Information
+                </h3>
+                <div className="usr-form-grid">
+                  <Field label="First Name">
+                    <input
+                      type="text"
+                      className={inputCls}
+                      placeholder="First name"
+                      value={form.first_name}
+                      onChange={(e) =>
+                        setForm({ ...form, first_name: e.target.value })
+                      }
+                      required
+                    />
+                  </Field>
+                  <Field label="Last Name">
+                    <input
+                      type="text"
+                      className={inputCls}
+                      placeholder="Last name"
+                      value={form.last_name}
+                      onChange={(e) =>
+                        setForm({ ...form, last_name: e.target.value })
+                      }
+                      required
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              {/* Account Information */}
+              <div className="usr-profile-section">
+                <h3 className="usr-profile-section-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Account Information
+                </h3>
+                <Field label="Username">
                   <input
                     type="text"
                     className={inputCls}
-                    placeholder="First name"
-                    value={form.first_name}
+                    placeholder="Username"
+                    value={form.username}
                     onChange={(e) =>
-                      setForm({ ...form, first_name: e.target.value })
+                      setForm({ ...form, username: e.target.value })
                     }
                     required
                   />
                 </Field>
-                <Field label="Last Name">
+
+                <Field label="Email Address">
                   <input
-                    type="text"
+                    type="email"
                     className={inputCls}
-                    placeholder="Last name"
-                    value={form.last_name}
-                    onChange={(e) =>
-                      setForm({ ...form, last_name: e.target.value })
-                    }
+                    placeholder="Email address"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
                     required
+                  />
+                </Field>
+
+                <Field
+                  label={editing ? "Password (leave blank to keep)" : "Password"}
+                >
+                  <input
+                    type="password"
+                    className={inputCls}
+                    placeholder="Password"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                    required={!editing}
                   />
                 </Field>
               </div>
 
-              <Field label="Username">
-                <input
-                  type="text"
-                  className={inputCls}
-                  placeholder="Username"
-                  value={form.username}
-                  onChange={(e) =>
-                    setForm({ ...form, username: e.target.value })
-                  }
-                  required
-                />
-              </Field>
-
-              <Field label="Email Address">
-                <input
-                  type="email"
-                  className={inputCls}
-                  placeholder="Email address"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                />
-              </Field>
-
-              <Field
-                label={editing ? "Password (leave blank to keep)" : "Password"}
-              >
-                <input
-                  type="password"
-                  className={inputCls}
-                  placeholder="Password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  required={!editing}
-                />
-              </Field>
-
-              <div className="usr-form-grid">
-                <Field label="Role">
-                  <select
-                    className={inputCls}
-                    value={form.role}
-                    onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  >
-                    <option value="PERSONNEL">Personnel</option>
-                    <option value="SUPERVISOR">Supervisor</option>
-                    <option value="MANAGER">Manager</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </Field>
-                <Field label="Status">
-                  <select
-                    className={inputCls}
-                    value={form.is_active ? "true" : "false"}
-                    onChange={(e) =>
-                      setForm({ ...form, is_active: e.target.value === "true" })
-                    }
-                  >
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                  </select>
-                </Field>
+              {/* Role & Status */}
+              <div className="usr-profile-section">
+                <h3 className="usr-profile-section-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
+                  Role & Status
+                </h3>
+                <div className="usr-form-grid">
+                  <Field label="Role">
+                    <select
+                      className={inputCls}
+                      value={form.role}
+                      onChange={(e) => setForm({ ...form, role: e.target.value })}
+                    >
+                      <option value="PERSONNEL">Personnel</option>
+                      <option value="SUPERVISOR">Supervisor</option>
+                      <option value="MANAGER">Manager</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
+                  </Field>
+                  <Field label="Status">
+                    <select
+                      className={inputCls}
+                      value={form.is_active ? "true" : "false"}
+                      onChange={(e) =>
+                        setForm({ ...form, is_active: e.target.value === "true" })
+                      }
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </Field>
+                </div>
               </div>
 
               <div className="usr-modal-footer">

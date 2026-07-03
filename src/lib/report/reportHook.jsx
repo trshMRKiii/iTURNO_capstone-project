@@ -67,7 +67,6 @@ export const handleExportCSV = () => {
   exportCSV(
     filteredCollections.map((r) => ({
       Date: r.issued_at,
-      Batch: r.batch,
       "Ticket ID": r.id,
       Driver: r.driver,
       Vehicle: r.vehicle,
@@ -87,7 +86,6 @@ export const handleExportLogsCSV = () => {
       Driver: l.driver,
       Vehicle: l.vehicle,
       Route: l.route,
-      Batch: l.batch,
       "Amount (PHP)": l.amount || 0,
       User: l.user,
     })),
@@ -98,7 +96,6 @@ export const handleExportLogsCSV = () => {
 export const handleExportVehiclesCSV = () => {
   exportCSV(
     vehicles.map((v) => ({
-      Code: v.code,
       "Plate Number": v.plate_number,
       Route: v.route_detail
         ? `${v.route_detail.origin} - San Fernando`

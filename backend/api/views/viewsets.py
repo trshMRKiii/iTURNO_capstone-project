@@ -1,10 +1,11 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Denomination, Requisition, TicketSeries, RoamingLog
-from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, DenominationSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
+from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, RoamingLog
+from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
 
 
 class CurrentUserView(APIView):
@@ -41,9 +42,16 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if self.request.user and self.request.user.is_authenticated:
-            serializer.save(active_user=self.request.user)
+            ticket = serializer.save(active_user=self.request.user)
         else:
-            serializer.save()
+            ticket = serializer.save()
+
+        from ..rewards import award_queue_point
+        try:
+            award_queue_point(ticket.driver)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
 
 
 class TicketPriceViewSet(viewsets.ModelViewSet):
@@ -59,11 +67,6 @@ class PUVTypeViewSet(viewsets.ModelViewSet):
 class TicketFormViewSet(viewsets.ModelViewSet):
     queryset = TicketForm.objects.all()
     serializer_class = TicketFormSerializer
-
-
-class DenominationViewSet(viewsets.ModelViewSet):
-    queryset = Denomination.objects.all()
-    serializer_class = DenominationSerializer
 
 
 class RequisitionViewSet(viewsets.ModelViewSet):
@@ -84,6 +87,9 @@ class RoamingLogViewSet(viewsets.ModelViewSet):
     serializer_class = RoamingLogSerializer
 
     def perform_create(self, serializer):
+        vehicle = serializer.validated_data.get("vehicle")
+        if vehicle and vehicle.status == "QUEUED":
+            raise ValidationError("Vehicle is already in the queue — cannot log roaming.")
         serializer.save(recorded_by=self.request.user)
 
 

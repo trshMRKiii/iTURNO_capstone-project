@@ -293,6 +293,81 @@
   animation: usr-rise 0.28s cubic-bezier(0.34,1.56,0.64,1);
 }
 
+/* ── Profile modal ── */
+.usr-modal--profile {
+  max-width: 640px;
+}
+
+.usr-profile-hero {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 0 16px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 4px;
+}
+
+.usr-profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  color: var(--gold);
+  font-size: 30px;
+  font-weight: 700;
+  border: 3px solid var(--gold);
+  box-shadow: 0 4px 16px rgba(201,168,76,0.25);
+}
+
+.usr-profile-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.usr-profile-hero-name {
+  font-size: 25px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usr-profile-hero-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.usr-profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.usr-profile-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
 @keyframes usr-rise {
   from { opacity: 0; transform: translateY(32px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }

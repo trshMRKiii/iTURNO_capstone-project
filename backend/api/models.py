@@ -77,7 +77,6 @@ class Vehicle(models.Model):
     ]
 
     id = models.AutoField(primary_key=True)
-    code = models.CharField(max_length=20, unique=True, editable=False)
     plate_number = models.CharField(unique=True, max_length=20, db_index=True)
     transportation_id = models.ForeignKey('PUVType', null=True, blank=True, on_delete=models.SET_NULL, related_name='vehicles', db_index=True)
     franchise_number = models.CharField(max_length=100, blank=True, db_index=True)
@@ -97,13 +96,6 @@ class Vehicle(models.Model):
             models.Index(fields=['status', 'is_archived']),
             models.Index(fields=['route', 'is_archived']),
         ]
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        if not self.code:
-            self.code = f"VHC{str(self.id).zfill(3)}"
-            super().save(update_fields=['code'])
-
 
 class Ticket(models.Model):
     STATUS_CHOICES = [('ISSUED', 'Issued'), ('DISPATCHED', 'Dispatched'), ('COLLECTED', 'Collected'), ('CANCELLED', 'Cancelled'), ('RETURNED', 'Returned')]
@@ -128,11 +120,12 @@ class Ticket(models.Model):
     reason = models.TextField(blank=True)
     
     is_late = models.BooleanField(default=False, db_index=True)
-    intended_batch = models.CharField(max_length=20, blank=True)  
-    
+    intended_batch = models.CharField(max_length=20, blank=True)
+    batch = models.CharField(max_length=20, blank=True, db_index=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['status', 'is_verified']),
@@ -151,6 +144,17 @@ class Ticket(models.Model):
             if latest_price:
                 self.collection_amount = latest_price.amount
             # If no price exists, leave as null — backend will use fallback
+        if not self.batch:
+            from django.utils import timezone
+            from datetime import timedelta
+            from .views.helpers import load_schedule
+            reference_time = self.issued_at or timezone.now()
+            local_hour = (reference_time + timedelta(hours=8)).hour
+            schedule = load_schedule()
+            for key, shift in schedule.items():
+                if shift["startHour"] <= local_hour < shift["endHour"]:
+                    self.batch = key
+                    break
         super().save(*args, **kwargs)
 
 class Requisition(models.Model):
@@ -184,6 +188,8 @@ class TicketSeries(models.Model):
     requisition = models.ForeignKey(Requisition, on_delete=models.CASCADE, related_name='ticket_series')
     issued_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='issued_ticket_series')
     date_issued = models.DateTimeField(null=True, blank=True)
+    beginning_balance = models.PositiveIntegerField(null=True, blank=True)
+    beginning_balance_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -217,14 +223,6 @@ class TicketForm(models.Model):
     def __str__(self):
         return self.name
 
-class Denomination(models.Model):
-    value = models.DecimalField(max_digits=10, decimal_places=2)
-    label = models.CharField(max_length=50)
-    type = models.CharField(max_length=10, choices=[("bill","Bill"),("coin","Coin")], default="bill")
-
-    def __str__(self):
-        return self.label
-
 class RemittanceBatch(models.Model):
     issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     issued_at = models.DateTimeField(auto_now_add=True)
@@ -244,6 +242,90 @@ class Collection(models.Model):
     from_no = models.CharField(max_length=20, blank=True, null=True)
     to_no = models.CharField(max_length=20, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+class RewardConfig(models.Model):
+    # Earning rules
+    points_per_queue = models.IntegerField(default=10)
+    daily_bonus_4_threshold = models.IntegerField(default=4)
+    daily_bonus_4_points = models.IntegerField(default=20)
+    daily_bonus_5_threshold = models.IntegerField(default=5)
+    daily_bonus_5_points = models.IntegerField(default=40)
+    streak_bonus_days = models.IntegerField(default=5)
+    streak_bonus_points = models.IntegerField(default=50)
+    monthly_bonus_days = models.IntegerField(default=20)
+    monthly_bonus_points = models.IntegerField(default=100)
+
+    # Redemption rules
+    points_per_redemption = models.IntegerField(default=1000)
+    peso_value_per_redemption = models.DecimalField(max_digits=10, decimal_places=2, default=500)
+    max_redemptions_per_year = models.IntegerField(default=2)
+    cooldown_months = models.IntegerField(default=6)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.points_per_redemption} pts = ₱{self.peso_value_per_redemption}"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class DriverRewardProfile(models.Model):
+    driver = models.OneToOneField(Driver, on_delete=models.CASCADE, related_name='reward_profile')
+    total_points = models.IntegerField(default=0)
+    redemptions_this_year = models.IntegerField(default=0)
+    last_redemption_date = models.DateField(null=True, blank=True)
+    current_streak = models.IntegerField(default=0)
+    last_queue_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.driver} — {self.total_points} pts"
+
+
+class PointsTransaction(models.Model):
+    TYPE_CHOICES = [
+        ('QUEUE', 'Queue'),
+        ('DAILY_BONUS_4', 'Daily Bonus (4 queues)'),
+        ('DAILY_BONUS_5', 'Daily Bonus (5+ queues)'),
+        ('STREAK_BONUS', 'Streak Bonus (5 days)'),
+        ('MONTHLY_BONUS', 'Monthly Bonus (20+ days)'),
+        ('REDEMPTION', 'Redemption'),
+    ]
+
+    profile = models.ForeignKey(DriverRewardProfile, on_delete=models.CASCADE, related_name='transactions')
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    points = models.IntegerField()
+    description = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['profile', 'type', 'created_at'])]
+
+    def __str__(self):
+        return f"{self.profile.driver} {self.type} {self.points:+d}"
+
+
+class Redemption(models.Model):
+    STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')]
+
+    profile = models.ForeignKey(DriverRewardProfile, on_delete=models.CASCADE, related_name='redemptions')
+    points_redeemed = models.IntegerField(default=1000)
+    peso_value = models.DecimalField(max_digits=10, decimal_places=2, default=500)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.profile.driver} — ₱{self.peso_value} ({self.status})"
+
 
 class RoamingLog(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='roaming_logs')

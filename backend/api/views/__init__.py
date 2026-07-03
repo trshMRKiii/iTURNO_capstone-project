@@ -8,7 +8,6 @@ from .viewsets import (
     TicketPriceViewSet,
     PUVTypeViewSet,
     TicketFormViewSet,
-    DenominationViewSet,
     RequisitionViewSet,
     TicketSeriesViewSet,
     RemittanceBatchViewSet,
@@ -20,6 +19,16 @@ from .reports import (
     report_collections,
     report_daily_chart,
     export_collections_csv,
+)
+
+from .rewards import (
+    reward_summary,
+    reward_history,
+    reward_redemptions,
+    reward_redemptions_all,
+    reward_redeem,
+    reward_leaderboard,
+    reward_config,
 )
 
 from .records import (

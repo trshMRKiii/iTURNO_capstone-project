@@ -103,23 +103,15 @@ const RequisitionFormModal = ({
                     ))}
                   </select>
                 </div>
+                {/* quantity */}
                 <div className="req-field">
-                  <label className="req-label">Pad No.</label>
+                  <label className="req-label">QTY</label>
                   <input
                     className="req-input"
-                    value={item.pad_no}
+                    type="number"
+                    value={item.qty}
                     onChange={(e) =>
-                      updateSeriesItem(i, "pad_no", e.target.value)
-                    }
-                  />
-                </div>
-                <div className="req-field">
-                  <label className="req-label">Box No.</label>
-                  <input
-                    className="req-input"
-                    value={item.box_no}
-                    onChange={(e) =>
-                      updateSeriesItem(i, "box_no", e.target.value)
+                      updateSeriesItem(i, "qty", e.target.value)
                     }
                   />
                 </div>
@@ -149,17 +141,7 @@ const RequisitionFormModal = ({
               </div>
 
               <div className="req-grid-2">
-                <div className="req-field">
-                  <label className="req-label">QTY</label>
-                  <input
-                    className="req-input"
-                    type="number"
-                    value={item.qty}
-                    onChange={(e) =>
-                      updateSeriesItem(i, "qty", e.target.value)
-                    }
-                  />
-                </div>
+                
                 <div className="req-field">
                   <label className="req-label">Total Amount (₱)</label>
                   <input

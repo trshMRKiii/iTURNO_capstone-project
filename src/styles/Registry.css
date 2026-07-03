@@ -1,0 +1,226 @@
+/* Registry.css — combined Vehicle + Driver tabbed module */
+
+.reg-page {
+  padding: 28px 32px;
+  background: var(--bg-page);
+  min-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  transition: background 0.25s;
+}
+
+/* ── Header ── */
+.reg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.reg-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reg-header-accent {
+  width: 4px;
+  height: 38px;
+  border-radius: 3px;
+  background: var(--navy);
+}
+.dark .reg-header-accent { background: var(--gold); }
+
+.reg-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.reg-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 3px 0 0;
+}
+
+/* ── Header right: search + add button ── */
+.reg-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reg-search-wrap {
+  position: relative;
+  width: 240px;
+}
+
+.reg-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.reg-search {
+  width: 100%;
+  padding: 7px 12px 7px 32px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.reg-search:focus {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(26,39,68,0.08);
+}
+
+.dark .reg-search:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+}
+
+.reg-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+}
+
+.reg-add-btn:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(26,39,68,0.3);
+}
+
+.reg-add-btn:active {
+  transform: translateY(0);
+}
+
+.reg-export-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2d5016 0%, #4a7c28 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 3px 10px rgba(45,80,22,0.25);
+}
+
+.reg-export-qr-btn:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(45,80,22,0.3);
+}
+
+.reg-export-qr-btn:active { transform: translateY(0); }
+
+@media (max-width: 560px) {
+  .reg-header-right { flex-wrap: wrap; width: 100%; }
+  .reg-search-wrap { width: 100%; }
+  .reg-add-btn { width: 100%; justify-content: center; }
+}
+
+/* ── Tabs ── */
+.reg-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.reg-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.reg-tab:hover {
+  border-color: var(--gold);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.reg-tab--active,
+.reg-tab--active:hover {
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  transform: none;
+}
+
+/* ── Nested page overrides ── */
+.reg-content .veh-page,
+.reg-content .drv-page {
+  padding: 0;
+  min-height: auto;
+  background: transparent;
+}
+
+/* Hide the sub-component header titles (left side) */
+.reg-content .veh-header-left,
+.reg-content .drv-header-left {
+  display: none;
+}
+
+/* Hide the entire sub-component header row — search+button is lifted to toolbar */
+.reg-content .veh-header,
+.reg-content .drv-header {
+  display: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .reg-page {
+    padding: 16px 12px;
+  }
+
+  .reg-tabs {
+    gap: 6px;
+  }
+
+  .reg-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 8px;
+    font-size: 0.78rem;
+  }
+}

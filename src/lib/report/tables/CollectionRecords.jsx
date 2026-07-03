@@ -1,33 +1,63 @@
 import { DataTable } from "../../../components/ui/dataTable";
 import { useState } from "react";
+import ReportTableModal from "./ReportTableModal";
+
+const COLUMNS = [
+  "Date & Time",
+  "Batch",
+  "Ticket ID",
+  "Driver",
+  "Vehicle",
+  "Route",
+  "Amount",
+];
 
 export default function CollectionRecords({
   filters,
   setFilters,
-  showAllCollections,
-  setShowAllCollections,
   filteredCollections,
   handleExportCSV,
   handleExportPDF,
   peso,
-  cardStyle,
-  cardHeaderStyle,
-  cardTitleStyle,
-  btnExport,
-  btnSecondary,
 }) {
-  const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+
   const searched = filteredCollections.filter((r) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return [r.issued_at, r.batch, String(r.id), r.driver, r.vehicle, r.route]
       .some((v) => v && v.toLowerCase().includes(q));
   });
-  const pageSize = showAllCollections ? 20 : 5;
-  const start = page * pageSize;
-  const end = start + pageSize;
-  const visibleCollections = searched.slice(start, end);
+
+  const previewCollections = searched.slice(0, 5);
+
+  const renderRow = (r, idx, { rowClass, cellClass }) => (
+    <tr key={r.id} className={rowClass}>
+      <td className={cellClass}>{r.issued_at}</td>
+      <td className={cellClass}>
+        <span
+          className={`rpt-batch-pill ${r.batch === "Batch 1" ? "rpt-batch-pill--b1" : "rpt-batch-pill--b2"}`}
+        >
+          {r.batch}
+        </span>
+      </td>
+      <td className={`${cellClass} rpt-mono`}>{r.id}</td>
+      <td className={cellClass}>{r.driver}</td>
+      <td className={cellClass}>
+        <span className="rpt-plate">{r.vehicle}</span>
+      </td>
+      <td className={cellClass}>{r.route}</td>
+      <td className={`${cellClass} rpt-amount`}>
+        {peso(Number(r.collection_amount) || 0)}
+      </td>
+    </tr>
+  );
+
+  const grandTotal = searched.reduce(
+    (s, r) => s + Number(r.collection_amount || 0),
+    0,
+  );
 
   return (
     <div className="rpt-card rpt-section">
@@ -44,10 +74,7 @@ export default function CollectionRecords({
               <button
                 key={val}
                 className={`rpt-batch-btn ${filters.batch === val ? "rpt-batch-btn--active" : ""}`}
-                onClick={() => {
-                  setFilters((f) => ({ ...f, batch: val }));
-                  setShowAllCollections(false);
-                }}
+                onClick={() => setFilters((f) => ({ ...f, batch: val }))}
               >
                 {lbl}
               </button>
@@ -55,10 +82,7 @@ export default function CollectionRecords({
           </div>
 
           <span className="rpt-record-count">
-            {showAllCollections
-              ? searched.length
-              : Math.min(5, searched.length)}{" "}
-            of {searched.length} record(s)
+            {Math.min(5, searched.length)} of {searched.length} record(s)
           </span>
         </div>
 
@@ -68,8 +92,16 @@ export default function CollectionRecords({
             className="rpt-search-input"
             placeholder="Search records…"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            onChange={(e) => setSearch(e.target.value)}
           />
+          {searched.length > 5 && (
+            <button
+              className="rpt-btn rpt-btn--secondary"
+              onClick={() => setShowModal(true)}
+            >
+              View All
+            </button>
+          )}
           <button
             className="rpt-btn-export rpt-btn-export--green"
             onClick={handleExportCSV}
@@ -108,87 +140,31 @@ export default function CollectionRecords({
         </div>
       </div>
 
-      <DataTable
-        columns={[
-          "Date & Time",
-          "Batch",
-          "Ticket ID",
-          "Driver",
-          "Vehicle",
-          "Route",
-          "Amount",
-        ]}
-        data={visibleCollections}
-        rowRenderer={(r, idx, { rowClass, cellClass }) => (
-          <tr key={r.id} className={rowClass}>
-            <td className={cellClass}>{r.issued_at}</td>
-            <td className={cellClass}>
-              <span
-                className={`rpt-batch-pill ${r.batch === "Batch 1" ? "rpt-batch-pill--b1" : "rpt-batch-pill--b2"}`}
-              >
-                {r.batch}
-              </span>
-            </td>
-            <td className={`${cellClass} rpt-mono`}>{r.id}</td>
-            <td className={cellClass}>{r.driver}</td>
-            <td className={cellClass}>
-              <span className="rpt-plate">{r.vehicle}</span>
-            </td>
-            <td className={cellClass}>{r.route}</td>
-            <td className={`${cellClass} rpt-amount`}>
-              {peso(Number(r.collection_amount) || 0)}
-            </td>
-          </tr>
-        )}
-      />
+      <DataTable columns={COLUMNS} data={previewCollections} rowRenderer={renderRow} />
 
       {searched.length > 0 && (
         <div className="rpt-totals-row">
           <span>Total ({searched.length} tickets)</span>
-          <span className="rpt-totals-amount">
-            {peso(
-              searched.reduce(
-                (s, r) => s + Number(r.collection_amount || 0),
-                0,
-              ),
-            )}
-          </span>
+          <span className="rpt-totals-amount">{peso(grandTotal)}</span>
         </div>
       )}
-      <div className="flex justify-between">
-        {searched.length > pageSize && (
-          <div className="rpt-pagination">
-            <button
-              className="rpt-btn rpt-btn--secondary"
-              disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </button>
-            <span>
-              Page {page + 1} of{" "}
-              {Math.ceil(searched.length / pageSize)}
-            </span>
-            <button
-              className="rpt-btn rpt-btn--secondary"
-              disabled={end >= searched.length}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </button>
-          </div>
-        )}
-        <div></div>
-        <button
-          className="rpt-btn rpt-btn--secondary"
-          onClick={() => {
-            setShowAllCollections((v) => !v);
-            setPage(0);
-          }}
+
+      {showModal && (
+        <ReportTableModal
+          title="Collection Records"
+          subtitle="Full list of collected tickets for the selected period"
+          count={searched.length}
+          onClose={() => setShowModal(false)}
         >
-          {showAllCollections ? "Show Less" : "View All Logs"}
-        </button>
-      </div>
+          <DataTable columns={COLUMNS} data={searched} rowRenderer={renderRow} />
+          {searched.length > 0 && (
+            <div className="rpt-totals-row rpt-totals-row--modal">
+              <span>Total ({searched.length} tickets)</span>
+              <span className="rpt-totals-amount">{peso(grandTotal)}</span>
+            </div>
+          )}
+        </ReportTableModal>
+      )}
     </div>
   );
 }

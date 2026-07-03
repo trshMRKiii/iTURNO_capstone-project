@@ -137,3 +137,58 @@ export function exportPDF(collections, filters) {
     }, 500);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Export tabular data (array of plain objects) as a printable PDF.
+ * Opens the document in a new tab; the user clicks "Print / Save as PDF" when ready.
+ * @param {Array<Object>} data - Rows to export; object keys become column headers
+ * @param {string} title - Heading shown at the top of the document
+ */
+export function exportTablePDF(data, title = "Report") {
+  if (!data.length) return;
+  const headers = Object.keys(data[0]);
+  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+
+  const headerRow = headers.map((h) => `<th>${h}</th>`).join("");
+  const bodyRows = data
+    .map(
+      (row) =>
+        `<tr>${headers.map((h) => `<td>${row[h] ?? ""}</td>`).join("")}</tr>`,
+    )
+    .join("");
+
+  const html = `<!DOCTYPE html>
+  <html>
+  <head>
+  <meta charset="utf-8"/>
+  <title>${title}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 32px; }
+    h2 { font-size: 16px; margin-bottom: 4px; }
+    p.meta { font-size: 11px; color: #666; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { background: #f1f5f9; border-bottom: 2px solid #222; padding: 6px 8px; text-align: left; text-transform: uppercase; font-size: 10px; }
+    td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .print-btn { margin-bottom: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #166534; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .print-btn:hover { opacity: 0.85; }
+    @media print { .print-btn { display: none; } }
+  </style>
+  </head>
+  <body>
+    <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    <h2>${title}</h2>
+    <p class="meta">Printed: ${now} &middot; ${data.length} records</p>
+    <table>
+      <thead><tr>${headerRow}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  </body>
+  </html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
