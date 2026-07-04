@@ -46,6 +46,8 @@ export default function Rewards() {
   });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
 
   const loadLeaderboard = () => {
     apiService.getRewardLeaderboard().then((res) => {
@@ -77,8 +79,20 @@ export default function Rewards() {
     );
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / PAGE_SIZE));
-  const pagedDrivers = filteredDrivers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const sortedDrivers = [...filteredDrivers].sort((a, b) => {
+    let cmp = 0;
+    if (sortBy === "iwp") {
+      cmp = (a.iwp_number || "").localeCompare(b.iwp_number || "");
+    } else {
+      const nameA = `${a.last_name || ""}, ${a.first_name || ""}`;
+      const nameB = `${b.last_name || ""}, ${b.first_name || ""}`;
+      cmp = nameA.localeCompare(nameB);
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedDrivers.length / PAGE_SIZE));
+  const pagedDrivers = sortedDrivers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="rw-page">
@@ -107,6 +121,28 @@ export default function Rewards() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </div>
+
+          <div className="rw-list-toolbar">
+            <select
+              className="rw-sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              title="Sort by"
+            >
+              <option value="name">Sort: Name</option>
+              <option value="iwp">Sort: IWP #</option>
+            </select>
+            <button
+              type="button"
+              className={`rw-sort-dir-btn${sortDir === "desc" ? " rw-sort-dir-btn--desc" : ""}`}
+              onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+              title={sortDir === "asc" ? "Ascending" : "Descending"}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 5v14M11 5 7 9M11 5l4 4" />
+              </svg>
+            </button>
           </div>
 
           <div className="rw-driver-list rw-driver-list--full">

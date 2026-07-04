@@ -6,7 +6,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
+            'id', 'username', 'email', 'first_name', 'middle_name', 'last_name',
             'role', 'is_active', 'password',
         ]
         extra_kwargs = {
@@ -21,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
             first_name=validated_data.get('first_name', ''),
+            middle_name=validated_data.get('middle_name', ''),
             last_name=validated_data.get('last_name', ''),
             role=validated_data.get('role', 'PERSONNEL'),
             is_active=validated_data.get('is_active', True),

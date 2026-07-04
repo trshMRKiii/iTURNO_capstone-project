@@ -1,0 +1,146 @@
+/* ClockTimePicker.css — Material-inspired clock dial time picker, matches Settings theme */
+
+.ctp-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.ctp-trigger {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ctp-popover {
+  z-index: 1000;
+  width: 240px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(26,39,68,0.3);
+}
+
+.ctp-readout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.ctp-readout-hour {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.ctp-readout-colon {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ctp-ampm {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 8px;
+}
+
+.ctp-ampm-btn {
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ctp-ampm-btn-active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1a2744;
+}
+
+.ctp-dial {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--bg-page);
+  border: 1px solid var(--border-soft);
+}
+
+.ctp-dial-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.ctp-dial-hand {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 62px;
+  background: var(--gold);
+  transform-origin: top center;
+  margin-left: -1px;
+}
+
+.ctp-dial-num {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  margin-top: -14px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  z-index: 1;
+}
+
+.ctp-dial-num:hover {
+  background: var(--bg-hover);
+}
+
+.ctp-dial-num-active {
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  color: #fff;
+}
+
+.ctp-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.ctp-ok-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}

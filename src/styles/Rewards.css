@@ -34,7 +34,7 @@
 
 /* ── Full-width layout (driver picker + leaderboard, no inline detail) ── */
 .rw-layout--full {
-  align-items: stretch;
+  align-items: flex-start;
 }
 
 .rw-panel {
@@ -53,8 +53,8 @@
 }
 
 .rw-layout--full .rw-leaderboard-body {
-  flex: 1;
-  max-height: none;
+  flex: none;
+  max-height: 70vh;
 }
 
 @media (max-width: 900px) {
@@ -251,6 +251,54 @@
   flex-direction: column;
   max-height: 280px;
   overflow-y: auto;
+}
+
+/* ── Driver List Toolbar (filter + sort) ── */
+.rw-list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rw-sort-select {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.rw-sort-select:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.rw-sort-dir-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s, transform 0.15s;
+}
+
+.rw-sort-dir-btn:hover {
+  background: var(--bg-hover);
+}
+
+.rw-sort-dir-btn--desc svg {
+  transform: rotate(180deg);
 }
 
 .rw-lb-item {

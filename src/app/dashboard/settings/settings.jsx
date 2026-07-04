@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { useShifts } from "../../../lib/useShifts";
+import SettingsModal from "../../../components/ui/settingsModal";
+import ClockTimePicker from "../../../components/ui/clockTimePicker";
 import "../../../styles/Settings.css";
 
 const TABS = [
@@ -150,6 +152,7 @@ function Settings() {
   const showToast = useToast();
 
   const [search, setSearch] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   const {
     shifts,
@@ -198,7 +201,36 @@ function Settings() {
     });
   };
 
+  // splits an hour range into non-wrapping [start, end) segments, handling overnight wrap
+  const expandHourRange = (startHour, endHour) =>
+    endHour > startHour ? [[startHour, endHour]] : [[startHour, 24], [0, endHour]];
+
+  const findOverlappingBatches = (shiftsObj) => {
+    const entries = Object.entries(shiftsObj);
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        const [, a] = entries[i];
+        const [, b] = entries[j];
+        const aRanges = expandHourRange(a.startHour, a.endHour);
+        const bRanges = expandHourRange(b.startHour, b.endHour);
+        for (const [aStart, aEnd] of aRanges) {
+          for (const [bStart, bEnd] of bRanges) {
+            if (aStart < bEnd && bStart < aEnd) {
+              return [a.name, b.name];
+            }
+          }
+        }
+      }
+    }
+    return null;
+  };
+
   const handleSaveSchedule = async () => {
+    const overlap = findOverlappingBatches(editingShifts);
+    if (overlap) {
+      showToast?.(`${overlap[0]} and ${overlap[1]} overlap. Adjust the hours before saving.`, "info");
+      return;
+    }
     setSavingSchedule(true);
     try {
       await updateShifts(editingShifts);
@@ -223,6 +255,7 @@ function Settings() {
       const created = await apiService.createPUVType({ name: newType });
       setPuvTypes([...puvTypes, created]);
       setNewType("");
+      setAddModalOpen(false);
     } catch (err) {
       console.error("Failed to create:", err);
     }
@@ -249,6 +282,7 @@ function Settings() {
       const created = await apiService.createRoute({ origin: newOrigin });
       setRoutes([...routes, created]);
       setNewOrigin("");
+      setAddModalOpen(false);
     } catch (err) {
       console.error("Failed to create route:", err);
     }
@@ -276,6 +310,7 @@ function Settings() {
       setTicketForms([...ticketForms, created]);
       setNewTicketForm("");
       setNewTicketFormPrice("");
+      setAddModalOpen(false);
     } catch (err) {
       console.error("Failed to create ticket form:", err);
     }
@@ -446,6 +481,7 @@ function Settings() {
   const switchTab = (key) => {
     setActiveTab(key);
     setSearch("");
+    setAddModalOpen(false);
   };
 
   const q = search.trim().toLowerCase();
@@ -499,14 +535,20 @@ function Settings() {
 
           </div>
           {activeTab !== "rewards" && activeTab !== "batchSchedule" && activeTab !== "system" && (
-            <div className="set-search">
-              <SearchIcon />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={`Search ${TABS.find(t => t.key === activeTab)?.label.toLowerCase()}...`}
-              />
+            <div className="set-toolbar-actions">
+              <button className="set-add-btn" onClick={() => setAddModalOpen(true)}>
+                <PlusIcon />
+                Add
+              </button>
+              <div className="set-search">
+                <SearchIcon />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={`Search ${TABS.find(t => t.key === activeTab)?.label.toLowerCase()}...`}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -545,19 +587,6 @@ function Settings() {
                 </tbody>
               </table>
             </div>
-            <div className="set-add-row">
-              <input
-                type="text"
-                className="set-input"
-                value={newType}
-                onChange={(e) => setNewType(e.target.value)}
-                placeholder="New PUV Type"
-              />
-              <button className="set-add-btn" onClick={handleAddPUVType}>
-                <PlusIcon />
-                Add
-              </button>
-            </div>
           </>
         )}
 
@@ -594,19 +623,6 @@ function Settings() {
                   )}
                 </tbody>
               </table>
-            </div>
-            <div className="set-add-row">
-              <input
-                type="text"
-                className="set-input"
-                value={newOrigin}
-                onChange={(e) => setNewOrigin(e.target.value)}
-                placeholder="New Route Origin"
-              />
-              <button className="set-add-btn" onClick={handleAddRoute}>
-                <PlusIcon />
-                Add Route
-              </button>
             </div>
           </>
         )}
@@ -646,27 +662,6 @@ function Settings() {
                   )}
                 </tbody>
               </table>
-            </div>
-            <div className="set-add-row">
-              <input
-                type="text"
-                className="set-input"
-                value={newTicketForm}
-                onChange={(e) => setNewTicketForm(e.target.value)}
-                placeholder="e.g. Cash Ticket @2"
-              />
-              <input
-                type="number"
-                className="set-input"
-                value={newTicketFormPrice}
-                onChange={(e) => setNewTicketFormPrice(e.target.value)}
-                placeholder="Price"
-                style={{ maxWidth: 120 }}
-              />
-              <button className="set-add-btn" onClick={handleAddTicketForm}>
-                <PlusIcon />
-                Add Ticket Form
-              </button>
             </div>
           </>
         )}
@@ -749,24 +744,16 @@ function Settings() {
                   </label>
                   <label className="set-field">
                     <span className="set-field-label">Start Hour</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="23"
-                      className="set-input"
+                    <ClockTimePicker
                       value={shift.startHour}
-                      onChange={(e) => handleScheduleFieldChange(key, "startHour", e.target.value)}
+                      onChange={(hour) => handleScheduleFieldChange(key, "startHour", hour)}
                     />
                   </label>
                   <label className="set-field">
                     <span className="set-field-label">End Hour</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="23"
-                      className="set-input"
+                    <ClockTimePicker
                       value={shift.endHour}
-                      onChange={(e) => handleScheduleFieldChange(key, "endHour", e.target.value)}
+                      onChange={(hour) => handleScheduleFieldChange(key, "endHour", hour)}
                     />
                   </label>
                 </div>
@@ -886,6 +873,50 @@ function Settings() {
           </div>
         )}
       </div>
+
+      {activeTab === "puv" && (
+        <SettingsModal
+          open={addModalOpen}
+          title="Add PUV Type"
+          fields={[{ name: "name", label: "Name", placeholder: "New PUV Type" }]}
+          values={{ name: newType }}
+          onChange={(_, value) => setNewType(value)}
+          onClose={() => setAddModalOpen(false)}
+          onSubmit={handleAddPUVType}
+          submitLabel="Add"
+        />
+      )}
+
+      {activeTab === "routes" && (
+        <SettingsModal
+          open={addModalOpen}
+          title="Add Route"
+          fields={[{ name: "origin", label: "Route Origin", placeholder: "New Route Origin" }]}
+          values={{ origin: newOrigin }}
+          onChange={(_, value) => setNewOrigin(value)}
+          onClose={() => setAddModalOpen(false)}
+          onSubmit={handleAddRoute}
+          submitLabel="Add Route"
+        />
+      )}
+
+      {activeTab === "ticketForms" && (
+        <SettingsModal
+          open={addModalOpen}
+          title="Add Ticket Form"
+          fields={[
+            { name: "name", label: "Name", placeholder: "e.g. Cash Ticket @2" },
+            { name: "price", label: "Price", type: "number", placeholder: "Price", min: "0", step: "0.01" },
+          ]}
+          values={{ name: newTicketForm, price: newTicketFormPrice }}
+          onChange={(field, value) =>
+            field === "name" ? setNewTicketForm(value) : setNewTicketFormPrice(value)
+          }
+          onClose={() => setAddModalOpen(false)}
+          onSubmit={handleAddTicketForm}
+          submitLabel="Add Ticket Form"
+        />
+      )}
     </div>
   );
 }
