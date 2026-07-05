@@ -714,16 +714,20 @@ function Collection({ userRole }) {
                               )}
                             </td>
                             <td>
-                              <button
-                                type="button"
-                                className="col-action-btn"
-                                onClick={() => handleVerifyTicket(ticket.id)}
-                                disabled={verifyingTicketId === ticket.id}
-                              >
-                                {verifyingTicketId === ticket.id
-                                  ? "Verifying…"
-                                  : "Verify"}
-                              </button>
+                              {(userRole === "ADMIN" || userRole === "SUPERVISOR") ? (
+                                <button
+                                  type="button"
+                                  className="col-action-btn"
+                                  onClick={() => handleVerifyTicket(ticket.id)}
+                                  disabled={verifyingTicketId === ticket.id}
+                                >
+                                  {verifyingTicketId === ticket.id
+                                    ? "Verifying…"
+                                    : "Verify"}
+                                </button>
+                              ) : (
+                                <span className="col-na">N/A</span>
+                              )}
                             </td>
                           </tr>
                         );

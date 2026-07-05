@@ -1,5 +1,9 @@
 import React from "react";
 
+function capitalizeWords(str) {
+  return str.replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+}
+
 function numberToWords(num) {
   if (num === 0) return "Zero";
   const ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine",
@@ -36,6 +40,8 @@ const RequisitionFormModal = ({
   addSeriesItem,
   removeSeriesItem,
   ticketForms,
+  approvedBy,
+  setApprovedBy,
   computeTotal,
   handleSave,
   saving,
@@ -163,6 +169,17 @@ const RequisitionFormModal = ({
           >
             + Add Item
           </button>
+
+          <div className="req-field" style={{ marginTop: 16 }}>
+            <label className="req-label">Approved By</label>
+            <input
+              className="req-input"
+              type="text"
+              value={approvedBy}
+              onChange={(e) => setApprovedBy(capitalizeWords(e.target.value))}
+              placeholder="e.g. Juan Dela Cruz"
+            />
+          </div>
 
           {/* Total */}
           <div className="req-total-row">

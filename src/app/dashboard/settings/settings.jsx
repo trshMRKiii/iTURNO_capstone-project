@@ -130,6 +130,15 @@ const formatBytes = (bytes) => {
 
 function Settings() {
   const [activeTab, setActiveTab] = useState("puv");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    apiService.getCurrentUser()
+      .then((user) => setIsAdmin((user?.role || "").toUpperCase() === "ADMIN"))
+      .catch((err) => console.error("Failed to load current user:", err));
+  }, []);
+
+  const visibleTabs = isAdmin ? TABS : TABS.filter(tab => tab.key !== "system");
 
   const [puvTypes, setPuvTypes] = useState([]);
   const [newType, setNewType] = useState("");
@@ -381,7 +390,7 @@ function Settings() {
   };
 
   useEffect(() => {
-    if (activeTab !== "system") return;
+    if (activeTab !== "system" || !isAdmin) return;
     setBackupsLoading(true);
     apiService.getSystemBackups()
       .then(res => setSystemBackups(res.backups || []))
@@ -390,7 +399,7 @@ function Settings() {
         showToast?.("Failed to load backups", "info");
       })
       .finally(() => setBackupsLoading(false));
-  }, [activeTab]);
+  }, [activeTab, isAdmin]);
 
   const handleCreateBackup = async () => {
     setCreatingBackup(true);
@@ -514,7 +523,7 @@ function Settings() {
 
       {/* Tabs */}
       <div className="set-tabs">
-        {TABS.map(tab => (
+        {visibleTabs.map(tab => (
           <button
             key={tab.key}
             className={`set-tab ${activeTab === tab.key ? "set-tab-active" : ""}`}
@@ -775,7 +784,7 @@ function Settings() {
         )}
 
         {/* System Backup / Restore / Rollback */}
-        {activeTab === "system" && (
+        {activeTab === "system" && isAdmin && (
           <div className="set-rewards-form">
             <p className="set-rewards-note">
               A backup captures the entire system — drivers, vehicles, tickets, routes,

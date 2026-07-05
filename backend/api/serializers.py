@@ -235,17 +235,9 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
 class RequisitionSerializer(serializers.ModelSerializer):
     ticket_series = TicketSeriesSerializer(many=True, read_only=True)
     requested_by_name = serializers.SerializerMethodField()
-    approved_by_name = serializers.SerializerMethodField()
 
     def get_requested_by_name(self, obj):
         user = obj.requested_by
-        if user:
-            full = f"{user.first_name} {user.last_name}".strip()
-            return full if full else user.username
-        return None
-
-    def get_approved_by_name(self, obj):
-        user = obj.approved_by
         if user:
             full = f"{user.first_name} {user.last_name}".strip()
             return full if full else user.username
@@ -255,7 +247,7 @@ class RequisitionSerializer(serializers.ModelSerializer):
         model = Requisition
         fields = [
             'id', 'date_requested', 'requested_by', 'requested_by_name',
-            'approved_by', 'approved_by_name', 'status', 'total_value',
+            'approved_by_name', 'status', 'total_value',
             'ticket_series', 'created_at', 'updated_at',
         ]
 

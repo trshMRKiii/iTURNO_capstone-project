@@ -1,10 +1,11 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { DataTable } from "../../../components/ui/dataTable";
 import { peso, STATUS_COLORS } from "../reportHook";
 import ReportTableModal from "./ReportTableModal";
+import ViewRemittance from "../../remittance/viewRemittance";
 
-const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Approved By", "Ticket Series", "Total Value", "Status"];
-const REMITTANCE_COLUMNS = ["Issued At", "Issued By", "Collections", "Total Amount", "Status"];
+const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Approved By", "Ticket Series", "Total Value"];
+const REMITTANCE_COLUMNS = ["Issued At", "Issued By", "Total Amount", "Actions"];
 
 export default function RequisitionRemittance({
   requisitions,
@@ -20,13 +21,18 @@ export default function RequisitionRemittance({
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState("");
+  const [viewBatch, setViewBatch] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   const isRequisition = activeTab === "requisition";
+
+  const toggleExpand = (id) =>
+    setExpandedId((prev) => (prev === id ? null : id));
 
   const matchesRequisition = (r, query) => {
     if (!query) return true;
     const q = query.toLowerCase();
-    return [r.requested_by_name, r.approved_by_name, r.status].some(
+    return [r.requested_by_name, r.approved_by_name].some(
       (val) => val && String(val).toLowerCase().includes(q),
     );
   };
@@ -34,7 +40,7 @@ export default function RequisitionRemittance({
   const matchesRemittance = (b, query) => {
     if (!query) return true;
     const q = query.toLowerCase();
-    return [b.issued_by_name, b.status].some(
+    return [b.issued_by_name].some(
       (val) => val && String(val).toLowerCase().includes(q),
     );
   };
@@ -56,43 +62,66 @@ export default function RequisitionRemittance({
     setShowModal(false);
   };
 
-  const renderRequisitionRow = (r, idx, { rowClass, cellClass }) => (
-    <tr key={r.id} className={rowClass}>
-      <td className={cellClass}>{r.date_requested ? r.date_requested.slice(0, 10) : "—"}</td>
-      <td className={`${cellClass} rpt-bold`}>{r.requested_by_name || "—"}</td>
-      <td className={cellClass}>{r.approved_by_name || <span className="rpt-na">—</span>}</td>
-      <td className={cellClass}>{r.ticket_series ? r.ticket_series.length : 0}</td>
-      <td className={cellClass}>{peso(r.total_value)}</td>
-      <td className={cellClass}>
-        <span
-          className="rpt-action-pill"
-          style={{
-            background: `${STATUS_COLORS[r.status] || "#64748b"}22`,
-            color: STATUS_COLORS[r.status] || "#64748b",
-          }}
+  const renderRequisitionRow = (r, idx, { rowClass, cellClass }) => {
+    const hasSeries = r.ticket_series && r.ticket_series.length > 0;
+    const isExpanded = expandedId === r.id;
+    return (
+      <React.Fragment key={r.id}>
+        <tr
+          className={rowClass}
+          onClick={() => hasSeries && toggleExpand(r.id)}
+          style={{ cursor: hasSeries ? "pointer" : "default" }}
         >
-          {r.status}
-        </span>
-      </td>
-    </tr>
-  );
+          <td className={cellClass}>{r.date_requested ? r.date_requested.slice(0, 10) : "—"}</td>
+          <td className={`${cellClass} rpt-bold`}>{r.requested_by_name || "—"}</td>
+          <td className={cellClass}>{r.approved_by_name || <span className="rpt-na">—</span>}</td>
+          <td className={cellClass}>
+            {hasSeries && (
+              <span className={`req-expand-icon ${isExpanded ? "req-expand-icon--open" : ""}`}>&#9654;</span>
+            )}
+            {r.ticket_series ? r.ticket_series.length : 0}
+          </td>
+          <td className={cellClass}>{peso(r.total_value)}</td>
+        </tr>
+        {isExpanded && hasSeries && (
+          <tr className="req-series-row">
+            <td colSpan={5}>
+              <table className="req-series-table">
+                <thead>
+                  <tr>
+                    <th>Ticket Form</th>
+                    <th>Series No.</th>
+                    <th className="text-right">Qty</th>
+                    <th className="text-right">Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {r.ticket_series.map((ts) => (
+                    <tr key={ts.id}>
+                      <td>{ts.ticket_form_label || "—"}</td>
+                      <td>{ts.series_no || `${ts.start_no}-${ts.end_no}`}</td>
+                      <td className="text-right">{ts.qty}</td>
+                      <td className="text-right">{peso(ts.total_value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  };
 
   const renderRemittanceRow = (b, idx, { rowClass, cellClass }) => (
     <tr key={b.id} className={rowClass}>
       <td className={cellClass}>{b.issued_at ? new Date(b.issued_at).toLocaleString() : "—"}</td>
       <td className={`${cellClass} rpt-bold`}>{b.issued_by_name || "—"}</td>
-      <td className={cellClass}>{b.collections ? b.collections.length : 0}</td>
       <td className={cellClass}>{peso(b.total_amount)}</td>
       <td className={cellClass}>
-        <span
-          className="rpt-action-pill"
-          style={{
-            background: `${STATUS_COLORS[b.status] || "#64748b"}22`,
-            color: STATUS_COLORS[b.status] || "#64748b",
-          }}
-        >
-          {b.status}
-        </span>
+        <button className="rpt-btn rpt-btn--secondary" onClick={() => setViewBatch(b)}>
+          View
+        </button>
       </td>
     </tr>
   );
@@ -177,6 +206,10 @@ export default function RequisitionRemittance({
             <DataTable columns={REMITTANCE_COLUMNS} data={modalData} rowRenderer={renderRemittanceRow} />
           )}
         </ReportTableModal>
+      )}
+
+      {viewBatch && (
+        <ViewRemittance batch={viewBatch} onClose={() => setViewBatch(null)} />
       )}
     </div>
   );

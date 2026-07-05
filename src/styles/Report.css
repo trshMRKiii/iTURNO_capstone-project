@@ -533,9 +533,30 @@
 }
 
 @media (max-width: 640px) {
-  .rpt-overlay { padding: 12px; }
+  .rpt-overlay { padding: 8px; align-items: center; }
   .rpt-modal { max-height: 92vh; }
-  .rpt-modal-header { padding: 14px 16px; }
+  .rpt-modal-header {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .rpt-modal-header-left { width: 100%; }
+  .rpt-modal-title { font-size: 14px; }
+  .rpt-modal-header-right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .rpt-modal-header-right .rpt-search-input {
+    flex: 1 1 100%;
+    order: 3;
+    min-width: 0;
+  }
+  .rpt-modal-count { order: 1; }
+  .rpt-modal-close {
+    order: 2;
+    margin-left: auto;
+  }
 }
 
 /* ── DataTable ── */

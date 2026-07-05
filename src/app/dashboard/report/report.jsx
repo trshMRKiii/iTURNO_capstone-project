@@ -302,7 +302,9 @@ export default function Report() {
     "Date Requested": r.date_requested ? r.date_requested.slice(0, 10) : "—",
     "Requested By": r.requested_by_name || "—",
     "Approved By": r.approved_by_name || "—",
-    "Ticket Series": r.ticket_series ? r.ticket_series.length : 0,
+    "Ticket Series": r.ticket_series && r.ticket_series.length
+      ? r.ticket_series.map((ts) => ts.series_no).join("; ")
+      : "—",
     "Total Value": r.total_value,
     Status: r.status,
   });
