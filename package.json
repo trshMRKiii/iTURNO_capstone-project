@@ -19,6 +19,7 @@
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.1",
     "recharts": "^3.8.1",
+    "select-philippines-address": "^1.0.6",
     "tailwindcss": "^4.2.2",
     "uuid": "^14.0.1"
   },

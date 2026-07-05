@@ -5,7 +5,8 @@ from django.db import models
 class User(AbstractUser):
     ROLE_CHOICES = [('PERSONNEL', 'Personnel'), ('SUPERVISOR', 'Supervisor'), ('MANAGER', 'Manager'), ('ADMIN', 'Admin')]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='PERSONNEL')
-    created_at = models.DateTimeField(auto_now_add=True) 
+    middle_name = models.CharField(max_length=100, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -162,7 +163,7 @@ class Requisition(models.Model):
 
     date_requested = models.DateTimeField(auto_now_add=True)
     requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requisitions_requested')
-    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='requisitions_approved')
+    approved_by_name = models.CharField(max_length=150, blank=True, default="")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     total_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -224,6 +225,7 @@ class TicketForm(models.Model):
         return self.name
 
 class RemittanceBatch(models.Model):
+    batch_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
     issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     issued_at = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -325,6 +327,45 @@ class Redemption(models.Model):
 
     def __str__(self):
         return f"{self.profile.driver} — ₱{self.peso_value} ({self.status})"
+
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = [('CREATE', 'Create'), ('UPDATE', 'Update'), ('DELETE', 'Delete')]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=50, blank=True)
+    object_repr = models.CharField(max_length=255, blank=True)
+    changes = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['model_name', 'action']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_action_display()} {self.model_name} #{self.object_id} by {self.user or 'System'}"
+
+
+class BackupRecord(models.Model):
+    SOURCE_CHOICES = [('MANUAL', 'Manual'), ('AUTO', 'Automatic (pre-restore)')]
+
+    filename = models.CharField(max_length=255)
+    label = models.CharField(max_length=255, blank=True)
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='MANUAL')
+    size_bytes = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='backups')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.filename} ({self.created_at})"
 
 
 class RoamingLog(models.Model):

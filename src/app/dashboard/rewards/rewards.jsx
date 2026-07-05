@@ -5,6 +5,37 @@ import "../../../styles/Rewards.css";
 
 const PAGE_SIZE = 10;
 
+const BACKEND_URL =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000"
+    : `http://${window.location.hostname}:8000`;
+
+export function driverPhotoUrl(driver) {
+  if (!driver?.photo) return null;
+  return driver.photo.startsWith("http") ? driver.photo : `${BACKEND_URL}${driver.photo}`;
+}
+
+export function DriverAvatar({ driver, className }) {
+  const [broken, setBroken] = useState(false);
+  const url = driverPhotoUrl(driver);
+
+  if (url && !broken) {
+    return (
+      <img
+        className={className}
+        src={url}
+        alt={`${driver.first_name} ${driver.last_name}`}
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  return (
+    <div className={className}>
+      {driver.last_name?.[0]}{driver.first_name?.[0]}
+    </div>
+  );
+}
+
 export default function Rewards() {
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
@@ -15,6 +46,8 @@ export default function Rewards() {
   });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
 
   const loadLeaderboard = () => {
     apiService.getRewardLeaderboard().then((res) => {
@@ -46,8 +79,26 @@ export default function Rewards() {
     );
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / PAGE_SIZE));
-  const pagedDrivers = filteredDrivers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pointsById = new Map(leaderboard.map((entry) => [entry.id, entry.total_points]));
+
+  const sortedDrivers = [...filteredDrivers].sort((a, b) => {
+    let cmp = 0;
+    if (sortBy === "iwp") {
+      cmp = (a.iwp_number || "").localeCompare(b.iwp_number || "");
+    } else if (sortBy === "points") {
+      const ptsA = pointsById.get(a.id) || 0;
+      const ptsB = pointsById.get(b.id) || 0;
+      cmp = ptsA - ptsB;
+    } else {
+      const nameA = `${a.last_name || ""}, ${a.first_name || ""}`;
+      const nameB = `${b.last_name || ""}, ${b.first_name || ""}`;
+      cmp = nameA.localeCompare(nameB);
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedDrivers.length / PAGE_SIZE));
+  const pagedDrivers = sortedDrivers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="rw-page">
@@ -78,6 +129,29 @@ export default function Rewards() {
             />
           </div>
 
+          <div className="rw-list-toolbar">
+            <select
+              className="rw-sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              title="Sort by"
+            >
+              <option value="name">Sort: Name</option>
+              <option value="iwp">Sort: IWP #</option>
+              <option value="points">Sort: Points</option>
+            </select>
+            <button
+              type="button"
+              className={`rw-sort-dir-btn${sortDir === "desc" ? " rw-sort-dir-btn--desc" : ""}`}
+              onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+              title={sortDir === "asc" ? "Ascending" : "Descending"}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 5v14M11 5 7 9M11 5l4 4" />
+              </svg>
+            </button>
+          </div>
+
           <div className="rw-driver-list rw-driver-list--full">
             {pagedDrivers.map((d) => (
               <button
@@ -85,9 +159,7 @@ export default function Rewards() {
                 className="rw-driver-item"
                 onClick={() => setSelectedDriver(d)}
               >
-                <div className="rw-driver-avatar">
-                  {d.last_name?.[0]}{d.first_name?.[0]}
-                </div>
+                <DriverAvatar driver={d} className="rw-driver-avatar" />
                 <div className="rw-driver-info">
                   <span className="rw-driver-name">{d.last_name}, {d.first_name}</span>
                   <span className="rw-driver-sub">{d.iwp_number || "No IWP"}</span>

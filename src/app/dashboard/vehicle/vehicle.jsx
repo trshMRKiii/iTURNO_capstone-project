@@ -46,6 +46,31 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
   const [ledgerVehicle, setLedgerVehicle] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
+  const [operatorSearch, setOperatorSearch] = useState("");
+  const [showOperatorList, setShowOperatorList] = useState(false);
+
+  const filteredDrivers = activeDrivers.filter((d) =>
+    (d.name || "").toLowerCase().includes(operatorSearch.toLowerCase().trim())
+  );
+
+  const selectOperator = (driver) => {
+    setForm({
+      ...form,
+      active_driver: driver ? driver.id : null,
+      operator_address: driver
+        ? buildDriverAddress(driver)
+        : form.operator_address,
+    });
+    setOperatorSearch(driver ? driver.name : "");
+    setShowOperatorList(false);
+  };
+
+  React.useEffect(() => {
+    if (isModalOpen) {
+      const current = activeDrivers.find((d) => d.id === form.active_driver);
+      setOperatorSearch(current ? current.name : "");
+    }
+  }, [isModalOpen, form.active_driver, activeDrivers]);
 
   const exportQR = () => {
     const toExport = filteredVehicles.filter((v) => v.qr_code);
@@ -504,30 +529,43 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                 />
                 <div className="veh-profile-grid">
                   <Field label="Active Operator">
-                    <select
-                      className="veh-select"
-                      value={form.active_driver || ""}
-                      onChange={(e) => {
-                        const driverId = e.target.value
-                          ? parseInt(e.target.value)
-                          : null;
-                        const driver = activeDrivers.find((d) => d.id === driverId);
-                        setForm({
-                          ...form,
-                          active_driver: driverId,
-                          operator_address: driver
-                            ? buildDriverAddress(driver)
-                            : form.operator_address,
-                        });
-                      }}
-                    >
-                      <option value="">— None / Unassigned —</option>
-                      {activeDrivers.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="veh-operator-search-wrap">
+                      <input
+                        type="text"
+                        className="veh-input"
+                        placeholder="Search operator by name…"
+                        value={operatorSearch}
+                        onChange={(e) => {
+                          setOperatorSearch(e.target.value);
+                          setShowOperatorList(true);
+                        }}
+                        onFocus={() => setShowOperatorList(true)}
+                        onBlur={() => setTimeout(() => setShowOperatorList(false), 150)}
+                      />
+                      {showOperatorList && (
+                        <ul className="veh-operator-list">
+                          <li
+                            className="veh-operator-option veh-operator-option--none"
+                            onMouseDown={() => selectOperator(null)}
+                          >
+                            — None / Unassigned —
+                          </li>
+                          {filteredDrivers.length === 0 ? (
+                            <li className="veh-operator-empty">No matching operators</li>
+                          ) : (
+                            filteredDrivers.map((d) => (
+                              <li
+                                key={d.id}
+                                className={`veh-operator-option ${d.id === form.active_driver ? "veh-operator-option--active" : ""}`}
+                                onMouseDown={() => selectOperator(d)}
+                              >
+                                {d.name}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      )}
+                    </div>
                     <p className="veh-field-hint">Only active drivers are shown.</p>
                   </Field>
                   <Field label="Operator Address">

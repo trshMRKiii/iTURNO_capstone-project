@@ -19,8 +19,9 @@ import {
 import { exportTablePDF } from "../../../lib/report/exportPDF";
 
 import TransactionLogs from "../../../lib/report/tables/TransactionLogs";
+import AuditTrail from "../../../lib/report/tables/AuditTrail";
 import FleetRecords from "../../../lib/report/tables/FleetRecords";
-import RewardRedemptions from "../../../lib/report/tables/RewardRedemptions";
+import RequisitionRemittance from "../../../lib/report/tables/RequisitionRemittance";
 import { getDriverCode } from "../../../lib/driver-utils";
 import "../../../styles/Report.css";
 
@@ -41,6 +42,8 @@ export default function Report() {
   const [chartData, setChartData] = useState([]);
   const [logs, setLogs] = useState([]);
   const [logsTotal, setLogsTotal] = useState(0);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLogsTotal, setAuditLogsTotal] = useState(0);
   const [vehicles, setVehicles] = useState([]);
   const [vehiclesTotal, setVehiclesTotal] = useState(0);
   const [drivers, setDrivers] = useState([]);
@@ -54,6 +57,10 @@ export default function Report() {
   const [showAllRoaming, setShowAllRoaming] = useState(false);
   const [redemptions, setRedemptions] = useState([]);
   const [redemptionsTotal, setRedemptionsTotal] = useState(0);
+  const [requisitions, setRequisitions] = useState([]);
+  const [requisitionsTotal, setRequisitionsTotal] = useState(0);
+  const [remittance, setRemittance] = useState([]);
+  const [remittanceTotal, setRemittanceTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -65,6 +72,17 @@ export default function Report() {
       setLogsTotal(data.total || 0);
     } catch {
       console.error("Failed to load logs");
+    }
+  }, []);
+
+  const fetchAuditLogs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/audit-logs/?all=true`);
+      const data = await res.json();
+      setAuditLogs(data.logs || []);
+      setAuditLogsTotal(data.total || 0);
+    } catch {
+      console.error("Failed to load audit trail");
     }
   }, []);
 
@@ -143,17 +161,51 @@ export default function Report() {
     }
   }, []);
 
+  const fetchRequisitions = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/requisitions/`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : data.results || [];
+      setRequisitions(list);
+      setRequisitionsTotal(list.length);
+    } catch {
+      console.error("Failed to load requisitions");
+    }
+  }, []);
+
+  const fetchRemittance = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/report/remittance/`);
+      const data = await res.json();
+      const list = data.results || [];
+      setRemittance(list);
+      setRemittanceTotal(data.count ?? list.length);
+    } catch {
+      console.error("Failed to load remittance batches");
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
     fetchLogs();
+    fetchAuditLogs();
     fetchVehicles();
     fetchDrivers();
     fetchRoaming();
     fetchRedemptions();
+    fetchRequisitions();
+    fetchRemittance();
   }, []);
 
   const filteredLogs = logs.filter((l) => {
     const d = l.timestamp ? l.timestamp.slice(0, 10) : "";
+    if (filters.startDate && d < filters.startDate) return false;
+    if (filters.endDate && d > filters.endDate) return false;
+    return true;
+  });
+
+  const filteredAuditLogs = auditLogs.filter((a) => {
+    const d = a.created_at ? a.created_at.slice(0, 10) : "";
     if (filters.startDate && d < filters.startDate) return false;
     if (filters.endDate && d > filters.endDate) return false;
     return true;
@@ -192,7 +244,6 @@ export default function Report() {
     "Franchise #": v.franchise_number || "—",
     "QR Code": v.qr_code || "—",
     "Active Driver": v.active_driver_name || "Unassigned",
-    Status: v.status,
   });
 
   const buildDriverExportRow = (d) => ({
@@ -207,7 +258,6 @@ export default function Report() {
     Barangay: d.barangay || "—",
     Street: d.street || "—",
     "Contact No.": d.contact || "—",
-    Status: d.status === "ACTIVE" ? "Active" : "Inactive",
   });
 
   const handleExportVehiclesCSV = () =>
@@ -233,7 +283,6 @@ export default function Report() {
     Driver: r.driver_name || "—",
     "Points Redeemed": r.points_redeemed,
     "Peso Value": r.peso_value,
-    Status: r.status,
     "Approved By": r.approved_by_name || "—",
   });
 
@@ -245,6 +294,43 @@ export default function Report() {
 
   const handleExportRedemptionsPDF = () =>
     exportTablePDF(redemptions.map(buildRedemptionExportRow), "Reward Redemptions");
+
+  const buildRequisitionExportRow = (r) => ({
+    "Date Requested": r.date_requested ? r.date_requested.slice(0, 10) : "—",
+    "Requested By": r.requested_by_name || "—",
+    "Approved By": r.approved_by_name || "—",
+    "Ticket Series": r.ticket_series && r.ticket_series.length
+      ? r.ticket_series.map((ts) => ts.series_no).join("; ")
+      : "—",
+    "Total Value": r.total_value,
+    Status: r.status,
+  });
+
+  const handleExportRequisitionsCSV = () =>
+    exportCSV(
+      requisitions.map(buildRequisitionExportRow),
+      `requisitions_${Date.now()}.csv`,
+    );
+
+  const handleExportRequisitionsPDF = () =>
+    exportTablePDF(requisitions.map(buildRequisitionExportRow), "Requisition");
+
+  const buildRemittanceExportRow = (b) => ({
+    "Issued At": b.issued_at ? new Date(b.issued_at).toLocaleString() : "—",
+    "Issued By": b.issued_by_name || "—",
+    Collections: b.collections ? b.collections.length : 0,
+    "Total Amount": b.total_amount,
+    Status: b.status,
+  });
+
+  const handleExportRemittanceCSV = () =>
+    exportCSV(
+      remittance.map(buildRemittanceExportRow),
+      `remittance_${Date.now()}.csv`,
+    );
+
+  const handleExportRemittancePDF = () =>
+    exportTablePDF(remittance.map(buildRemittanceExportRow), "Remittance");
 
   return (
     <div className="rpt-page">
@@ -345,6 +431,17 @@ export default function Report() {
         roaming={filteredRoaming}
       />
 
+      <RequisitionRemittance
+        requisitions={requisitions}
+        requisitionsTotal={requisitionsTotal}
+        handleExportRequisitionsCSV={handleExportRequisitionsCSV}
+        handleExportRequisitionsPDF={handleExportRequisitionsPDF}
+        remittance={remittance}
+        remittanceTotal={remittanceTotal}
+        handleExportRemittanceCSV={handleExportRemittanceCSV}
+        handleExportRemittancePDF={handleExportRemittancePDF}
+      />
+
       <FleetRecords
         vehiclesTotal={vehiclesTotal}
         showAllVehicles={showAllVehicles}
@@ -358,14 +455,14 @@ export default function Report() {
         visibleDrivers={showAllDrivers ? drivers : drivers.slice(0, 5)}
         handleExportDriversCSV={handleExportDriversCSV}
         handleExportDriversPDF={handleExportDriversPDF}
-      />
-
-      <RewardRedemptions
         redemptions={redemptions}
         redemptionsTotal={redemptionsTotal}
         handleExportRedemptionsCSV={handleExportRedemptionsCSV}
         handleExportRedemptionsPDF={handleExportRedemptionsPDF}
       />
+
+      <AuditTrail filteredAuditLogs={filteredAuditLogs} />
+      
     </div>
   );
 }

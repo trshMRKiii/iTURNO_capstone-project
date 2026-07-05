@@ -1,3 +1,4 @@
+from django.core.files.uploadedfile import UploadedFile
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +7,46 @@ from rest_framework.views import APIView
 
 from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, RoamingLog
 from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
+from .helpers import record_audit_log
+
+
+class AuditLogMixin:
+    """Records create/update/delete actions performed through this viewset to AuditLog."""
+
+    def _safe_changes(self):
+        data = getattr(self.request, 'data', None)
+        if not hasattr(data, 'items'):
+            return {}
+        safe = {}
+        for key, value in data.items():
+            if key == 'password':
+                continue
+            safe[key] = f"<file: {value.name}>" if isinstance(value, UploadedFile) else value
+        return safe
+
+    def _audit(self, action, instance, changes=None):
+        record_audit_log(
+            user=self.request.user,
+            action=action,
+            model_name=instance.__class__.__name__,
+            object_id=instance.pk,
+            object_repr=str(instance),
+            changes=changes,
+        )
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        self._audit('CREATE', instance, self._safe_changes())
+        return instance
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        self._audit('UPDATE', instance, self._safe_changes())
+        return instance
+
+    def perform_destroy(self, instance):
+        self._audit('DELETE', instance)
+        instance.delete()
 
 
 class CurrentUserView(APIView):
@@ -16,24 +57,33 @@ class CurrentUserView(APIView):
         return Response(serializer.data)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
-class DriverViewSet(viewsets.ModelViewSet):
+class DriverViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
 
 
-class RouteViewSet(viewsets.ModelViewSet):
+class RouteViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Route.objects.all()
     serializer_class = RouteSerializer
 
 
-class VehicleViewSet(viewsets.ModelViewSet):
+class VehicleViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        # Vehicle status is patched constantly by ticketing/dispatch/roaming flows
+        # (already reflected in Transaction/Roaming Logs) — only the full profile
+        # edit form on the Vehicle Registry page (a PUT) belongs in the audit trail.
+        if self.request.method == 'PUT':
+            self._audit('UPDATE', instance, self._safe_changes())
+        return instance
 
 
 class TicketViewSet(viewsets.ModelViewSet):
@@ -53,31 +103,47 @@ class TicketViewSet(viewsets.ModelViewSet):
             import logging
             logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
 
+    def perform_update(self, serializer):
+        was_verified = serializer.instance.is_verified
+        ticket = serializer.save()
+        # Ticket issuance/status changes already appear in Transaction Logs —
+        # the audit trail only needs to capture who verified/collected a ticket.
+        if ticket.is_verified and not was_verified:
+            record_audit_log(
+                user=self.request.user,
+                action='UPDATE',
+                model_name='Ticket',
+                object_id=ticket.id,
+                object_repr=f"Verified ticket {ticket.id}",
+                changes={'is_verified': True, 'status': ticket.status},
+            )
 
-class TicketPriceViewSet(viewsets.ModelViewSet):
+
+class TicketPriceViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = TicketPrice.objects.all()
     serializer_class = TicketPriceSerializer
 
 
-class PUVTypeViewSet(viewsets.ModelViewSet):
+class PUVTypeViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = PUVType.objects.all()
     serializer_class = PUVTypeSerializer
 
 
-class TicketFormViewSet(viewsets.ModelViewSet):
+class TicketFormViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = TicketForm.objects.all()
     serializer_class = TicketFormSerializer
 
 
-class RequisitionViewSet(viewsets.ModelViewSet):
+class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Requisition.objects.all()
     serializer_class = RequisitionSerializer
 
     def perform_create(self, serializer):
-        serializer.save(requested_by=self.request.user)
+        requisition = serializer.save(requested_by=self.request.user)
+        self._audit('CREATE', requisition, self._safe_changes())
 
 
-class TicketSeriesViewSet(viewsets.ModelViewSet):
+class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = TicketSeries.objects.all()
     serializer_class = TicketSeriesSerializer
 
@@ -93,6 +159,6 @@ class RoamingLogViewSet(viewsets.ModelViewSet):
         serializer.save(recorded_by=self.request.user)
 
 
-class RemittanceBatchViewSet(viewsets.ModelViewSet):
+class RemittanceBatchViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = RemittanceBatch.objects.all()
     serializer_class = RemittanceBatchSerializer

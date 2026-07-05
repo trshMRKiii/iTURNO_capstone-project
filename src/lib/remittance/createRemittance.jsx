@@ -13,7 +13,7 @@ const Field = ({ label, children }) => (
   </div>
 );
 
-const CreateBatchForm = ({ onClose, onSave }) => {
+const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
   const [accountableOfficer, setAccountableOfficer] = useState("");
   const [collections, setCollections] = useState([
     { ticketFormNo: "", from: 0, to: 0, ticketsIssued: 0, amount: 0 },
@@ -144,8 +144,21 @@ const CreateBatchForm = ({ onClose, onSave }) => {
   const [certified, setCertified] = useState(false);
   const amountsMismatch = totalRemittances !== totalCollections;
 
+  const isDuplicateBatch = existingBatches.some((b) => {
+    const sameOfficer = (b.issued_by_name || "").trim().toLowerCase() === accountableOfficer.trim().toLowerCase();
+    const sameDay = b.issued_at && b.issued_at.slice(0, 10) === dateIssued;
+    const sameAmount = Number(b.total_amount) === Number(totalCollections);
+    return sameOfficer && sameDay && sameAmount && totalCollections > 0;
+  });
+
   const handleSave = () => {
     if (amountsMismatch || !certified) return;
+    if (isDuplicateBatch) {
+      const proceed = window.confirm(
+        "A remittance batch with the same officer, date, and total amount already exists. Save anyway?"
+      );
+      if (!proceed) return;
+    }
     const payload = {
       id: batchId,
       issued_at: dateIssued,
@@ -358,6 +371,16 @@ const CreateBatchForm = ({ onClose, onSave }) => {
           </div>
 
           {/* Footer */}
+          {isDuplicateBatch && (
+            <div className="rem-alert" style={{ marginBottom: 12 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              Warning: A batch with the same officer, date, and total amount already exists. Double-check before saving.
+            </div>
+          )}
           {amountsMismatch && (
             <div className="rem-alert" style={{ marginBottom: 12 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

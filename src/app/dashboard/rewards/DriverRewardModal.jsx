@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { exportRewardReceipt } from "../../../lib/report/exportRewardReceipt";
+import { DriverAvatar } from "./rewards";
 
 const peso = (n) =>
   "₱" +
@@ -102,9 +103,7 @@ export default function DriverRewardModal({ driver, rewardConfig, onClose, onRed
             {/* Driver Header */}
             <div className="rw-profile-header">
               <div className="rw-profile-left">
-                <div className="rw-profile-avatar">
-                  {driver.last_name?.[0]}{driver.first_name?.[0]}
-                </div>
+                <DriverAvatar driver={driver} className="rw-profile-avatar" />
                 <div>
                   <h2 className="rw-profile-name">
                     {driver.last_name}, {driver.first_name}

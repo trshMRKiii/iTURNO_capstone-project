@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useDriver } from "../../../lib/useDriver";
+import { usePhilippineAddress } from "../../../lib/address/usePhilippineAddress";
 import { getDriverCode, getDriverDisplayName } from "../../../lib/driver-utils";
 import "../../../styles/Driver.css";
 
@@ -35,6 +36,15 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
   }, [exposeAdd, handleAdd]);
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
+
+  const { provinceOptions, cityOptions, barangayOptions, handleProvinceSelect, offline } =
+    usePhilippineAddress({
+      active: isModalOpen,
+      province: form.province,
+      city: form.city,
+      onProvinceChange: (name) => setForm((f) => ({ ...f, province: name })),
+      onCityChange: (name) => setForm((f) => ({ ...f, city: name, barangay: "" })),
+    });
 
   const BACKEND_URL =
     window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
@@ -491,36 +501,92 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                   Address
                 </h3>
                 <div className="drv-profile-grid">
+                  {offline && (
+                    <p className="drv-warn-text" style={{ gridColumn: "1 / -1" }}>
+                      Address list unavailable (no internet) — enter address manually.
+                    </p>
+                  )}
                   <div className="drv-field">
                     <label className="drv-label">Province</label>
-                    <input
-                      type="text"
-                      className="drv-input"
-                      value={form.province}
-                      onChange={(e) =>
-                        setForm({ ...form, province: e.target.value })
-                      }
-                    />
+                    {offline ? (
+                      <input
+                        type="text"
+                        className="drv-input"
+                        value={form.province}
+                        onChange={(e) =>
+                          setForm({ ...form, province: e.target.value })
+                        }
+                      />
+                    ) : (
+                      <select
+                        className="drv-select"
+                        value={form.province}
+                        onChange={(e) => handleProvinceSelect(e.target.value)}
+                      >
+                        <option value="">Select province</option>
+                        {provinceOptions.map((p) => (
+                          <option key={p.province_code} value={p.province_name}>
+                            {p.province_name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="drv-field">
-                    <label className="drv-label">City</label>
-                    <input
-                      type="text"
-                      className="drv-input"
-                      value={form.city}
-                      onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    />
+                    <label className="drv-label">Municipality</label>
+                    {offline ? (
+                      <input
+                        type="text"
+                        className="drv-input"
+                        value={form.city}
+                        onChange={(e) => setForm({ ...form, city: e.target.value })}
+                      />
+                    ) : (
+                      <select
+                        className="drv-select"
+                        value={form.city}
+                        disabled={!form.province}
+                        onChange={(e) =>
+                          setForm({ ...form, city: e.target.value, barangay: "" })
+                        }
+                      >
+                        <option value="">Select municipality/city</option>
+                        {cityOptions.map((c) => (
+                          <option key={c.city_code} value={c.city_name}>
+                            {c.city_name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="drv-field">
                     <label className="drv-label">Barangay</label>
-                    <input
-                      type="text"
-                      className="drv-input"
-                      value={form.barangay}
-                      onChange={(e) =>
-                        setForm({ ...form, barangay: e.target.value })
-                      }
-                    />
+                    {offline ? (
+                      <input
+                        type="text"
+                        className="drv-input"
+                        value={form.barangay}
+                        onChange={(e) =>
+                          setForm({ ...form, barangay: e.target.value })
+                        }
+                      />
+                    ) : (
+                      <select
+                        className="drv-select"
+                        value={form.barangay}
+                        disabled={!form.city}
+                        onChange={(e) =>
+                          setForm({ ...form, barangay: e.target.value })
+                        }
+                      >
+                        <option value="">Select barangay</option>
+                        {barangayOptions.map((b) => (
+                          <option key={b.brgy_code} value={b.brgy_name}>
+                            {b.brgy_name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="drv-field">
                     <label className="drv-label">Street</label>

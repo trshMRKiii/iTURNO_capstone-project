@@ -7,11 +7,16 @@ const EMPTY_FORM = {
   username: "",
   email: "",
   first_name: "",
+  middle_name: "",
   last_name: "",
   password: "",
   role: "PERSONNEL",
   is_active: true,
 };
+
+function capitalizeWords(value) {
+  return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+}
 
 const ROLE_CLASS = {
   MANAGER: "usr-role--manager",
@@ -98,6 +103,7 @@ function User() {
         username: form.username || "",
         email: form.email || "",
         first_name: form.first_name || "",
+        middle_name: form.middle_name || "",
         last_name: form.last_name || "",
         role: form.role || "PERSONNEL",
         is_active: isActive,
@@ -121,6 +127,7 @@ function User() {
       username: user.username,
       email: user.email,
       first_name: user.first_name,
+      middle_name: user.middle_name || "",
       last_name: user.last_name,
       password: "",
       role: user.role,
@@ -157,7 +164,7 @@ function User() {
     const q = searchTerm.toLowerCase().trim();
     if (!q) return true;
     return (
-      (`${u.first_name} ${u.last_name}`).toLowerCase().includes(q) ||
+      ([u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ")).toLowerCase().includes(q) ||
       (u.role || "").toLowerCase().includes(q)
     );
   });
@@ -279,7 +286,9 @@ function User() {
                   <tr key={user.id} className="usr-row">
                    
                     <td className="usr-td-name">
-                      {user.first_name} {user.last_name}
+                      {[user.first_name, user.middle_name, user.last_name]
+                        .filter(Boolean)
+                        .join(" ")}
                     </td>
                     <td className="usr-td-email">{user.email}</td>
                     <td>
@@ -398,8 +407,9 @@ function User() {
                 </div>
                 <div className="usr-profile-hero-info">
                   <span className="usr-profile-hero-name">
-                    {[form.first_name, form.last_name].filter(Boolean).join(" ") ||
-                      "New Staff"}
+                    {[form.first_name, form.middle_name, form.last_name]
+                      .filter(Boolean)
+                      .join(" ") || "New Staff"}
                   </span>
                   <div className="usr-profile-hero-tags">
                     <span
@@ -433,9 +443,20 @@ function User() {
                       placeholder="First name"
                       value={form.first_name}
                       onChange={(e) =>
-                        setForm({ ...form, first_name: e.target.value })
+                        setForm({ ...form, first_name: capitalizeWords(e.target.value) })
                       }
                       required
+                    />
+                  </Field>
+                  <Field label="Middle Name">
+                    <input
+                      type="text"
+                      className={inputCls}
+                      placeholder="Middle name (optional)"
+                      value={form.middle_name}
+                      onChange={(e) =>
+                        setForm({ ...form, middle_name: capitalizeWords(e.target.value) })
+                      }
                     />
                   </Field>
                   <Field label="Last Name">
@@ -445,7 +466,7 @@ function User() {
                       placeholder="Last name"
                       value={form.last_name}
                       onChange={(e) =>
-                        setForm({ ...form, last_name: e.target.value })
+                        setForm({ ...form, last_name: capitalizeWords(e.target.value) })
                       }
                       required
                     />

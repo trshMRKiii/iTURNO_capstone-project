@@ -25,6 +25,8 @@ function Requisition() {
     allSeries,
     inventory,
     handleDelete,
+    approvedBy,
+    setApprovedBy,
   } = useRequisition();
 
   const [expandedId, setExpandedId] = useState(null);
@@ -72,6 +74,8 @@ function Requisition() {
         addSeriesItem={addSeriesItem}
         removeSeriesItem={removeSeriesItem}
         ticketForms={ticketForms}
+        approvedBy={approvedBy}
+        setApprovedBy={setApprovedBy}
         computeTotal={computeTotal}
         handleSave={handleSave}
         saving={saving}
@@ -231,7 +235,7 @@ function Requisition() {
                     
                     <th>Date</th>
                     <th>Requested By</th>
-                    <th>Series Count</th>
+                    <th>Approved By</th>
                     <th className="text-right">Total Amount</th>
                     <th></th>
                   </tr>
@@ -252,7 +256,7 @@ function Requisition() {
                           })}
                         </td>
                         <td>{req.requested_by_name}</td>
-                        <td>{req.ticket_series?.length || 0} series</td>
+                        <td>{req.approved_by_name || "—"}</td>
                         <td className="text-right">
                           {formatCurrency(req.total_value)}
                         </td>

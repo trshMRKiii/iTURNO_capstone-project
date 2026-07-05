@@ -7,9 +7,9 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ..models import Ticket, TicketPrice, Vehicle, Driver, Route, RemittanceBatch, Collection, Deposit
-from ..serializers import TicketSerializer, RemittanceBatchSerializer
-from .helpers import get_batch, load_schedule, summarize, parse_iso_datetime, generate_ticket_id
+from ..models import Ticket, TicketPrice, Vehicle, Driver, Route, RemittanceBatch, Collection, Deposit, AuditLog
+from ..serializers import TicketSerializer, RemittanceBatchSerializer, AuditLogSerializer
+from .helpers import get_batch, load_schedule, summarize, parse_iso_datetime, generate_ticket_id, record_audit_log, parse_date_start, parse_date_end
 
 
 @api_view(['POST'])
@@ -104,6 +104,33 @@ def transaction_logs(request):
             'batch': get_batch(t),
         })
 
+    total = len(data)
+    if not show_all:
+        data = data[:10]
+
+    return Response({'logs': data, 'total': total})
+
+
+@api_view(['GET'])
+def audit_logs(request):
+    show_all = request.query_params.get('all', 'false').lower() == 'true'
+
+    logs = AuditLog.objects.select_related('user').order_by('-created_at')
+
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    if start_date:
+        try:
+            logs = logs.filter(created_at__gte=parse_date_start(start_date))
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            logs = logs.filter(created_at__lte=parse_date_end(end_date))
+        except ValueError:
+            pass
+
+    data = AuditLogSerializer(logs, many=True).data
     total = len(data)
     if not show_all:
         data = data[:10]
@@ -242,6 +269,14 @@ def schedules_view(request):
             data = request.data
             with open(file_path, 'w') as f:
                 json.dump(data, f, indent=2)
+            record_audit_log(
+                user=request.user,
+                action='UPDATE',
+                model_name='Schedule',
+                object_id='schedules.json',
+                object_repr='Batch schedule configuration',
+                changes=data,
+            )
             return Response({'status': 'updated'})
         except Exception as e:
             return Response({'error': str(e)}, status=500)
@@ -252,6 +287,7 @@ def remittance_batches(request):
     if request.method == 'POST':
         data = request.data
         batch = RemittanceBatch.objects.create(
+            batch_code=data.get('id'),
             issued_by=request.user if request.user.is_authenticated else None,
             total_amount=data.get('total_amount', 0),
             status=data.get('status', 'OPEN'),

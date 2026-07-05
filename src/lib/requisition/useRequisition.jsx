@@ -17,6 +17,7 @@ export function useRequisition() {
   const showConfirm = useConfirm();
   const [requisitions, setRequisitions] = useState([]);
   const [ticketForms, setTicketForms] = useState([]);
+  const [approvedBy, setApprovedBy] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -155,7 +156,11 @@ export function useRequisition() {
       const currentUser = await apiService.request("/current-user/");
       const reqData = await apiService.request("/requisitions/", {
         method: "POST",
-        body: JSON.stringify({ total_value: totalValue, requested_by: currentUser.id }),
+        body: JSON.stringify({
+          total_value: totalValue,
+          requested_by: currentUser.id,
+          approved_by_name: approvedBy.trim(),
+        }),
       });
 
       for (const item of seriesItems) {
@@ -178,6 +183,7 @@ export function useRequisition() {
       }
 
       setSeriesItems([{ ...EMPTY_SERIES }]);
+      setApprovedBy("");
       setShowForm(false);
       await fetchRequisitions();
     } catch (err) {
@@ -228,6 +234,8 @@ export function useRequisition() {
   return {
     requisitions,
     ticketForms,
+    approvedBy,
+    setApprovedBy,
     loading,
     error,
     saving,

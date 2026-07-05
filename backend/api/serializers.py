@@ -1,12 +1,12 @@
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, AuditLog, BackupRecord
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
+            'id', 'username', 'email', 'first_name', 'middle_name', 'last_name',
             'role', 'is_active', 'password',
         ]
         extra_kwargs = {
@@ -21,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
             first_name=validated_data.get('first_name', ''),
+            middle_name=validated_data.get('middle_name', ''),
             last_name=validated_data.get('last_name', ''),
             role=validated_data.get('role', 'PERSONNEL'),
             is_active=validated_data.get('is_active', True),
@@ -234,17 +235,9 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
 class RequisitionSerializer(serializers.ModelSerializer):
     ticket_series = TicketSeriesSerializer(many=True, read_only=True)
     requested_by_name = serializers.SerializerMethodField()
-    approved_by_name = serializers.SerializerMethodField()
 
     def get_requested_by_name(self, obj):
         user = obj.requested_by
-        if user:
-            full = f"{user.first_name} {user.last_name}".strip()
-            return full if full else user.username
-        return None
-
-    def get_approved_by_name(self, obj):
-        user = obj.approved_by
         if user:
             full = f"{user.first_name} {user.last_name}".strip()
             return full if full else user.username
@@ -254,7 +247,7 @@ class RequisitionSerializer(serializers.ModelSerializer):
         model = Requisition
         fields = [
             'id', 'date_requested', 'requested_by', 'requested_by_name',
-            'approved_by', 'approved_by_name', 'status', 'total_value',
+            'approved_by_name', 'status', 'total_value',
             'ticket_series', 'created_at', 'updated_at',
         ]
 
@@ -344,6 +337,43 @@ class DriverRewardProfileSerializer(serializers.ModelSerializer):
         from .rewards import can_redeem
         _, msg = can_redeem(obj)
         return msg
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            'id', 'user', 'user_name', 'action', 'action_display',
+            'model_name', 'object_id', 'object_repr', 'changes', 'created_at',
+        ]
+
+    def get_user_name(self, obj):
+        user = obj.user
+        if not user:
+            return 'System'
+        full = f"{user.first_name} {user.last_name}".strip()
+        return full or user.username
+
+
+class BackupRecordSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BackupRecord
+        fields = [
+            'id', 'filename', 'label', 'source', 'size_bytes',
+            'created_by', 'created_by_name', 'created_at',
+        ]
+
+    def get_created_by_name(self, obj):
+        user = obj.created_by
+        if not user:
+            return 'System'
+        full = f"{user.first_name} {user.last_name}".strip()
+        return full or user.username
 
 
 class RemittanceBatchSerializer(serializers.ModelSerializer):
