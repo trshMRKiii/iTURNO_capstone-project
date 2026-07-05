@@ -88,6 +88,12 @@ export function useTicket(userRole = "") {
   const { shifts: scheduleShifts } = useShifts();
   const { terminalPrice } = useTerminalPrice();
 
+  const currentBatch = useMemo(
+    () => getCurrentBatch(scheduleShifts),
+    [scheduleShifts],
+  );
+  const isOutsideBatchHours = !currentBatch;
+
   // Fetch data
   const fetchTickets = async () => {
     try {
@@ -215,6 +221,10 @@ export function useTicket(userRole = "") {
     setSuccessMessage("");
     setIssueError("");
 
+    if (isOutsideBatchHours) {
+      setIssueError("Ticket issuance is closed outside of batch hours.");
+      return;
+    }
     if (!selectedVehicle) {
       setIssueError("Please select a vehicle.");
       return;
@@ -405,5 +415,6 @@ export function useTicket(userRole = "") {
     handleIssueTicket,
     ticketFee,
     terminalPrice,
+    isOutsideBatchHours,
   };
 }

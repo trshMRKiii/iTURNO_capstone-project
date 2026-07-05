@@ -41,6 +41,7 @@ function Ticket({ userRole }) {
     selectVehicleById,
     handleDriverChange,
     handleIssueTicket,
+    isOutsideBatchHours,
   } = useTicket(userRole);
 
   const [activeTab, setActiveTab] = useState("tickets");
@@ -312,6 +313,11 @@ function Ticket({ userRole }) {
               </div>
             )}
 
+            {isOutsideBatchHours && (
+              <div className="ticket-alert ticket-alert--error">
+                Ticket issuance is closed outside of batch hours.
+              </div>
+            )}
             {successMessage && (
               <div className="ticket-alert ticket-alert--success">
                 {successMessage}
@@ -327,14 +333,22 @@ function Ticket({ userRole }) {
               type="button"
               className="ticket-issue-btn"
               onClick={handleIssueTicket}
-              disabled={issuingTicket || !selectedVehicle || !selectedDriver || !selectedSeriesId}
+              disabled={
+                issuingTicket ||
+                isOutsideBatchHours ||
+                !selectedVehicle ||
+                !selectedDriver ||
+                !selectedSeriesId
+              }
             >
               <IssueTicketIcon />
               {issuingTicket
                 ? "Issuing…"
-                : ticketQuantity > 1
-                  ? `Issue ${ticketQuantity} Tickets`
-                  : "Issue Ticket"}
+                : isOutsideBatchHours
+                  ? "Outside Batch Hours"
+                  : ticketQuantity > 1
+                    ? `Issue ${ticketQuantity} Tickets`
+                    : "Issue Ticket"}
             </button>
           </div>
         </div>
