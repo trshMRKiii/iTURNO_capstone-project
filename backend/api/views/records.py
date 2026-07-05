@@ -287,6 +287,7 @@ def remittance_batches(request):
     if request.method == 'POST':
         data = request.data
         batch = RemittanceBatch.objects.create(
+            batch_code=data.get('id'),
             issued_by=request.user if request.user.is_authenticated else None,
             total_amount=data.get('total_amount', 0),
             status=data.get('status', 'OPEN'),

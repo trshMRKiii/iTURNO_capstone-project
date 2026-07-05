@@ -5,7 +5,7 @@ import ReportTableModal from "./ReportTableModal";
 import ViewRemittance from "../../remittance/viewRemittance";
 
 const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Approved By", "Ticket Series", "Total Value"];
-const REMITTANCE_COLUMNS = ["Issued At", "Issued By", "Total Amount", "Actions"];
+const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Issued By", "Total Amount", "Actions"];
 
 export default function RequisitionRemittance({
   requisitions,
@@ -115,6 +115,7 @@ export default function RequisitionRemittance({
 
   const renderRemittanceRow = (b, idx, { rowClass, cellClass }) => (
     <tr key={b.id} className={rowClass}>
+      <td className={cellClass}>{b.batch_code || b.id}</td>
       <td className={cellClass}>{b.issued_at ? new Date(b.issued_at).toLocaleString() : "—"}</td>
       <td className={`${cellClass} rpt-bold`}>{b.issued_by_name || "—"}</td>
       <td className={cellClass}>{peso(b.total_amount)}</td>

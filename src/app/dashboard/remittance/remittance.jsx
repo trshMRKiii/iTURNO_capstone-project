@@ -102,7 +102,7 @@ export default function Remittance() {
           <table className="rem-table">
             <thead>
               <tr>
-                {["Issued By", "Issued At", "Total Amount", "Actions"].map((h) => (
+                {["Batch ID", "Issued By", "Issued At", "Total Amount", "Actions"].map((h) => (
                   <th key={h}>{h}</th>
                 ))}
               </tr>
@@ -135,7 +135,7 @@ export default function Remittance() {
               ) : (
                 filteredBatches.map((b) => (
                   <tr key={b.id} className="rem-row">
-                    
+                    <td className="rem-td-meta">{b.batch_code || b.id}</td>
                     <td className="rem-td-meta">{b.issued_by_name}</td>
                     <td className="rem-td-meta">
                       {new Date(b.issued_at).toLocaleDateString("en-US", {
@@ -185,6 +185,7 @@ export default function Remittance() {
         <CreateBatchForm
           onClose={() => setShowModal(false)}
           onSave={handleSaveBatch}
+          existingBatches={batches}
         />
       )}
 

@@ -79,10 +79,16 @@ export default function Rewards() {
     );
   });
 
+  const pointsById = new Map(leaderboard.map((entry) => [entry.id, entry.total_points]));
+
   const sortedDrivers = [...filteredDrivers].sort((a, b) => {
     let cmp = 0;
     if (sortBy === "iwp") {
       cmp = (a.iwp_number || "").localeCompare(b.iwp_number || "");
+    } else if (sortBy === "points") {
+      const ptsA = pointsById.get(a.id) || 0;
+      const ptsB = pointsById.get(b.id) || 0;
+      cmp = ptsA - ptsB;
     } else {
       const nameA = `${a.last_name || ""}, ${a.first_name || ""}`;
       const nameB = `${b.last_name || ""}, ${b.first_name || ""}`;
@@ -132,6 +138,7 @@ export default function Rewards() {
             >
               <option value="name">Sort: Name</option>
               <option value="iwp">Sort: IWP #</option>
+              <option value="points">Sort: Points</option>
             </select>
             <button
               type="button"
