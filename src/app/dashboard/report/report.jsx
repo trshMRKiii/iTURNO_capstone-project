@@ -244,7 +244,6 @@ export default function Report() {
     "Franchise #": v.franchise_number || "—",
     "QR Code": v.qr_code || "—",
     "Active Driver": v.active_driver_name || "Unassigned",
-    Status: v.status,
   });
 
   const buildDriverExportRow = (d) => ({
@@ -259,7 +258,6 @@ export default function Report() {
     Barangay: d.barangay || "—",
     Street: d.street || "—",
     "Contact No.": d.contact || "—",
-    Status: d.status === "ACTIVE" ? "Active" : "Inactive",
   });
 
   const handleExportVehiclesCSV = () =>
@@ -285,7 +283,6 @@ export default function Report() {
     Driver: r.driver_name || "—",
     "Points Redeemed": r.points_redeemed,
     "Peso Value": r.peso_value,
-    Status: r.status,
     "Approved By": r.approved_by_name || "—",
   });
 

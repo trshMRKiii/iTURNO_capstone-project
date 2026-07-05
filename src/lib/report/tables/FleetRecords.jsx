@@ -9,10 +9,9 @@ const VEHICLE_COLUMNS = [
   "Transportation",
   "Franchise #",
   "Active Driver",
-  "Status",
 ];
-const DRIVER_COLUMNS = ["IWP", "Full Name", "Contact No.", "Address", "Status"];
-const REWARD_COLUMNS = ["Date", "Driver", "Points Redeemed", "Peso Value", "Status", "Approved By"];
+const DRIVER_COLUMNS = ["IWP", "Full Name", "Contact No.", "Address"];
+const REWARD_COLUMNS = ["Date", "Driver", "Points Redeemed", "Peso Value", "Approved By"];
 
 export default function FleetRecords({
   vehiclesTotal,
@@ -88,7 +87,6 @@ export default function FleetRecords({
       <td className={cellClass}>
         {v.active_driver_name || <span className="rpt-na">Unassigned</span>}
       </td>
-      <td className={cellClass}>{v.status}</td>
     </tr>
   );
 
@@ -100,7 +98,6 @@ export default function FleetRecords({
       <td className={cellClass}>
         {[d.barangay, d.city, d.province].filter(Boolean).join(", ") || "—"}
       </td>
-      <td className={cellClass}>{d.status === "ACTIVE" ? "Active" : "Inactive"}</td>
     </tr>
   );
 
@@ -110,7 +107,6 @@ export default function FleetRecords({
       <td className={`${cellClass} rpt-bold`}>{r.driver_name || "—"}</td>
       <td className={cellClass}>{r.points_redeemed}</td>
       <td className={cellClass}>{peso(r.peso_value)}</td>
-      <td className={cellClass}>{r.status}</td>
       <td className={cellClass}>{r.approved_by_name || <span className="rpt-na">—</span>}</td>
     </tr>
   );
