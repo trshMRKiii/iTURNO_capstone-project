@@ -29,6 +29,7 @@ from .rewards import (
     reward_redeem,
     reward_leaderboard,
     reward_config,
+    terminal_price_config,
 )
 
 from .records import (

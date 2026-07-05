@@ -341,6 +341,14 @@ export const apiService = {
     return this.put("/rewards/config/", data);
   },
 
+  getTerminalPrice() {
+    return this.get("/settings/terminal-price/");
+  },
+
+  updateTerminalPrice(data) {
+    return this.put("/settings/terminal-price/", data);
+  },
+
   deleteRemittanceBatch(id) {
     return this.delete(`/remittance/${id}/`);
   },

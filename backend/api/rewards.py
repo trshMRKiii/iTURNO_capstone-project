@@ -1,5 +1,6 @@
 from datetime import date, timedelta
-from django.db.models import Count
+from django.db.models import Count, Value
+from django.db.models.functions import Coalesce, NullIf
 from django.utils import timezone
 
 from .models import DriverRewardProfile, PointsTransaction, Redemption, Ticket, RewardConfig
@@ -31,9 +32,13 @@ def award_queue_point(driver, queue_date=None):
 
 
 def _check_daily_bonus(profile, driver, queue_date, config):
+    # Tickets issued together (quantity > 1) share an issuance_group and count
+    # as a single transaction toward the daily threshold, not one per ticket.
     day_count = Ticket.objects.filter(
         driver=driver, status='ISSUED', issued_at__date=queue_date
-    ).count()
+    ).annotate(
+        txn_key=Coalesce(NullIf('issuance_group', Value('')), 'id')
+    ).values('txn_key').distinct().count()
 
     already_got_4 = PointsTransaction.objects.filter(
         profile=profile, type='DAILY_BONUS_4',

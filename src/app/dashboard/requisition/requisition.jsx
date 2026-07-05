@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useRequisition } from "../../../lib/requisition/useRequisition";
 import RequisitionFormModal from "../../../lib/requisition/RequisitionFormModal";
 import "../../../styles/requisition.css";
@@ -39,6 +39,20 @@ function Requisition() {
     setExpandedDenom((prev) => (prev === denom ? null : denom));
 
   const denomOptions = Object.keys(inventory.byDenomination);
+
+  const displayInventory = useMemo(() => {
+    if (!expandedDenom || !inventory.byDenomination[expandedDenom]) return inventory;
+    const d = inventory.byDenomination[expandedDenom];
+    const totalStock = d.totalQty;
+    const stockLevel = totalStock >= 10000 ? "high" : totalStock >= 5000 ? "normal" : "low";
+    return {
+      totalStock,
+      totalValue: d.totalValue,
+      activeSeries: d.series.length > 0 ? d.series[0] : null,
+      hasStock: totalStock > 0,
+      stockLevel,
+    };
+  }, [expandedDenom, inventory]);
 
   return (
     <div className="req-page">
@@ -87,24 +101,43 @@ function Requisition() {
       ) : (
         <>
           {/* Inventory Summary Cards */}
+          {denomOptions.length > 0 && (
+            <div className="req-filter-wrap" style={{ marginBottom: 14, justifyContent: "flex-end" }}>
+              <label className="req-inv-card-label" style={{ marginRight: 4 }}>
+                Viewing
+              </label>
+              <select
+                className="req-filter-select"
+                value={expandedDenom || ""}
+                onChange={(e) => setExpandedDenom(e.target.value || null)}
+              >
+                <option value="">All denominations</option>
+                {denomOptions.map((denom) => (
+                  <option key={denom} value={denom}>
+                    {denom}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="req-inventory-grid">
-            <div className={`req-inv-card ${inventory.hasStock ? "req-inv-card--ok" : "req-inv-card--empty"}`}>
+            <div className={`req-inv-card ${displayInventory.hasStock ? "req-inv-card--ok" : "req-inv-card--empty"}`}>
               <span className="req-inv-card-label">Total Stock</span>
               <span className="req-inv-card-value">
-                {inventory.totalStock.toLocaleString()} tickets
+                {displayInventory.totalStock.toLocaleString()} tickets
               </span>
               <span className="req-inv-card-sub">
-                {formatCurrency(inventory.totalValue)}
+                {formatCurrency(displayInventory.totalValue)}
               </span>
             </div>
 
             <div className="req-inv-card">
               <span className="req-inv-card-label">Active Series</span>
-              {inventory.activeSeries ? (
+              {displayInventory.activeSeries ? (
                 <>
-                  <span className="req-inv-card-value">{inventory.activeSeries.series_no}</span>
+                  <span className="req-inv-card-value">{displayInventory.activeSeries.series_no}</span>
                   <span className="req-inv-card-sub">
-                    {inventory.activeSeries.ticket_form_label || "—"} · {inventory.activeSeries.pcs.toLocaleString()} pcs
+                    {displayInventory.activeSeries.ticket_form_label || "—"} · {displayInventory.activeSeries.pcs.toLocaleString()} pcs
                   </span>
                 </>
               ) : (
@@ -112,17 +145,17 @@ function Requisition() {
               )}
             </div>
 
-            {inventory.stockLevel !== "normal" && (
-              <div className={`req-inv-card ${inventory.stockLevel === "low" ? "req-inv-card--alert" : "req-inv-card--ok"}`}>
+            {displayInventory.stockLevel !== "normal" && (
+              <div className={`req-inv-card ${displayInventory.stockLevel === "low" ? "req-inv-card--alert" : "req-inv-card--ok"}`}>
                 <span className="req-inv-card-label">Stock Alert</span>
-                {inventory.stockLevel === "low" ? (
+                {displayInventory.stockLevel === "low" ? (
                   <>
                     <span className="req-inv-card-value req-inv-card-value--warn">
-                      {inventory.hasStock ? "LOW STOCK" : "OUT OF STOCK"}
+                      {displayInventory.hasStock ? "LOW STOCK" : "OUT OF STOCK"}
                     </span>
                     <span className="req-inv-card-sub">
-                      {inventory.hasStock
-                        ? `Only ${inventory.totalStock.toLocaleString()} tickets remaining — below 5,000 threshold`
+                      {displayInventory.hasStock
+                        ? `Only ${displayInventory.totalStock.toLocaleString()} tickets remaining — below 5,000 threshold`
                         : "New requisition required to resume transactions"}
                     </span>
                   </>
@@ -130,7 +163,7 @@ function Requisition() {
                   <>
                     <span className="req-inv-card-value req-inv-card-value--high">HIGH STOCK</span>
                     <span className="req-inv-card-sub">
-                      {inventory.totalStock.toLocaleString()} tickets — above 50,000 threshold
+                      {displayInventory.totalStock.toLocaleString()} tickets — above 50,000 threshold
                     </span>
                   </>
                 )}
@@ -142,7 +175,7 @@ function Requisition() {
           <div className="req-table-wrap">
             <div className="req-report-section-header">
               <h3 className="req-report-section-label">COLLECTIONS & DEPOSITS</h3>
-              <span className="req-report-section-sub">Click a denomination to view ticket stock details</span>
+              <span className="req-report-section-sub">Use the "Viewing" dropdown above to filter by denomination</span>
             </div>
             <table className="req-table">
               <thead>
@@ -154,7 +187,9 @@ function Requisition() {
               </thead>
               <tbody>
                 {denomOptions.length > 0 ? (
-                  denomOptions.map((denom) => {
+                  denomOptions
+                    .filter((denom) => !expandedDenom || expandedDenom === denom)
+                    .map((denom) => {
                     const d = inventory.byDenomination[denom];
                     const isExpanded = expandedDenom === denom;
                     return (

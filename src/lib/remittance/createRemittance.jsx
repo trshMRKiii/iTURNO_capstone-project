@@ -82,31 +82,42 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
       .catch(err => console.error("Failed to load ticket series:", err));
   }, []);
 
+  const computeRowForForm = (name) => {
+    const matchingSeries = ticketSeries.filter(
+      s => (s.ticket_form_label || s.ticket_form_name || "") === name
+    );
+    const matchingTickets = todayTickets.filter(
+      t => (t.series?.ticket_form_label || "") === name
+    );
+    const totalCollected = matchingTickets.reduce(
+      (sum, t) => sum + Number(t.collection_amount || 0), 0
+    );
+    const ticketsIssuedToday = matchingTickets.length;
+    const beginningPcs = matchingSeries.reduce(
+      (sum, s) => sum + (s.beginning ?? ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0))), 0
+    );
+    const unitPrice = Number(matchingSeries[0]?.ticket_form_price || 0);
+    const remainingPcs = matchingSeries.reduce(
+      (sum, s) => sum + (s.remaining ?? ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0))), 0
+    );
+
+    return {
+      ticketFormNo: name,
+      from: beginningPcs * unitPrice,
+      to: remainingPcs * unitPrice,
+      ticketsIssued: ticketsIssuedToday,
+      amount: totalCollected,
+    };
+  };
+
+  useEffect(() => {
+    if (ticketFormOptions.length === 0) return;
+    setCollections(ticketFormOptions.map(tf => computeRowForForm(tf.name)));
+  }, [ticketFormOptions, ticketSeries, todayTickets]);
+
   const updateCollection = (index, field, value) => {
     const updated = [...collections];
     updated[index][field] = value;
-
-    if (field === "ticketFormNo" && value) {
-      const matchingSeries = ticketSeries.filter(
-        s => (s.ticket_form_label || s.ticket_form_name || "") === value
-      );
-      const matchingTickets = todayTickets.filter(
-        t => (t.series?.ticket_form_label || "") === value
-      );
-      const totalCollected = matchingTickets.reduce(
-        (sum, t) => sum + Number(t.collection_amount || 0), 0
-      );
-      const ticketsIssuedToday = matchingTickets.length;
-      const beginningPcs = matchingSeries.reduce(
-        (sum, s) => sum + (s.beginning ?? ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0))), 0
-      );
-      const unitPrice = Number(matchingSeries[0]?.ticket_form_price || 0);
-
-      updated[index].from = beginningPcs * unitPrice;
-      updated[index].ticketsIssued = ticketsIssuedToday;
-      updated[index].amount = totalCollected;
-    }
-
     setCollections(updated);
   };
 
@@ -137,7 +148,7 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
   );
 
   const endingBalance = collections.reduce(
-    (sum, c) => sum + (Number(c.from || 0) - Number(c.amount || 0)),
+    (sum, c) => sum + Number(c.to || 0),
     0
   );
 
@@ -229,25 +240,7 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
             <tbody>
               {collections.map((c, i) => (
                 <tr key={i}>
-                  <td>
-                    <select
-                      className="rem-select"
-                      value={c.ticketFormNo}
-                      onChange={(e) => updateCollection(i, "ticketFormNo", e.target.value)}
-                    >
-                      <option value="">-- Select --</option>
-                      {ticketFormOptions.map(tf => {
-                        const alreadySelected = collections.some(
-                          (col, idx) => idx !== i && col.ticketFormNo === tf.name
-                        );
-                        return (
-                          <option key={tf.id} value={tf.name} disabled={alreadySelected}>
-                            {tf.name}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </td>
+                  <td>{c.ticketFormNo}</td>
                   <td>
                     <input
                       type="number"
@@ -260,7 +253,7 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
                     <input
                       type="number"
                       className="rem-input"
-                      value={Number(c.from) - Number(c.amount || 0)}
+                      value={c.to}
                       readOnly
                       style={{ opacity: 0.6 }}
                     />
@@ -280,17 +273,11 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
               <tr>
                 <td style={{ textAlign: "right" }}>Totals</td>
                 <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.from || 0), 0))}</td>
-                <td>{formatCurrency(collections.reduce((sum, c) => sum + (Number(c.from || 0) - Number(c.amount || 0)), 0))}</td>
+                <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.to || 0), 0))}</td>
                 <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.amount || 0), 0))}</td>
               </tr>
             </tfoot>
           </table>
-          <button
-            onClick={() => setCollections([...collections, { ticketFormNo: "", from: 0, to: 0, ticketsIssued: 0, amount: 0 }])}
-            className="rem-add-row-btn"
-          >
-            + Add Ticket Row
-          </button>
 
           {/* Deposits */}
           <div>

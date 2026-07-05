@@ -107,7 +107,7 @@ function Collection({ userRole }) {
 
   const rowsPerPage = 15;
   const unverifiedTickets = tickets.filter(
-    (t) => !t.is_verified && t.status !== "CANCELLED",
+    (t) => !t.is_verified && t.status === "DISPATCHED",
   );
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;

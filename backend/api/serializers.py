@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, AuditLog, BackupRecord
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, AuditLog, BackupRecord, TerminalPrice
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -173,6 +173,11 @@ class TicketFormSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketForm
         fields = ['id', 'name', 'price']
+
+class TerminalPriceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TerminalPrice
+        fields = ['id', 'amount', 'updated_at']
 
 class DepositSerializer(serializers.ModelSerializer):
     class Meta:

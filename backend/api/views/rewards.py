@@ -1,8 +1,8 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ..models import Driver, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig
-from ..serializers import DriverRewardProfileSerializer, PointsTransactionSerializer, RedemptionSerializer, RewardConfigSerializer
+from ..models import Driver, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, TerminalPrice
+from ..serializers import DriverRewardProfileSerializer, PointsTransactionSerializer, RedemptionSerializer, RewardConfigSerializer, TerminalPriceSerializer
 from ..rewards import get_or_create_profile, can_redeem, redeem_points
 from .helpers import record_audit_log
 
@@ -22,6 +22,26 @@ def reward_config(request):
         model_name='RewardConfig',
         object_id=config.pk,
         object_repr='Reward configuration',
+        changes=request.data,
+    )
+    return Response(serializer.data)
+
+
+@api_view(['GET', 'PUT'])
+def terminal_price_config(request):
+    config = TerminalPrice.get_solo()
+    if request.method == 'GET':
+        return Response(TerminalPriceSerializer(config).data)
+
+    serializer = TerminalPriceSerializer(config, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    record_audit_log(
+        user=request.user,
+        action='UPDATE',
+        model_name='TerminalPrice',
+        object_id=config.pk,
+        object_repr='Terminal price configuration',
         changes=request.data,
     )
     return Response(serializer.data)

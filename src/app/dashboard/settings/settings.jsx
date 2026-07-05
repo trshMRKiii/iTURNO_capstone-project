@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { useShifts } from "../../../lib/useShifts";
+import { useTerminalPrice } from "../../../lib/useTerminalPrice";
 import SettingsModal from "../../../components/ui/settingsModal";
 import ClockTimePicker from "../../../components/ui/clockTimePicker";
 import "../../../styles/Settings.css";
@@ -54,6 +55,18 @@ const TABS = [
         <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
         <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
         <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+      </svg>
+    ),
+  },
+  {
+    key: "terminalPrice",
+    label: "Terminal Price",
+    description: "Maximum total collection amount allowed per issued ticket",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v12" />
+        <path d="M15 9.5c0-1.38-1.34-2.5-3-2.5s-3 1.12-3 2.5 1.34 2.5 3 2.5 3 1.12 3 2.5-1.34 2.5-3 2.5-3-1.12-3-2.5" />
       </svg>
     ),
   },
@@ -169,6 +182,34 @@ function Settings() {
     error: shiftsError,
     updateShifts,
   } = useShifts();
+
+  const {
+    terminalPrice,
+    loading: terminalPriceLoading,
+    error: terminalPriceError,
+    updateTerminalPrice,
+  } = useTerminalPrice();
+  const [terminalPriceInput, setTerminalPriceInput] = useState("");
+  const [savingTerminalPrice, setSavingTerminalPrice] = useState(false);
+
+  useEffect(() => {
+    if (terminalPrice) {
+      setTerminalPriceInput(String(terminalPrice.amount ?? ""));
+    }
+  }, [terminalPrice]);
+
+  const handleSaveTerminalPrice = async () => {
+    setSavingTerminalPrice(true);
+    try {
+      await updateTerminalPrice(parseFloat(terminalPriceInput) || 0);
+      showToast?.("Terminal price saved", "success");
+    } catch (err) {
+      console.error("Failed to save terminal price", err);
+      showToast?.("Failed to save terminal price", "info");
+    } finally {
+      setSavingTerminalPrice(false);
+    }
+  };
   const [editingShifts, setEditingShifts] = useState({});
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -504,6 +545,7 @@ function Settings() {
     routes: routes.length,
     ticketForms: ticketForms.length,
     rewards: rewardConfig ? 1 : 0,
+    terminalPrice: terminalPrice ? 1 : 0,
     batchSchedule: Object.keys(shifts || {}).length,
     system: systemBackups.length,
   };
@@ -543,7 +585,7 @@ function Settings() {
             <h2 className="set-panel-title">{TABS.find(t => t.key === activeTab)?.label}</h2>
 
           </div>
-          {activeTab !== "rewards" && activeTab !== "batchSchedule" && activeTab !== "system" && (
+          {activeTab !== "rewards" && activeTab !== "terminalPrice" && activeTab !== "batchSchedule" && activeTab !== "system" && (
             <div className="set-toolbar-actions">
               <button className="set-add-btn" onClick={() => setAddModalOpen(true)}>
                 <PlusIcon />
@@ -733,6 +775,43 @@ function Settings() {
               <button className="set-add-btn" onClick={handleSaveRewardConfig} disabled={savingRewardConfig}>
                 <PlusIcon />
                 {savingRewardConfig ? "Saving..." : "Save Rewards Settings"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Terminal Price */}
+        {activeTab === "terminalPrice" && (
+          <div className="set-rewards-form">
+            <p className="set-rewards-note">
+              The terminal price is the maximum total collection amount (ticket price × quantity)
+              allowed when issuing a ticket. Leave it at 0 to disable the limit.
+            </p>
+            {terminalPriceLoading ? (
+              <p className="set-rewards-note">Loading terminal price...</p>
+            ) : (
+              <div className="set-add-row">
+                <label className="set-field">
+                  <span className="set-field-label">Terminal Price (₱)</span>
+                  <input
+                    type="number"
+                    className="set-input"
+                    min={0}
+                    step="0.01"
+                    value={terminalPriceInput}
+                    onChange={(e) => setTerminalPriceInput(e.target.value)}
+                    placeholder="0"
+                  />
+                </label>
+              </div>
+            )}
+            {terminalPriceError && (
+              <p className="set-rewards-note" style={{ color: "#c0392b" }}>{terminalPriceError}</p>
+            )}
+            <div className="set-add-row">
+              <button className="set-add-btn" onClick={handleSaveTerminalPrice} disabled={savingTerminalPrice || terminalPriceLoading}>
+                <PlusIcon />
+                {savingTerminalPrice ? "Saving..." : "Save Terminal Price"}
               </button>
             </div>
           </div>

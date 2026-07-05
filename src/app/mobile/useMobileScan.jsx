@@ -163,6 +163,7 @@ export function useMobileScan() {
 
         let nextStartNo = parseInt(series.start_no);
         const issuedIds = [];
+        const issuanceGroup = crypto.randomUUID();
         for (let i = 0; i < quantity; i++) {
           const payload = {
             id: `${nextStartNo}`,
@@ -172,6 +173,7 @@ export function useMobileScan() {
             series_id: parseInt(selectedSeriesId),
             status: "ISSUED",
             is_verified: false,
+            issuance_group: issuanceGroup,
           };
           if (ticketFee > 0) payload.collection_amount = ticketFee;
 
