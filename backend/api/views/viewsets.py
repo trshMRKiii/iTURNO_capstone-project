@@ -96,12 +96,20 @@ class TicketViewSet(viewsets.ModelViewSet):
         else:
             ticket = serializer.save()
 
-        from ..rewards import award_queue_point
-        try:
-            award_queue_point(ticket.driver)
-        except Exception:
-            import logging
-            logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
+        # Tickets issued together (quantity > 1) share an issuance_group —
+        # only the first one in the group should award a queue point,
+        # otherwise a single dispatch action would earn multiple points.
+        is_first_in_group = not ticket.issuance_group or not Ticket.objects.filter(
+            issuance_group=ticket.issuance_group
+        ).exclude(pk=ticket.pk).exists()
+
+        if is_first_in_group:
+            from ..rewards import award_queue_point
+            try:
+                award_queue_point(ticket.driver)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
 
     def perform_update(self, serializer):
         was_verified = serializer.instance.is_verified

@@ -123,6 +123,7 @@ class Ticket(models.Model):
     is_late = models.BooleanField(default=False, db_index=True)
     intended_batch = models.CharField(max_length=20, blank=True)
     batch = models.CharField(max_length=20, blank=True, db_index=True)
+    issuance_group = models.CharField(max_length=40, blank=True, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -223,6 +224,18 @@ class TicketForm(models.Model):
 
     def __str__(self):
         return self.name
+
+class TerminalPrice(models.Model):
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Terminal Price: ₱{self.amount}"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
 
 class RemittanceBatch(models.Model):
     batch_code = models.CharField(max_length=20, unique=True, blank=True, null=True)

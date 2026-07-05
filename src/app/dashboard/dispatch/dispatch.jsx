@@ -73,15 +73,20 @@ function Dispatch() {
       await apiService.patch(`/vehicles/${vehicle.id}/`, {
         status: "AVAILABLE",
       });
-      const activeTicket = tickets.find(
+      // A vehicle can hold multiple ISSUED tickets when quantity > 1 was used
+      // at issuance time — all of them belong to this one dispatch action.
+      const activeTickets = tickets.filter(
         (t) => t.vehicle?.id === vehicle.id && t.status === "ISSUED",
       );
-      if (activeTicket) {
-        await apiService.patch(`/tickets/${activeTicket.id}/`, {
-          status: "DISPATCHED",
-          dispatched_at: new Date().toISOString(),
-        });
-      }
+      const dispatchedAt = new Date().toISOString();
+      await Promise.all(
+        activeTickets.map((t) =>
+          apiService.patch(`/tickets/${t.id}/`, {
+            status: "DISPATCHED",
+            dispatched_at: dispatchedAt,
+          }),
+        ),
+      );
       await fetchData();
     } catch (err) {
       setError(err.message);
@@ -109,15 +114,19 @@ function Dispatch() {
     setCancelling(true);
     setCancelError("");
     try {
-      const activeTicket = tickets.find(
+      // Cancel every ISSUED ticket for this vehicle — quantity > 1 issuance
+      // creates multiple tickets that all belong to the same pending trip.
+      const activeTickets = tickets.filter(
         (t) => t.vehicle?.id === cancelTarget.id && t.status === "ISSUED",
       );
-      if (activeTicket) {
-        await apiService.patch(`/tickets/${activeTicket.id}/`, {
-          status: "CANCELLED",
-          reason: cancelReason.trim(),
-        });
-      }
+      await Promise.all(
+        activeTickets.map((t) =>
+          apiService.patch(`/tickets/${t.id}/`, {
+            status: "CANCELLED",
+            reason: cancelReason.trim(),
+          }),
+        ),
+      );
       await apiService.patch(`/vehicles/${cancelTarget.id}/`, {
         status: "AVAILABLE",
       });
