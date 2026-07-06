@@ -275,9 +275,9 @@ export function useTicket(userRole = "") {
     }
 
     const cap = Number(terminalPrice?.amount || 0);
-    if (cap > 0 && ticketFee * quantity > cap) {
+    if (cap > 0 && ticketFee * quantity !== cap) {
       setIssueError(
-        `Total collection amount (₱${(ticketFee * quantity).toFixed(2)}) exceeds the terminal price limit of ₱${cap.toFixed(2)}.`,
+        `Total collection amount (₱${(ticketFee * quantity).toFixed(2)}) must match the terminal price of ₱${cap.toFixed(2)}.`,
       );
       return;
     }
