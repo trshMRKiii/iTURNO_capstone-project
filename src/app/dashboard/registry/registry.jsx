@@ -11,10 +11,12 @@ function Registry() {
   const vehAddRef = useRef(null);
   const drvAddRef = useRef(null);
   const vehExportQRRef = useRef(null);
+  const drvExportQRRef = useRef(null);
 
   const exposeVehAdd = useCallback((fn) => { vehAddRef.current = fn; }, []);
   const exposeDrvAdd = useCallback((fn) => { drvAddRef.current = fn; }, []);
   const exposeVehExportQR = useCallback((fn) => { vehExportQRRef.current = fn; }, []);
+  const exposeDrvExportQR = useCallback((fn) => { drvExportQRRef.current = fn; }, []);
 
   const searchTerm = activeTab === "vehicles" ? vehSearch : drvSearch;
   const setSearchTerm = activeTab === "vehicles" ? setVehSearch : setDrvSearch;
@@ -35,7 +37,7 @@ function Registry() {
         <div className="reg-header-left">
           <div className="reg-header-accent" />
           <div>
-            <h1 className="reg-title">Fleet &amp; Personnel Registry</h1>
+            <h1 className="reg-title">Fleet &amp; Driver Registry</h1>
             <p className="reg-subtitle">
               Manage registered vehicles, drivers, and assignments
             </p>
@@ -53,8 +55,16 @@ function Registry() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          {activeTab === "vehicles" && (
-            <button className="reg-export-qr-btn" onClick={() => vehExportQRRef.current?.()} title="Export QR codes for filtered vehicles">
+          {(activeTab === "vehicles" || activeTab === "drivers") && (
+            <button
+              className="reg-export-qr-btn"
+              onClick={() =>
+                activeTab === "vehicles"
+                  ? vehExportQRRef.current?.()
+                  : drvExportQRRef.current?.()
+              }
+              title={`Export QR codes for filtered ${activeTab === "vehicles" ? "vehicles" : "drivers"}`}
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <rect x="3" y="3" width="7" height="7" rx="1" />
                 <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -120,6 +130,7 @@ function Registry() {
             searchTerm={drvSearch}
             onSearchChange={setDrvSearch}
             exposeAdd={exposeDrvAdd}
+            exposeExportQR={exposeDrvExportQR}
           />
         )}
       </div>

@@ -168,20 +168,24 @@ export const apiService = {
     return this.get("/server-time/");
   },
 
-  getSchedules() {
-    return this.get("/schedules/");
-  },
-
-  updateSchedules(data) {
-    return this.put("/schedules/", data);
-  },
-
   createTicket(ticketData) {
     return this.post("/tickets/", ticketData);
   },
 
   updateTicket(ticketId, ticketData) {
     return this.patch(`/tickets/${ticketId}/`, ticketData);
+  },
+
+  reassignTicketDriver(ticketId, driverId) {
+    return this.post(`/tickets/${ticketId}/reassign_driver/`, { driver_id: driverId });
+  },
+
+  dispatchTicket(vehicleId, { ticketFormId, quantity }) {
+    return this.post("/tickets/dispatch/", {
+      vehicle_id: vehicleId,
+      ticket_form_id: ticketFormId,
+      quantity,
+    });
   },
 
   getVehicles() {
@@ -224,8 +228,9 @@ export const apiService = {
     return this.delete(`/drivers/${id}/`);
   },
 
-  getRoutes() {
-    return this.get("/routes/");
+  getRoutes(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.get(`/routes/${qs ? `?${qs}` : ""}`);
   },
 
   createRoute(data) {
@@ -260,8 +265,9 @@ export const apiService = {
     return this.get("/current-user/");
   },
 
-  getDashboardStats() {
-    return this.get("/dashboard/stats/");
+  getDashboardStats(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.get(`/dashboard/stats/${qs ? `?${qs}` : ""}`);
   },
 
   getReportChart() {
@@ -307,38 +313,6 @@ export const apiService = {
 
   createRoamingLog(data) {
     return this.post("/roaming-logs/", data);
-  },
-
-  getRewardSummary(driverId) {
-    return this.get(`/rewards/${driverId}/`);
-  },
-
-  getRewardHistory(driverId, params = '') {
-    return this.get(`/rewards/${driverId}/history/${params}`);
-  },
-
-  getRewardRedemptions(driverId) {
-    return this.get(`/rewards/${driverId}/redemptions/`);
-  },
-
-  redeemReward(driverId) {
-    return this.post(`/rewards/${driverId}/redeem/`);
-  },
-
-  getRewardLeaderboard() {
-    return this.get("/rewards/leaderboard/");
-  },
-
-  getAllRewardRedemptions(params = '') {
-    return this.get(`/rewards/redemptions/${params}`);
-  },
-
-  getRewardConfig() {
-    return this.get("/rewards/config/");
-  },
-
-  updateRewardConfig(data) {
-    return this.put("/rewards/config/", data);
   },
 
   getTerminalPrice() {
@@ -393,6 +367,19 @@ export const apiService = {
     return this.post("/system/backups/restore-upload/", formData);
   },
 
+  // password reset
+  requestPasswordReset(email) {
+    return this.post("/auth/forgot-password/", { email });
+  },
+
+  confirmPasswordReset({ uid, token, newPassword }) {
+    return this.post("/auth/reset-password/", {
+      uid,
+      token,
+      new_password: newPassword,
+    });
+  },
+
 };
 
 //login
@@ -407,7 +394,7 @@ const roleLabel = (role) => {
     case "PERSONNEL":
       return "Personnel";
     default:
-      return "Admin";
+      return "Super Admin";
   }
 };
 
@@ -421,7 +408,7 @@ export const handleLogin = async (
   setError("");
 
   if (!username.trim() || !password.trim()) {
-    setError("Please enter both username and password.");
+    setError("Please enter both email and password.");
     return;
   }
 

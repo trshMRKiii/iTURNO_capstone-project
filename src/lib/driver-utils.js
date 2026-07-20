@@ -27,6 +27,7 @@ export const normalizeDriverForm = (driver = {}) => ({
   barangay: driver.barangay || "",
   street: driver.street || "",
   contact: driver.contact || "",
+  qr_code: driver.qr_code || "",
   status: driver.status || "ACTIVE",
   is_archived: driver.is_archived ?? false,
   photo: driver.photo || null,
@@ -50,6 +51,7 @@ export const buildDriverPayload = (form = {}) => {
   payload.append("barangay", form.barangay || "");
   payload.append("street", form.street || "");
   payload.append("contact", form.contact || "");
+  payload.append("qr_code", form.qr_code || "");
   payload.append("status", form.status || "ACTIVE");
   payload.append("is_archived", form.is_archived ? "true" : "false");
 

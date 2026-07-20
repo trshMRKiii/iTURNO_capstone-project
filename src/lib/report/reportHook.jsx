@@ -59,7 +59,7 @@ export const handleDateChange = (field, value) => {
 };
 
 export const handleClearFilter = () => {
-  setFilters({ startDate: "", endDate: "", batch: "all" });
+  setFilters({ startDate: "", endDate: "" });
   setTimeout(() => fetchData(), 0);
 };
 

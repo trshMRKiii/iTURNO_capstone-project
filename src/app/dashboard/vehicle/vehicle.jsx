@@ -137,7 +137,9 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
       (v.franchise_number || "").toLowerCase().includes(q) ||
       (v.qr_code || "").toLowerCase().includes(q) ||
       (v.route_detail?.full_name || "").toLowerCase().includes(q) ||
-      (v.route_detail?.origin || "").toLowerCase().includes(q)
+      (v.route_detail?.origin || "").toLowerCase().includes(q) ||
+      (v.status || "").toLowerCase().includes(q) ||
+      (STATUS_LABEL[v.status] || "").toLowerCase().includes(q)
     );
   });
 

@@ -19,6 +19,8 @@ function Ticket({ userRole }) {
 
     vehicles,
     drivers,
+    issuanceType,
+    setIssuanceType,
     selectedVehicle,
     selectedDriver,
     showDriverModal,
@@ -41,7 +43,6 @@ function Ticket({ userRole }) {
     selectVehicleById,
     handleDriverChange,
     handleIssueTicket,
-    isOutsideBatchHours,
   } = useTicket(userRole);
 
   const [activeTab, setActiveTab] = useState("tickets");
@@ -85,8 +86,14 @@ function Ticket({ userRole }) {
 
   const cancelledTickets = filteredTickets.filter((t) => t.status === "CANCELLED");
   const activeTickets = filteredTickets.filter((t) => t.status !== "CANCELLED");
+  const roamingTickets = activeTickets.filter((t) => t.mode === "UNLOAD");
 
-  const displayTickets = activeTab === "tickets" ? activeTickets : cancelledTickets;
+  const displayTickets =
+    activeTab === "tickets"
+      ? activeTickets
+      : activeTab === "roaming"
+        ? roamingTickets
+        : cancelledTickets;
 
   return (
     <div className="ticket-page">
@@ -109,14 +116,31 @@ function Ticket({ userRole }) {
         <div className="ticket-card">
           <div className="ticket-card-header ticket-card-header--color">
             <div>
-              <span className="ticket-card-title">Issue New Ticket</span>
+              <span className="ticket-card-title">
+                {issuanceType === "ROAM" ? "Issue New Ticket" : "Check In Vehicle"}
+              </span>
               <p className="ticket-card-desc">
-                Only available vehicles and active drivers may be selected.
+                {issuanceType === "ROAM"
+                  ? "Only available vehicles and active drivers may be selected."
+                  : "Only available vehicles and active drivers may be selected. Denomination and quantity are chosen at Dispatch."}
               </p>
             </div>
           </div>
 
           <div className="ticket-card-body">
+            {/* Issuance type select */}
+            <div className="ticket-field">
+              <label className="ticket-label">Issuance Type</label>
+              <select
+                className="ticket-select"
+                value={issuanceType}
+                onChange={(e) => setIssuanceType(e.target.value)}
+              >
+                <option value="QUEUE">Queue</option>
+                <option value="ROAM">Roaming</option>
+              </select>
+            </div>
+
             {/* Route select */}
             <div className="ticket-field">
               <label className="ticket-label">Route</label>
@@ -185,42 +209,48 @@ function Ticket({ userRole }) {
               )}
             </div>
 
-            {/* Ticket Form / Series select */}
-            <div className="ticket-field">
-              <label className="ticket-label">Ticket Form / Series</label>
-              <select
-                className="ticket-select"
-                value={selectedSeriesId}
-                onChange={(e) => setSelectedSeriesId(e.target.value)}
-              >
-                <option value="">— Select a ticket series —</option>
-                {availableSeries.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.ticket_form_label || "Unspecified"} — Series {s.series_no} ({s.pcs} pcs remaining)
-                  </option>
-                ))}
-              </select>
-              {availableSeries.length === 0 && (
-                <p className="ticket-field-hint">
-                  No ticket series with stock available. Create a new requisition first.
-                </p>
-              )}
-            </div>
+            {/* Ticket Form / Series select — roaming issues + dispatches in one step, */}
+            {/* so it still needs a denomination picked here. Queue check-ins pick */}
+            {/* the denomination later, at Dispatch. */}
+            {issuanceType === "ROAM" && (
+              <>
+                <div className="ticket-field">
+                  <label className="ticket-label">Ticket Form / Series</label>
+                  <select
+                    className="ticket-select"
+                    value={selectedSeriesId}
+                    onChange={(e) => setSelectedSeriesId(e.target.value)}
+                  >
+                    <option value="">— Select a ticket series —</option>
+                    {availableSeries.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.ticket_form_label || "Unspecified"} — Series {s.series_no} ({s.pcs} pcs remaining)
+                      </option>
+                    ))}
+                  </select>
+                  {availableSeries.length === 0 && (
+                    <p className="ticket-field-hint">
+                      No ticket series with stock available. Create a new requisition first.
+                    </p>
+                  )}
+                </div>
 
-            {/* Quantity */}
-            <div className="ticket-field">
-              <label className="ticket-label">Quantity</label>
-              <input
-                type="number"
-                className="ticket-select"
-                min={1}
-                value={ticketQuantity}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setTicketQuantity(Number.isNaN(val) ? 1 : Math.max(1, val));
-                }}
-              />
-            </div>
+                {/* Quantity */}
+                <div className="ticket-field">
+                  <label className="ticket-label">Quantity</label>
+                  <input
+                    type="number"
+                    className="ticket-select"
+                    min={1}
+                    value={ticketQuantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setTicketQuantity(Number.isNaN(val) ? 1 : Math.max(1, val));
+                    }}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Driver panel */}
             {selectedVehicle && (
@@ -313,11 +343,6 @@ function Ticket({ userRole }) {
               </div>
             )}
 
-            {isOutsideBatchHours && (
-              <div className="ticket-alert ticket-alert--error">
-                Ticket issuance is closed outside of batch hours.
-              </div>
-            )}
             {successMessage && (
               <div className="ticket-alert ticket-alert--success">
                 {successMessage}
@@ -335,20 +360,19 @@ function Ticket({ userRole }) {
               onClick={handleIssueTicket}
               disabled={
                 issuingTicket ||
-                isOutsideBatchHours ||
                 !selectedVehicle ||
                 !selectedDriver ||
-                !selectedSeriesId
+                (issuanceType === "ROAM" && !selectedSeriesId)
               }
             >
               <IssueTicketIcon />
               {issuingTicket
                 ? "Issuing…"
-                : isOutsideBatchHours
-                  ? "Outside Batch Hours"
-                  : ticketQuantity > 1
-                    ? `Issue ${ticketQuantity} Tickets`
-                    : "Issue Ticket"}
+                : issuanceType === "ROAM" && ticketQuantity > 1
+                  ? `Issue ${ticketQuantity} Tickets`
+                  : issuanceType === "ROAM"
+                    ? "Issue Ticket"
+                    : "Check In Vehicle"}
             </button>
           </div>
         </div>
@@ -387,6 +411,16 @@ function Ticket({ userRole }) {
               )}
             </button>
             <button
+              className={`ticket-tab ${activeTab === "roaming" ? "ticket-tab--active" : ""}`}
+              onClick={() => setActiveTab("roaming")}
+            >
+              <RouteIcon />
+              Roaming
+              {roamingTickets.length > 0 && (
+                <span className="ticket-tab-count">{roamingTickets.length}</span>
+              )}
+            </button>
+            <button
               className={`ticket-tab ${activeTab === "cancelled" ? "ticket-tab--active" : ""}`}
               onClick={() => setActiveTab("cancelled")}
             >
@@ -402,8 +436,8 @@ function Ticket({ userRole }) {
             </button>
           </div>
 
-          {/* Tickets / Cancelled tab content */}
-          {(activeTab === "tickets" || activeTab === "cancelled") && (
+          {/* Tickets / Roaming / Cancelled tab content */}
+          {(activeTab === "tickets" || activeTab === "roaming" || activeTab === "cancelled") && (
             <>
               <div className="ticket-table-wrap">
                 <table className="ticket-table">
@@ -443,7 +477,9 @@ function Ticket({ userRole }) {
                           <span>
                             {activeTab === "cancelled"
                               ? "No cancelled tickets"
-                              : "No tickets found"}
+                              : activeTab === "roaming"
+                                ? "No roaming tickets"
+                                : "No tickets found"}
                           </span>
                         </td>
                       </tr>

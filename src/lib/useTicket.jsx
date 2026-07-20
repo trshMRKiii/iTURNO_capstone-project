@@ -1,8 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { OperationsService } from "./operations-service";
-import { SHIFTS } from "./constants";
 import { apiService } from "./api-service";
-import { useShifts } from "./useShifts";
 import { useTerminalPrice } from "./useTerminalPrice";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -26,35 +23,6 @@ export const formatTime = (dateString) => {
   }
 };
 
-// Returns the current batch ("Batch 1" | "Batch 2" | null)
-export const getCurrentBatch = (shifts = SHIFTS) => {
-  const hour = new Date().getHours();
-  const activeShifts = Object.keys(shifts || {}).length ? shifts : SHIFTS;
-  for (const shift of Object.values(activeShifts)) {
-    if (hour >= shift.startHour && hour < shift.endHour) {
-      return shift.name;
-    }
-  }
-  return null;
-};
-
-// Returns true if this vehicle already has a non-cancelled ticket in Batch 1 today
-export const hadBatch1TicketToday = (vehicleId, tickets, shifts = SHIFTS) => {
-  const todayStr = new Date().toISOString().split("T")[0];
-  const activeShifts = Object.keys(shifts || {}).length ? shifts : SHIFTS;
-  const batch1Name =
-    activeShifts.BATCH_1?.name || Object.values(activeShifts)[0]?.name;
-  return tickets.some((t) => {
-    if (t.vehicle?.id !== vehicleId) return false;
-    if (t.status === "CANCELLED") return false;
-    const ticketDate = t.issued_at?.split("T")[0];
-    return (
-      ticketDate === todayStr &&
-      OperationsService.getEffectiveBatchName(t, activeShifts) === batch1Name
-    );
-  });
-};
-
 // ─── Custom Hook ──────────────────────────────────────────────────────────────
 export function useTicket(userRole = "") {
   const [tickets, setTickets] = useState([]);
@@ -64,6 +32,7 @@ export function useTicket(userRole = "") {
   const [error, setError] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [issuanceType, setIssuanceType] = useState("QUEUE");
   const [selectedRouteId, setSelectedRouteId] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedDriver, setSelectedDriver] = useState(null);
@@ -85,14 +54,7 @@ export function useTicket(userRole = "") {
     }
   });
 
-  const { shifts: scheduleShifts } = useShifts();
   const { terminalPrice } = useTerminalPrice();
-
-  const currentBatch = useMemo(
-    () => getCurrentBatch(scheduleShifts),
-    [scheduleShifts],
-  );
-  const isOutsideBatchHours = !currentBatch;
 
   // Fetch data
   const fetchTickets = async () => {
@@ -221,10 +183,8 @@ export function useTicket(userRole = "") {
     setSuccessMessage("");
     setIssueError("");
 
-    if (isOutsideBatchHours) {
-      setIssueError("Ticket issuance is closed outside of batch hours.");
-      return;
-    }
+    const isRoam = issuanceType === "ROAM";
+
     if (!selectedVehicle) {
       setIssueError("Please select a vehicle.");
       return;
@@ -233,12 +193,10 @@ export function useTicket(userRole = "") {
       setIssueError("Please select a driver.");
       return;
     }
-    if (!selectedSeriesId) {
+    if (isRoam && !selectedSeriesId) {
       setIssueError("Please select a ticket form / series.");
       return;
     }
-
-    const quantity = Math.max(1, parseInt(ticketQuantity) || 1);
 
     const driverHasActiveTicket = tickets.some(
       (t) =>
@@ -263,6 +221,37 @@ export function useTicket(userRole = "") {
       setIssueError("Selected driver is not active and cannot be assigned.");
       return;
     }
+
+    // Queue check-ins no longer pick a denomination/series or quantity here —
+    // that's chosen at Dispatch, where the physical ticket is actually given out.
+    if (!isRoam) {
+      try {
+        setIssuingTicket(true);
+        const newTicket = await apiService.createTicket({
+          id: `Q-${crypto.randomUUID()}`,
+          vehicle_id: selectedVehicle.id,
+          driver_id: selectedDriver.id,
+          route: selectedVehicle.route_detail?.id || null,
+          status: "ISSUED",
+          mode: "QUEUE",
+          is_verified: false,
+        });
+        setSuccessMessage(`Vehicle checked into queue (ticket ${newTicket.id}).`);
+        fetchTickets();
+        fetchVehicles();
+        setSelectedVehicle(null);
+        setSelectedDriver(null);
+        setShowDriverModal(false);
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (err) {
+        setIssueError(err.message || "Error checking in vehicle");
+      } finally {
+        setIssuingTicket(false);
+      }
+      return;
+    }
+
+    const quantity = Math.max(1, parseInt(ticketQuantity) || 1);
 
     const series = availableSeries.find((s) => String(s.id) === String(selectedSeriesId));
     if (!series) {
@@ -296,6 +285,7 @@ export function useTicket(userRole = "") {
           route: selectedVehicle.route_detail?.id || null,
           series_id: parseInt(selectedSeriesId),
           status: "ISSUED",
+          mode: "UNLOAD",
           is_verified: false,
           issuance_group: issuanceGroup,
         };
@@ -306,10 +296,6 @@ export function useTicket(userRole = "") {
         issuedIds.push(newTicket.id);
         nextStartNo += 1;
       }
-
-      await apiService.patch(`/vehicles/${selectedVehicle.id}/`, {
-        status: "QUEUED",
-      });
 
       setSuccessMessage(
         quantity > 1
@@ -385,6 +371,8 @@ export function useTicket(userRole = "") {
     error,
     vehicles,
     drivers,
+    issuanceType,
+    setIssuanceType,
     selectedRouteId,
     setSelectedRouteId,
     selectedVehicle,
@@ -415,6 +403,5 @@ export function useTicket(userRole = "") {
     handleIssueTicket,
     ticketFee,
     terminalPrice,
-    isOutsideBatchHours,
   };
 }

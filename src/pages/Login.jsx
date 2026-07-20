@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/login.css";
 import { handleLogin, apiService } from '../lib/api-service';
 import { useToast } from '../components/ui/ToastConfirmContext';
+import { useQueueSocket } from '../lib/useQueueSocket';
 
 // ── Import images
 import sfcLogo   from '../pictures/sfc-nobg-logo.png';
@@ -14,24 +15,27 @@ function Login() {
   const [username,       setUsername]       = useState("");
   const [password,       setPassword]       = useState("");
   const [error,          setError]          = useState("");
-  const [activeQueue,    setActiveQueue]    = useState([]); 
-  const [nextQueue,      setNextQueue]      = useState([]); 
-  const [routes,         setRoutes]         = useState([]);
-  const [selectedRoute,  setSelectedRoute]  = useState("ALL");
+  const [queue,          setQueue]          = useState([]);
   const [loadingQueue,   setLoadingQueue]   = useState(false);
-  const [refreshing,     setRefreshing]     = useState(false);
   const [headerScrolled, setHeaderScrolled] = useState(false);
-  const [lastUpdated,    setLastUpdated]    = useState(null);
+
+  // ── Forgot password ──
+  const [modalView,      setModalView]      = useState("login"); // 'login' | 'forgot'
+  const [forgotEmail,    setForgotEmail]    = useState("");
+  const [forgotError,    setForgotError]    = useState("");
+  const [forgotSending,  setForgotSending]  = useState(false);
+  const [forgotSent,     setForgotSent]     = useState(false);
 
   const navigate  = useNavigate();
   const showToast = useToast();
 
   useEffect(() => {
     loadQueue();
-    loadRoutes();
     const handleScroll = () => setHeaderScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   // ── Core queue loader ──────────────────────────────────────────────────────
@@ -40,8 +44,8 @@ function Login() {
   //   - status === 'QUEUED'
   //   - not archived
   //   - has at least one ticket that is ISSUED and not late
-  // Then group by route → index 0 per group = Active Queue (next to be dispatched)
-  //                      → index 1+ per group = Next in Queue
+  // Vehicles are ordered by issue time (earliest first = next to be dispatched),
+  // then grouped by route so each route gets its own queue table.
   const loadQueue = async () => {
     setLoadingQueue(true);
     try {
@@ -61,8 +65,7 @@ function Login() {
           tickets.some(
             (t) =>
               t.vehicle?.id === v.id &&
-              t.status === 'ISSUED' &&
-              !t.is_late,
+              t.status === 'ISSUED',
           ),
       );
 
@@ -71,55 +74,23 @@ function Login() {
         const ticket = tickets.find(
           (t) =>
             t.vehicle?.id === v.id &&
-            t.status === 'ISSUED' &&
-            !t.is_late,
+            t.status === 'ISSUED',
         );
         return { ...v, _ticket: ticket || null };
       });
 
-      // Group by full route name (e.g. "Lingsat - San Fernando")
-      const groupedByRoute = withTicket.reduce((acc, v) => {
-        const key = v.route_detail?.full_name || v.route_detail?.origin || 'No Route';
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(v);
-        return acc;
-      }, {});
-
-      // Split: first vehicle per group → Active Queue; rest → Next in Queue
-      const active = [];
-      const next   = [];
-      Object.values(groupedByRoute).forEach((routeVehicles) => {
-        if (routeVehicles.length > 0) {
-          active.push(routeVehicles[0]);
-          next.push(...routeVehicles.slice(1));
-        }
+      // Earliest-issued first, so index 0 within a route group is the next to dispatch
+      withTicket.sort((a, b) => {
+        const aTime = a._ticket?.issued_at ? new Date(a._ticket.issued_at).getTime() : 0;
+        const bTime = b._ticket?.issued_at ? new Date(b._ticket.issued_at).getTime() : 0;
+        return aTime - bTime;
       });
 
-      setActiveQueue(active);
-      setNextQueue(next);
-      setLastUpdated(new Date());
+      setQueue(withTicket);
     } catch (err) {
       console.error('Failed to load queue:', err);
     } finally {
       setLoadingQueue(false);
-    }
-  };
-
-  const loadRoutes = async () => {
-    try {
-      const data = await apiService.getRoutes();
-      setRoutes(Array.isArray(data) ? data.filter((r) => r.is_active) : []);
-    } catch (err) {
-      console.error('Failed to load routes:', err);
-    }
-  };
-
-  const handleRefreshQueue = async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([loadQueue(), loadRoutes()]);
-    } finally {
-      setRefreshing(false);
     }
   };
 
@@ -128,32 +99,50 @@ function Login() {
     await handleLogin(username, password, setError, navigate, showToast);
   };
 
+  const closeLoginModal = () => {
+    setShowLoginForm(false);
+    setError("");
+    setModalView("login");
+    setForgotEmail("");
+    setForgotError("");
+    setForgotSent(false);
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotError("");
+
+    if (!forgotEmail.trim()) {
+      setForgotError("Please enter your email.");
+      return;
+    }
+
+    setForgotSending(true);
+    try {
+      await apiService.requestPasswordReset(forgotEmail.trim());
+      setForgotSent(true);
+    } catch (err) {
+      setForgotError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setForgotSending(false);
+    }
+  };
+
+  // Backend pushes a "queue_updated" ping whenever a vehicle/ticket
+  // change affects the board, so we refetch immediately instead of
+  // waiting for the next fallback poll.
+  useQueueSocket(loadQueue);
+
   // ── Derived display data ───────────────────────────────────────────────────
 
-  // Active Queue: group by route for gap-separated display
-  const activeGrouped = activeQueue.reduce((acc, v) => {
+  // Group by route → one table per route
+  const queueGrouped = queue.reduce((acc, v) => {
     const key = v.route_detail?.full_name || v.route_detail?.origin || 'No Route';
     if (!acc[key]) acc[key] = [];
     acc[key].push(v);
     return acc;
   }, {});
-  const activeGroupEntries = Object.entries(activeGrouped);
-
-  // Next in Queue: filter by selected route, then group by route for gap-separated display
-  const filteredNext = selectedRoute === 'ALL'
-    ? nextQueue
-    : nextQueue.filter((v) => {
-        const routeName = v.route_detail?.full_name || v.route_detail?.origin || '';
-        return routeName === selectedRoute;
-      });
-
-  const nextGrouped = filteredNext.reduce((acc, v) => {
-    const key = v.route_detail?.full_name || v.route_detail?.origin || 'No Route';
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(v);
-    return acc;
-  }, {});
-  const nextGroupEntries = Object.entries(nextGrouped);
+  const queueGroupEntries = Object.entries(queueGrouped);
 
   return (
     <div className="lp-root" style={{ backgroundImage: `url(${sfcMain})` }}>
@@ -182,7 +171,7 @@ function Login() {
               Staff Login
             </button>
           ) : (
-            <button className="lp-btn lp-btn--outline" onClick={() => { setShowLoginForm(false); setError(''); }}>
+            <button className="lp-btn lp-btn--outline" onClick={closeLoginModal}>
               ← Back
             </button>
           )}
@@ -191,31 +180,90 @@ function Login() {
 
       {/* ── LOGIN FORM OVERLAY ── */}
       {showLoginForm && (
-        <div className="lp-login-overlay" onClick={() => { setShowLoginForm(false); setError(''); }}>
+        <div className="lp-login-overlay" onClick={closeLoginModal}>
           <div className="lp-login-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="lp-login-modal__brand">
-              <img src={sfcLogo} alt="Logo" className="lp-login-modal__logo" style={{ borderRadius: '40px' }} />
-              <h2>Staff Access</h2>
-              <p>Sign in to manage terminal operations</p>
-            </div>
-            <form onSubmit={handleSubmit} className="lp-login-form">
-              <div className="lp-field">
-                <label htmlFor="username">Username</label>
-                <input
-                  id="username" type="text" placeholder="Enter your username"
-                  value={username} onChange={(e) => setUsername(e.target.value)} autoFocus
-                />
-              </div>
-              <div className="lp-field">
-                <label htmlFor="password">Password</label>
-                <input
-                  id="password" type="password" placeholder="Enter your password"
-                  value={password} onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              {error && <div className="lp-error">{error}</div>}
-              <button type="submit" className="lp-btn lp-btn--navy lp-btn--full">Sign In</button>
-            </form>
+            {modalView === "login" ? (
+              <>
+                <div className="lp-login-modal__brand">
+                  <img src={sfcLogo} alt="Logo" className="lp-login-modal__logo" style={{ borderRadius: '40px' }} />
+                  <h2>Staff Access</h2>
+                  <p>Sign in to manage terminal operations</p>
+                </div>
+                <form onSubmit={handleSubmit} className="lp-login-form">
+                  <div className="lp-field">
+                    <label htmlFor="username">Email</label>
+                    <input
+                      id="username" type="email" placeholder="Enter your email"
+                      value={username} onChange={(e) => setUsername(e.target.value)} autoFocus
+                    />
+                  </div>
+                  <div className="lp-field">
+                    <label htmlFor="password">Password</label>
+                    <input
+                      id="password" type="password" placeholder="Enter your password"
+                      value={password} onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                  {error && <div className="lp-error">{error}</div>}
+                  <button type="submit" className="lp-btn lp-btn--navy lp-btn--full">Sign In</button>
+                  <button
+                    type="button"
+                    className="lp-link-btn"
+                    onClick={() => { setModalView("forgot"); setError(""); }}
+                  >
+                    Forgot password?
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <div className="lp-login-modal__brand">
+                  <img src={sfcLogo} alt="Logo" className="lp-login-modal__logo" style={{ borderRadius: '40px' }} />
+                  <h2>Reset Password</h2>
+                  <p>
+                    {forgotSent
+                      ? "Check your inbox for the reset link"
+                      : "Enter your email and we'll send you a reset link"}
+                  </p>
+                </div>
+                {forgotSent ? (
+                  <div className="lp-login-form">
+                    <div className="lp-success">
+                      If an account exists for <strong>{forgotEmail}</strong>, a password reset
+                      link has been sent to it.
+                    </div>
+                    <button
+                      type="button"
+                      className="lp-btn lp-btn--navy lp-btn--full"
+                      onClick={() => setModalView("login")}
+                    >
+                      Back to Sign In
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotSubmit} className="lp-login-form">
+                    <div className="lp-field">
+                      <label htmlFor="forgot-email">Email</label>
+                      <input
+                        id="forgot-email" type="email" placeholder="Enter your email"
+                        value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} autoFocus
+                      />
+                    </div>
+                    {forgotError && <div className="lp-error">{forgotError}</div>}
+                    <button type="submit" className="lp-btn lp-btn--navy lp-btn--full" disabled={forgotSending}>
+                      {forgotSending ? "Sending…" : "Send Reset Link"}
+                    </button>
+                    <button
+                      type="button"
+                      className="lp-link-btn"
+                      onClick={() => { setModalView("login"); setForgotError(""); }}
+                    >
+                      ← Back to Sign In
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -230,138 +278,25 @@ function Login() {
               <span className="lp-section-eyebrow">Live Updates</span>
               <h2 className="lp-section-title lp-section-title--light">Jeepney Queue Board</h2>
             </div>
-            <button
-              className={`lp-btn lp-btn--outline-gold ${refreshing ? 'lp-btn--loading' : ''}`}
-              onClick={handleRefreshQueue}
-              disabled={refreshing}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-                className={refreshing ? 'lp-spin' : ''}>
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-              {refreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
           </div>
 
-          {/* ── ACTIVE QUEUE ── */}
-          <div className="lp-board-label">
-            <div className="lp-board-label__dot lp-board-label__dot--active" />
-            Active Queue
-          </div>
-
-          <div className="lp-queue-card">
-            {loadingQueue ? (
-              <div className="lp-queue-loading">
-                <div className="lp-spinner" />
-                <p>Loading queue data…</p>
-              </div>
-            ) : activeGroupEntries.length === 0 ? (
-              <div className="lp-queue-empty">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.35">
-                  <rect x="1" y="3" width="15" height="13" rx="1"/>
-                  <path d="M16 8h4l3 3v5h-7V8z"/>
-                  <circle cx="5.5" cy="18.5" r="2.5"/>
-                  <circle cx="18.5" cy="18.5" r="2.5"/>
-                </svg>
-                <p>No active queue at this time.</p>
-              </div>
-            ) : (
-              <div className="lp-table-wrap">
-                <table className="lp-table">
-                  <thead>
-                    <tr>
-                      <th>Plate Number</th>
-                      <th>Driver</th>
-                      
-                      <th>Status</th>
-                      <th>Est. Departure</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeGroupEntries.map(([routeName, vehicles], groupIdx) => (
-                      <React.Fragment key={routeName}>
-                        {/* Gap spacer between route groups */}
-                        {groupIdx > 0 && (
-                          <tr className="lp-row--gap" aria-hidden="true">
-                            <td colSpan={5} />
-                          </tr>
-                        )}
-                        {/* Route label row */}
-                        <tr className="lp-row--route-label">
-                          <td colSpan={5}>
-                            <span className="lp-route-label-badge lp-route-label-badge--active">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                                <path d="M3 12h18M13 6l6 6-6 6"/>
-                              </svg>
-                              {routeName}
-                            </span>
-                          </td>
-                        </tr>
-                        {/* Active vehicle row (always index 0 of this route group) */}
-                        {vehicles.map((v) => (
-                          <tr key={v.id}>
-                            <td><span className="lp-plate">{v.plate_number}</span></td>
-                            <td>{v.active_driver_name || <span className="lp-na">Unassigned</span>}</td>
-                            
-                            <td>
-                              <span className="lp-status lp-status--available">
-                                {v.status}
-                              </span>
-                            </td>
-                            <td className="lp-td--time">
-                              {v._ticket?.issued_at
-                                ? new Date(v._ticket.issued_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <div className="lp-queue-foot">
-              Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
-            </div>
-          </div>
-
-          {/* ── NEXT IN QUEUE ── */}
+          {/* ── ROUTE QUEUES ── */}
           <div className="lp-next-header">
             <div className="lp-board-label">
-              <div className="lp-board-label__dot lp-board-label__dot--next" />
-              Next in Queue
-            </div>
-
-            {/* Route filter */}
-            <div className="lp-route-filter">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-              </svg>
-              <select
-                className="lp-route-select"
-                value={selectedRoute}
-                onChange={(e) => setSelectedRoute(e.target.value)}
-              >
-                <option value="ALL">All Routes</option>
-                {routes.map((r) => (
-                  <option key={r.id} value={r.full_name || r.origin}>
-                    {r.full_name || r.origin}
-                  </option>
-                ))}
-              </select>
+              <div className="lp-board-label__dot lp-board-label__dot--active" />
+              Route Queues
             </div>
           </div>
 
-          <div className="lp-queue-card lp-queue-card--next">
-            {loadingQueue ? (
+          {loadingQueue ? (
+            <div className="lp-queue-card">
               <div className="lp-queue-loading">
                 <div className="lp-spinner" />
                 <p>Loading queue data…</p>
               </div>
-            ) : nextGroupEntries.length === 0 ? (
+            </div>
+          ) : queueGroupEntries.length === 0 ? (
+            <div className="lp-queue-card">
               <div className="lp-queue-empty">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.35">
                   <rect x="1" y="3" width="15" height="13" rx="1"/>
@@ -369,57 +304,61 @@ function Login() {
                   <circle cx="5.5" cy="18.5" r="2.5"/>
                   <circle cx="18.5" cy="18.5" r="2.5"/>
                 </svg>
-                <p>No vehicles in queue{selectedRoute !== 'ALL' ? ` for ${selectedRoute}` : ''}.</p>
+                <p>No vehicles in queue.</p>
               </div>
-            ) : (
-              <div className="lp-table-wrap">
-                <table className="lp-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Plate Number</th>
-                      <th>Driver</th>
-                      
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nextGroupEntries.map(([routeName, vehicles], groupIdx) => (
-                      <React.Fragment key={routeName}>
-                        {/* Gap spacer between route groups */}
-                        {groupIdx > 0 && (
-                          <tr className="lp-row--gap" aria-hidden="true">
-                            <td colSpan={5} />
-                          </tr>
-                        )}
-                        {/* Route label row */}
-                        <tr className="lp-row--route-label">
-                          <td colSpan={5}>
-                            <span className="lp-route-label-badge lp-route-label-badge--next">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                                <path d="M3 12h18M13 6l6 6-6 6"/>
-                              </svg>
-                              {routeName}
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 20,
+              }}
+            >
+            {queueGroupEntries.map(([routeName, vehicles]) => (
+              <div className="lp-queue-card" key={routeName}>
+                <div className="lp-route-label-badge lp-route-label-badge--active" style={{ margin: '14px 16px' }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                    <path d="M3 12h18M13 6l6 6-6 6"/>
+                  </svg>
+                  {routeName}
+                </div>
+                <div className="lp-table-wrap">
+                  <table className="lp-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Plate Number</th>
+                        <th>Driver</th>
+                        <th>Status</th>
+                        <th>Est. Departure</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vehicles.map((v, idx) => (
+                        <tr key={v.id}>
+                          <td className="lp-td--num">{idx + 1}</td>
+                          <td><span className="lp-plate">{v.plate_number}</span></td>
+                          <td>{v.active_driver_name || <span className="lp-na">Unassigned</span>}</td>
+                          <td>
+                            <span className={`lp-status ${idx === 0 ? 'lp-status--available' : ''}`}>
+                              {idx === 0 ? 'Active' : 'Queued'}
                             </span>
                           </td>
+                          <td className="lp-td--time">
+                            {idx === 0 && v._ticket?.issued_at
+                              ? new Date(v._ticket.issued_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : '—'}
+                          </td>
                         </tr>
-                        {/* Remaining vehicles in this route (index 1, 2, 3 …) */}
-                        {vehicles.map((v, idx) => (
-                          <tr key={v.id}>
-                            <td className="lp-td--num">{idx + 1}</td>
-                            <td><span className="lp-plate">{v.plate_number}</span></td>
-                            <td>{v.active_driver_name || <span className="lp-na">Unassigned</span>}</td>
-                            
-                            <td><span className="lp-status lp-status--available">{v.status}</span></td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            )}
-          </div>
+            ))}
+            </div>
+          )}
 
         </div>
       </main>

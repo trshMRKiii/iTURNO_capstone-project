@@ -2,9 +2,14 @@ import React, { useEffect, useState } from "react";
 import { apiService } from "../../../lib/api-service";
 import "../../../styles/Dispatch.css";
 
+const LAST_TICKET_FORM_KEY = "dispatch:lastTicketFormId";
+
 function Dispatch() {
   const [vehicles, setVehicles] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [ticketForms, setTicketForms] = useState([]);
+  const [ticketSeries, setTicketSeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -13,6 +18,26 @@ function Dispatch() {
   const [cancelError, setCancelError] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
+  const [swapTarget, setSwapTarget] = useState(null);
+  const [swapDriverId, setSwapDriverId] = useState("");
+  const [swapError, setSwapError] = useState("");
+  const [swapping, setSwapping] = useState(false);
+
+  const [dispatchTicketFormId, setDispatchTicketFormIdState] = useState(
+    () => localStorage.getItem(LAST_TICKET_FORM_KEY) || "",
+  );
+  const setDispatchTicketFormId = (value) => {
+    setDispatchTicketFormIdState(value);
+    if (value) {
+      localStorage.setItem(LAST_TICKET_FORM_KEY, value);
+    } else {
+      localStorage.removeItem(LAST_TICKET_FORM_KEY);
+    }
+  };
+  const [dispatchQuantity, setDispatchQuantity] = useState(1);
+  const [dispatchError, setDispatchError] = useState("");
+  const [dispatchingVehicleId, setDispatchingVehicleId] = useState(null);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -20,12 +45,18 @@ function Dispatch() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [vehicleData, ticketData] = await Promise.all([
+      const [vehicleData, ticketData, driverData, ticketFormData, ticketSeriesData] = await Promise.all([
         apiService.getVehicles(),
         apiService.getTickets(),
+        apiService.getDrivers(),
+        apiService.getTicketForms(),
+        apiService.request("/ticket-series/"),
       ]);
       setVehicles(vehicleData);
       setTickets(ticketData);
+      setDrivers(driverData);
+      setTicketForms(ticketFormData);
+      setTicketSeries(ticketSeriesData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -33,14 +64,39 @@ function Dispatch() {
     }
   };
 
+  // Remaining stock per denomination (ticket form), FIFO-oldest-first is a backend
+  // concern — here we only need the total so the dropdown can show/allow what's left.
+  const denominationOptions = ticketForms
+    .map((form) => {
+      const remaining = ticketSeries
+        .filter((s) => String(s.ticket_form) === String(form.id))
+        .reduce((sum, s) => {
+          const start = parseInt(s.start_no) || 0;
+          const end = parseInt(s.end_no) || 0;
+          return sum + Math.max(end - start + 1, 0);
+        }, 0);
+      return { ...form, remaining };
+    })
+    .filter((form) => form.remaining > 0);
+
   const queue = vehicles.filter(
     (v) =>
       v.status === "QUEUED" &&
       !v.is_archived &&
       tickets.some(
-        (t) => t.vehicle?.id === v.id && t.status === "ISSUED" && !t.is_late,
+        (t) => t.vehicle?.id === v.id && t.status === "ISSUED",
       ),
   );
+
+  const getQueuedAt = (vehicle) => {
+    const ticket = tickets.find(
+      (t) =>
+        t.vehicle?.id === vehicle.id && t.status === "ISSUED",
+    );
+    return ticket?.issued_at
+      ? new Date(ticket.issued_at).getTime()
+      : Number.POSITIVE_INFINITY;
+  };
 
   const groupedByRoute = queue.reduce((acc, vehicle) => {
     const routeName = vehicle.route_detail?.full_name || "No Route Assigned";
@@ -48,6 +104,12 @@ function Dispatch() {
     acc[routeName].push(vehicle);
     return acc;
   }, {});
+
+  Object.keys(groupedByRoute).forEach((routeName) => {
+    groupedByRoute[routeName].sort(
+      (a, b) => getQueuedAt(a) - getQueuedAt(b),
+    );
+  });
 
   const sortedRoutes = Object.keys(groupedByRoute).sort();
 
@@ -65,31 +127,66 @@ function Dispatch() {
     !vehicle.is_archived &&
     tickets.some(
       (t) =>
-        t.vehicle?.id === vehicle.id && t.status === "ISSUED" && !t.is_late,
+        t.vehicle?.id === vehicle.id && t.status === "ISSUED",
     );
 
   const handleDispatch = async (vehicle) => {
+    if (!dispatchTicketFormId) {
+      setDispatchError("Please select a denomination before dispatching.");
+      return;
+    }
+    const quantity = Math.max(1, parseInt(dispatchQuantity) || 1);
+    setDispatchingVehicleId(vehicle.id);
+    setDispatchError("");
     try {
-      await apiService.patch(`/vehicles/${vehicle.id}/`, {
-        status: "AVAILABLE",
+      await apiService.dispatchTicket(vehicle.id, {
+        ticketFormId: dispatchTicketFormId,
+        quantity,
       });
-      // A vehicle can hold multiple ISSUED tickets when quantity > 1 was used
-      // at issuance time — all of them belong to this one dispatch action.
-      const activeTickets = tickets.filter(
-        (t) => t.vehicle?.id === vehicle.id && t.status === "ISSUED",
-      );
-      const dispatchedAt = new Date().toISOString();
-      await Promise.all(
-        activeTickets.map((t) =>
-          apiService.patch(`/tickets/${t.id}/`, {
-            status: "DISPATCHED",
-            dispatched_at: dispatchedAt,
-          }),
-        ),
-      );
       await fetchData();
     } catch (err) {
-      setError(err.message);
+      setDispatchError(err.message || "Failed to dispatch ticket. Please try again.");
+    } finally {
+      setDispatchingVehicleId(null);
+    }
+  };
+
+  const activeDrivers = drivers.filter((d) => d.status === "ACTIVE");
+
+  const openSwapModal = (vehicle) => {
+    setSwapTarget(vehicle);
+    setSwapDriverId("");
+    setSwapError("");
+  };
+
+  const closeSwapModal = () => {
+    if (swapping) return;
+    setSwapTarget(null);
+    setSwapDriverId("");
+    setSwapError("");
+  };
+
+  const handleConfirmSwap = async () => {
+    if (!swapDriverId) {
+      setSwapError("Please select a driver.");
+      return;
+    }
+    setSwapping(true);
+    setSwapError("");
+    try {
+      const openTicket = tickets.find(
+        (t) => t.vehicle?.id === swapTarget.id && t.status === "ISSUED",
+      );
+      if (!openTicket) {
+        throw new Error("No open ticket found for this vehicle.");
+      }
+      await apiService.reassignTicketDriver(openTicket.id, swapDriverId);
+      await fetchData();
+      closeSwapModal();
+    } catch (err) {
+      setSwapError(err.message || "Failed to reassign driver. Please try again.");
+    } finally {
+      setSwapping(false);
     }
   };
 
@@ -184,6 +281,77 @@ function Dispatch() {
           {error}
         </div>
       )}
+
+      <div className="dispatch-settings-panel">
+        <div className="dispatch-settings-header">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+          >
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+          <span>Dispatch Settings</span>
+          <span className="dispatch-settings-hint">
+            Applies to every Dispatch click below · remembered for next time
+          </span>
+        </div>
+        <div className="dispatch-settings-body">
+          <div className="dispatch-modal-field">
+            <label className="dispatch-modal-label">
+              Denomination <span className="dispatch-modal-required">*</span>
+            </label>
+            <select
+              className="dispatch-modal-select"
+              value={dispatchTicketFormId}
+              onChange={(e) => {
+                setDispatchTicketFormId(e.target.value);
+                if (dispatchError) setDispatchError("");
+              }}
+            >
+              <option value="">— Select a denomination —</option>
+              {denominationOptions.map((form) => (
+                <option key={form.id} value={form.id}>
+                  {form.name} — {form.remaining} pcs remaining
+                </option>
+              ))}
+            </select>
+            {denominationOptions.length === 0 && (
+              <span className="dispatch-modal-field-error">
+                No ticket stock available for any denomination.
+              </span>
+            )}
+          </div>
+
+          <div className="dispatch-modal-field dispatch-settings-qty">
+            <label className="dispatch-modal-label">Quantity</label>
+            <input
+              type="number"
+              className="dispatch-modal-select"
+              min={0}
+              value={dispatchQuantity}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "") {
+                  setDispatchQuantity("");
+                } else {
+                  const val = parseInt(raw);
+                  setDispatchQuantity(Number.isNaN(val) ? "" : Math.max(0, val));
+                }
+                if (dispatchError) setDispatchError("");
+              }}
+            />
+          </div>
+        </div>
+        {dispatchError && (
+          <span className="dispatch-modal-field-error dispatch-settings-error">
+            {dispatchError}
+          </span>
+        )}
+      </div>
 
       <div className="dispatch-panel">
         <div className="dispatch-panel-header">
@@ -293,7 +461,10 @@ function Dispatch() {
                                       onClick={() =>
                                         canDispatch && handleDispatch(vehicle)
                                       }
-                                      disabled={!canDispatch}
+                                      disabled={
+                                        !canDispatch ||
+                                        dispatchingVehicleId === vehicle.id
+                                      }
                                       title={
                                         !canDispatch
                                           ? `Waiting — #${vehicleIdx + 1} in line for this route`
@@ -310,7 +481,25 @@ function Dispatch() {
                                       >
                                         <path d="M5 12h14M12 5l7 7-7 7" />
                                       </svg>
-                                      Dispatch
+                                      {dispatchingVehicleId === vehicle.id
+                                        ? "Dispatching…"
+                                        : "Dispatch"}
+                                    </button>
+                                    <button
+                                      className="dispatch-btn dispatch-btn--swap"
+                                      onClick={() => openSwapModal(vehicle)}
+                                    >
+                                      <svg
+                                        width="13"
+                                        height="13"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.2"
+                                      >
+                                        <path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3" />
+                                      </svg>
+                                      Swap Driver
                                     </button>
                                     <button
                                       className="dispatch-btn dispatch-btn--cancel"
@@ -501,6 +690,119 @@ function Dispatch() {
           </div>
         </div>
       )}
+
+      {swapTarget && (
+        <div className="dispatch-overlay" onClick={closeSwapModal}>
+          <div className="dispatch-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="dispatch-modal-header">
+              <div className="dispatch-modal-header-left">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#b7791f"
+                  strokeWidth="2.2"
+                >
+                  <path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3" />
+                </svg>
+                <h2 className="dispatch-modal-title">Swap Driver</h2>
+              </div>
+              <button
+                className="dispatch-modal-close"
+                onClick={closeSwapModal}
+                disabled={swapping}
+                aria-label="Close"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="dispatch-modal-body">
+              <div className="dispatch-cancel-vehicle">
+                <div className="dispatch-cancel-vehicle__row">
+                  <span className="dispatch-plate">
+                    {swapTarget.plate_number}
+                  </span>
+                  <span className="dispatch-cancel-vehicle__route">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    {swapTarget.route_detail?.full_name || "No route"}
+                  </span>
+                </div>
+                <span className="dispatch-cancel-vehicle__driver">
+                  Current Driver: {getDriverName(swapTarget)}
+                </span>
+              </div>
+
+              <div className="dispatch-modal-field">
+                <label className="dispatch-modal-label">
+                  New Driver <span className="dispatch-modal-required">*</span>
+                </label>
+                <select
+                  className="dispatch-modal-select"
+                  value={swapDriverId}
+                  onChange={(e) => {
+                    setSwapDriverId(e.target.value);
+                    if (swapError) setSwapError("");
+                  }}
+                  disabled={swapping}
+                >
+                  <option value="">— Select a driver —</option>
+                  {activeDrivers.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+                {swapError && (
+                  <span className="dispatch-modal-field-error">
+                    {swapError}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="dispatch-modal-footer">
+              <button
+                type="button"
+                className="dispatch-modal-btn dispatch-modal-btn--secondary"
+                onClick={closeSwapModal}
+                disabled={swapping}
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                className="dispatch-modal-btn dispatch-modal-btn--primary"
+                onClick={handleConfirmSwap}
+                disabled={swapping || !swapDriverId}
+              >
+                {swapping ? "Swapping…" : "Confirm Swap"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

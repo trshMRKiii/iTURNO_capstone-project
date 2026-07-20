@@ -100,7 +100,7 @@ export default function RequisitionRemittance({
                     <tr key={ts.id}>
                       <td>{ts.ticket_form_label || "—"}</td>
                       <td>{ts.series_no || `${ts.start_no}-${ts.end_no}`}</td>
-                      <td className="text-right">{ts.qty}</td>
+                      <td className="text-right">{Math.max((parseInt(ts.end_no) || 0) - (parseInt(ts.start_no) || 0) + 1, 0).toLocaleString()}</td>
                       <td className="text-right">{peso(ts.total_value)}</td>
                     </tr>
                   ))}

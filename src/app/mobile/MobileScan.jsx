@@ -11,6 +11,7 @@ function MobileScan() {
     selectedDriver,
     mode,
     setMode,
+    queuePosition,
     selectedSeriesId,
     setSelectedSeriesId,
     ticketQuantity,
@@ -18,6 +19,11 @@ function MobileScan() {
     activeDrivers,
     availableSeries,
     ticketFee,
+    denominationOptions,
+    dispatchTicketFormId,
+    setDispatchTicketFormId,
+    dispatchQuantity,
+    setDispatchQuantity,
     submitting,
     result,
     error,
@@ -238,6 +244,19 @@ function MobileScan() {
           <div className="ms-field">
             <span className="ms-label">Action</span>
             <div className="ms-radio-group">
+              {scannedVehicle.status === "QUEUED" && (
+                <label className={`ms-radio ${mode === "DISPATCH" ? "ms-radio--active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="mode"
+                    value="DISPATCH"
+                    checked={mode === "DISPATCH"}
+                    onChange={() => setMode("DISPATCH")}
+                  />
+                  <span className="ms-radio-dot" />
+                  <span>Dispatch (Check-Out)</span>
+                </label>
+              )}
               <label className={`ms-radio ${mode === "QUEUE" ? "ms-radio--active" : ""}`}>
                 <input
                   type="radio"
@@ -245,9 +264,10 @@ function MobileScan() {
                   value="QUEUE"
                   checked={mode === "QUEUE"}
                   onChange={() => setMode("QUEUE")}
+                  disabled={scannedVehicle.status === "QUEUED"}
                 />
                 <span className="ms-radio-dot" />
-                <span>Queue (Issue Ticket)</span>
+                <span>Queue (Check In)</span>
               </label>
               <label className={`ms-radio ${mode === "ROAM" ? "ms-radio--active" : ""}`}>
                 <input
@@ -263,14 +283,68 @@ function MobileScan() {
               </label>
               {scannedVehicle.status === "QUEUED" && (
                 <span className="ms-field-hint">
-                  Vehicle is already in the queue — roaming cannot be logged.
+                  Vehicle is already in the queue — dispatch it or resolve it from Dispatch before roaming/re-issuing.
                 </span>
               )}
             </div>
           </div>
 
-          {/* Ticket Series (only for QUEUE mode) */}
-          {mode === "QUEUE" && (
+          {/* Queue position (only for DISPATCH mode) */}
+          {mode === "DISPATCH" && (
+            <div className={`ms-alert ${queuePosition === 1 ? "ms-alert--success" : "ms-alert--error"}`}>
+              {queuePosition === 1
+                ? "First in line — ready to dispatch."
+                : `#${queuePosition} in line for its route — must be first before dispatching.`}
+            </div>
+          )}
+
+          {/* Denomination + Quantity (DISPATCH mode — the physical ticket is given out here) */}
+          {mode === "DISPATCH" && (
+            <>
+              <div className="ms-field">
+                <span className="ms-label">Denomination</span>
+                <select
+                  className="ms-select"
+                  value={dispatchTicketFormId}
+                  onChange={(e) => setDispatchTicketFormId(e.target.value)}
+                >
+                  <option value="">— Select a denomination —</option>
+                  {denominationOptions.map((form) => (
+                    <option key={form.id} value={form.id}>
+                      {form.name} — {form.remaining} pcs remaining
+                    </option>
+                  ))}
+                </select>
+                {denominationOptions.length === 0 && (
+                  <span className="ms-field-hint">
+                    No ticket stock available for any denomination.
+                  </span>
+                )}
+              </div>
+
+              <div className="ms-field">
+                <span className="ms-label">Quantity</span>
+                <input
+                  type="number"
+                  className="ms-select"
+                  min={0}
+                  value={dispatchQuantity}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                if (raw === "") {
+                  setDispatchQuantity("");
+                } else {
+                  const val = parseInt(raw);
+                  setDispatchQuantity(Number.isNaN(val) ? "" : Math.max(0, val));
+                }
+                  }}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Ticket Series (ROAM mode issues + dispatches in one step) */}
+          {mode === "ROAM" && (
             <div className="ms-field">
               <span className="ms-label">Ticket Series</span>
               <select
@@ -291,18 +365,23 @@ function MobileScan() {
             </div>
           )}
 
-          {/* Quantity (only for QUEUE mode) */}
-          {mode === "QUEUE" && (
+          {/* Quantity (ROAM mode) */}
+          {mode === "ROAM" && (
             <div className="ms-field">
               <span className="ms-label">Quantity</span>
               <input
                 type="number"
                 className="ms-select"
-                min={1}
+                min={0}
                 value={ticketQuantity}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setTicketQuantity(Number.isNaN(val) ? 1 : Math.max(1, val));
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setTicketQuantity("");
+                  } else {
+                    const val = parseInt(raw);
+                    setTicketQuantity(Number.isNaN(val) ? "" : Math.max(0, val));
+                  }
                 }}
               />
             </div>
@@ -328,33 +407,48 @@ function MobileScan() {
                 )}
               </div>
             )}
-            <select
-              className="ms-select"
-              value={selectedDriver?.id || ""}
-              onChange={(e) => handleDriverChange(e.target.value)}
-            >
-              <option value="">— Select driver —</option>
-              {activeDrivers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+            {mode === "DISPATCH" ? (
+              <span className="ms-plate">{selectedDriver?.name || "No driver assigned"}</span>
+            ) : (
+              <select
+                className="ms-select"
+                value={selectedDriver?.id || ""}
+                onChange={(e) => handleDriverChange(e.target.value)}
+              >
+                <option value="">— Select driver —</option>
+                {activeDrivers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Submit */}
           <button
             className={`ms-btn ms-btn--primary ms-btn--lg ${mode === "ROAM" ? "ms-btn--roam" : ""}`}
             onClick={handleSubmit}
-            disabled={submitting || !selectedDriver || (mode === "QUEUE" && !selectedSeriesId)}
+            disabled={
+              submitting ||
+              (mode === "DISPATCH"
+                ? queuePosition !== 1 || !dispatchTicketFormId
+                : !selectedDriver || (mode === "ROAM" && !selectedSeriesId))
+            }
           >
             {submitting
-              ? "Submitting..."
-              : mode === "QUEUE"
-                ? ticketQuantity > 1
-                  ? `Issue ${ticketQuantity} Tickets`
-                  : "Issue Ticket"
-                : "Log Roaming"}
+              ? mode === "DISPATCH"
+                ? "Dispatching..."
+                : mode === "QUEUE"
+                  ? "Checking in..."
+                  : "Submitting..."
+              : mode === "DISPATCH"
+                ? "Dispatch Vehicle"
+                : mode === "QUEUE"
+                  ? "Check In Vehicle"
+                  : ticketQuantity > 1
+                    ? `Issue ${ticketQuantity} Tickets`
+                    : "Issue Ticket"}
           </button>
         </div>
       )}

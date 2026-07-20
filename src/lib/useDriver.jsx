@@ -93,8 +93,12 @@ export function useDriver() {
     const confirmMsg = editing ? "Confirm update?" : "Confirm registry?";
     const confirmed = await showConfirm(confirmMsg);
     if (!confirmed) return;
+    if (!form.iwp_number?.trim()) {
+      setError("IWP Number is required to generate a QR code.");
+      return;
+    }
     try {
-      const payload = buildDriverPayload(form);
+      const payload = buildDriverPayload({ ...form, qr_code: form.iwp_number.trim() });
       if (editing) {
         await apiService.updateDriver(editing.id, payload);
       } else {

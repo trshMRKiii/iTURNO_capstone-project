@@ -9,7 +9,6 @@ import Remittance from "./remittance/remittance"
 import Registry from "./registry/registry";
 import StaffRegistry from "./user/user";
 import Reports from "./report/report";
-import Rewards from "./rewards/rewards";
 import Settings from "./settings/settings"
 import {
   CollectionsIcon,
@@ -18,7 +17,6 @@ import {
   RemittanceIcon,
   ReportIcon,
   RequisitionIcon,
-  RewardsIcon,
   SettingsIcon,
   TicketIcon,
   UserIcon,
@@ -39,12 +37,11 @@ const NAV_ITEMS = [
   { to: "/dashboard/Registry", label: "Fleet & Driver", Icon: VehicleIcon },
   { to: "/dashboard/StaffRegistry", label: "User Management", Icon: UserIcon },
   { to: "/dashboard/Reports", label: "Reports", Icon: ReportIcon },
-  { to: "/dashboard/Rewards", label: "Rewards", Icon: RewardsIcon },
   { to: "/dashboard/Settings", label: "Settings", Icon: SettingsIcon },
 ];
 
 const ROLE_NAV = {
-  ADMIN: [
+  SUPERADMIN: [
     "/dashboard",
     "/dashboard/Requisition",
     "/dashboard/Ticket",
@@ -54,7 +51,6 @@ const ROLE_NAV = {
     "/dashboard/Registry",
     "/dashboard/StaffRegistry",
     "/dashboard/Reports",
-    "/dashboard/Rewards",
     "/dashboard/Settings",
   ],
   MANAGER: [
@@ -63,7 +59,6 @@ const ROLE_NAV = {
     "/dashboard/Registry",
     "/dashboard/StaffRegistry",
     "/dashboard/Reports",
-    "/dashboard/Rewards",
     "/dashboard/Settings",
   ],
   SUPERVISOR: [
@@ -75,7 +70,6 @@ const ROLE_NAV = {
     "/dashboard/Remittance",
     "/dashboard/Registry",
     "/dashboard/Reports",
-    "/dashboard/Rewards",
     "/dashboard/Settings",
   ],
   PERSONNEL: [
@@ -324,7 +318,6 @@ function mainIndex() {
           <Route path="Registry" element={<Registry />} />
           <Route path="StaffRegistry" element={<StaffRegistry />} />
           <Route path="Reports" element={<Reports />} />
-          <Route path="Rewards" element={<Rewards />} />
           <Route path="Settings" element={<Settings />} />
         </Routes>
       </main>

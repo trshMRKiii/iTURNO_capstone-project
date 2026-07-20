@@ -8,7 +8,7 @@ export const UserPropTypes = {
   id: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   role: PropTypes.oneOf(Role).isRequired,
-  email: PropTypes.string.isRequired,
+  username: PropTypes.string.isRequired,
   password: PropTypes.string,
 };
 

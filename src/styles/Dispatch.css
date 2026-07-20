@@ -94,6 +94,68 @@
   margin-bottom: 20px;
 }
 
+/* ── Dispatch Settings (inline, persists across Dispatch clicks) ── */
+.dispatch-settings-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  transition: background 0.25s, border-color 0.25s;
+}
+
+.dispatch-settings-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--navy);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.dark .dispatch-settings-header { color: var(--gold); }
+
+.dispatch-settings-hint {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.dispatch-settings-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.dispatch-settings-body .dispatch-modal-field {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.dispatch-settings-qty {
+  flex: 0 1 140px;
+  min-width: 100px;
+}
+
+.dispatch-settings-error {
+  display: block;
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .dispatch-settings-body { flex-direction: column; }
+  .dispatch-settings-body .dispatch-modal-field,
+  .dispatch-settings-qty { flex: 1 1 auto; width: 100%; }
+  .dispatch-settings-hint { margin-left: 0; }
+}
+
 /* ── Main Panel (full-width, login-card inspired) ── */
 .dispatch-panel {
   background: var(--bg-surface);
@@ -361,6 +423,20 @@
   background: rgba(255,255,255,0.06) !important;
 }
 
+/* Swap Driver — outline amber */
+.dispatch-btn--swap {
+  background: transparent;
+  color: #b7791f;
+  border: 1.5px solid rgba(183,121,31,0.35);
+  box-shadow: none;
+}
+.dispatch-btn--swap:hover {
+  background: rgba(183,121,31,0.08);
+  border-color: #b7791f;
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
 /* Cancel — outline red */
 .dispatch-btn--cancel {
   background: transparent;
@@ -535,7 +611,8 @@
 
 .dispatch-modal-required { color: #dc2626; margin-left: 2px; }
 
-.dispatch-modal-textarea {
+.dispatch-modal-textarea,
+.dispatch-modal-select {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -544,15 +621,22 @@
   font-family: 'Inter', 'Segoe UI', sans-serif;
   background: var(--bg-page);
   color: var(--text-primary);
-  resize: vertical;
-  min-height: 80px;
   transition: border-color 0.15s, box-shadow 0.15s;
   line-height: 1.5;
+}
+.dispatch-modal-textarea {
+  resize: vertical;
+  min-height: 80px;
 }
 .dispatch-modal-textarea:focus {
   outline: none;
   border-color: #dc2626;
   box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+}
+.dispatch-modal-select:focus {
+  outline: none;
+  border-color: #b7791f;
+  box-shadow: 0 0 0 3px rgba(183,121,31,0.1);
 }
 .dispatch-modal-textarea:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -595,6 +679,15 @@
   background: var(--bg-hover);
   color: var(--text-primary);
   opacity: 1;
+}
+
+.dispatch-modal-btn--primary {
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(26,39,68,0.3);
+}
+.dispatch-modal-btn--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(26,39,68,0.38);
 }
 
 .dispatch-modal-btn--danger {

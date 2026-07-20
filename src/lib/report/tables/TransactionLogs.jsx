@@ -4,8 +4,19 @@ import ReportTableModal from "./ReportTableModal";
 import { exportCSV } from "../reportHook";
 import { exportTablePDF } from "../exportPDF";
 
-const LOG_COLUMNS = ["Timestamp", "Ticket ID", "Action", "Batch", "Driver", "Vehicle", "Route", "User"];
-const ROAMING_COLUMNS = ["Vehicle Plate", "Driver", "Recorded By", "Notes", "Recorded At"];
+const LOG_COLUMNS = ["Timestamp", "Ticket ID", "Action", "Driver", "Vehicle", "Route", "User"];
+const ROAMING_COLUMNS = ["Ticket ID", "Time", "Vehicle", "Driver", "Issued By", "Verified"];
+
+const formatTime = (dateString) => {
+  try {
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "N/A";
+  }
+};
 
 export default function TransactionLogs({
   filteredLogs,
@@ -20,14 +31,14 @@ export default function TransactionLogs({
   const searchedLogs = filteredLogs.filter((l) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return [l.timestamp, l.ticket_id, l.action, l.batch, l.driver, l.vehicle, l.route, l.user]
+    return [l.timestamp, l.ticket_id, l.action, l.driver, l.vehicle, l.route, l.user]
       .some((v) => v && String(v).toLowerCase().includes(q));
   });
 
-  const searchedRoaming = roaming.filter((r) => {
+  const searchedRoaming = roaming.filter((t) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return [r.vehicle_plate, r.driver_name, r.recorded_by_name, r.notes]
+    return [t.id, t.vehicle?.plate_number, t.driver?.name, t.active_user_name]
       .some((v) => v && String(v).toLowerCase().includes(q));
   });
 
@@ -52,12 +63,13 @@ export default function TransactionLogs({
 
   const handleExportRoamingCSV = () =>
     exportCSV(
-      searchedRoaming.map((r) => ({
-        "Vehicle Plate": r.vehicle_plate,
-        Driver: r.driver_name || "",
-        "Recorded By": r.recorded_by_name || "",
-        Notes: r.notes || "",
-        "Recorded At": r.recorded_at,
+      searchedRoaming.map((t) => ({
+        "Ticket ID": t.id,
+        Time: formatTime(t.issued_at),
+        Vehicle: t.vehicle?.plate_number || "",
+        Driver: t.driver?.name || "",
+        "Issued By": t.active_user_name || "",
+        Verified: t.status === "CANCELLED" ? "Cancelled" : t.is_verified ? "Verified" : "Pending",
       })),
       `roaming_logs_${Date.now()}.csv`,
     );
@@ -79,12 +91,13 @@ export default function TransactionLogs({
 
   const handleExportRoamingPDF = () =>
     exportTablePDF(
-      searchedRoaming.map((r) => ({
-        "Vehicle Plate": r.vehicle_plate,
-        Driver: r.driver_name || "",
-        "Recorded By": r.recorded_by_name || "",
-        Notes: r.notes || "",
-        "Recorded At": r.recorded_at,
+      searchedRoaming.map((t) => ({
+        "Ticket ID": t.id,
+        Time: formatTime(t.issued_at),
+        Vehicle: t.vehicle?.plate_number || "",
+        Driver: t.driver?.name || "",
+        "Issued By": t.active_user_name || "",
+        Verified: t.status === "CANCELLED" ? "Cancelled" : t.is_verified ? "Verified" : "Pending",
       })),
       "Roaming Logs",
     );
@@ -92,14 +105,14 @@ export default function TransactionLogs({
   const modalSearchedLogs = searchedLogs.filter((l) => {
     if (!modalSearch) return true;
     const q = modalSearch.toLowerCase();
-    return [l.timestamp, l.ticket_id, l.action, l.batch, l.driver, l.vehicle, l.route, l.user]
+    return [l.timestamp, l.ticket_id, l.action, l.driver, l.vehicle, l.route, l.user]
       .some((v) => v && String(v).toLowerCase().includes(q));
   });
 
-  const modalSearchedRoaming = searchedRoaming.filter((r) => {
+  const modalSearchedRoaming = searchedRoaming.filter((t) => {
     if (!modalSearch) return true;
     const q = modalSearch.toLowerCase();
-    return [r.vehicle_plate, r.driver_name, r.recorded_by_name, r.notes]
+    return [t.id, t.vehicle?.plate_number, t.driver?.name, t.active_user_name]
       .some((v) => v && String(v).toLowerCase().includes(q));
   });
 
@@ -127,11 +140,6 @@ export default function TransactionLogs({
           {l.action}
         </span>
       </td>
-      <td className={cellClass}>
-        <span className={`rpt-batch-pill ${l.batch === "Batch 1" ? "rpt-batch-pill--b1" : "rpt-batch-pill--b2"}`}>
-          {l.batch}
-        </span>
-      </td>
       <td className={cellClass}>{l.driver}</td>
       <td className={cellClass}><span className="rpt-plate">{l.vehicle}</span></td>
       <td className={cellClass}>{l.route}</td>
@@ -139,16 +147,29 @@ export default function TransactionLogs({
     </tr>
   );
 
-  const renderRoamingRow = (r, idx, { rowClass, cellClass }) => (
-    <tr key={r.id} className={rowClass}>
-      <td className={`${cellClass} rpt-mono`}>
-        <span className="rpt-plate">{r.vehicle_plate}</span>
+  const renderRoamingRow = (t, idx, { rowClass, cellClass }) => (
+    <tr key={t.id} className={rowClass}>
+      <td className={`${cellClass} rpt-mono`}>{String(t.id).replace(/^TICKET-/i, "")}</td>
+      <td className={`${cellClass} rpt-mono rpt-muted`}>{formatTime(t.issued_at)}</td>
+      <td className={cellClass}>
+        {t.vehicle?.plate_number ? (
+          <span className="rpt-plate">{t.vehicle.plate_number}</span>
+        ) : (
+          <span className="rpt-na">—</span>
+        )}
       </td>
-      <td className={cellClass}>{r.driver_name || <span className="rpt-na">—</span>}</td>
-      <td className={cellClass}>{r.recorded_by_name || <span className="rpt-na">—</span>}</td>
-      <td className={cellClass}>{r.notes || <span className="rpt-na">—</span>}</td>
-      <td className={`${cellClass} rpt-mono rpt-muted`}>
-        {r.recorded_at ? new Date(r.recorded_at).toLocaleString() : "—"}
+      <td className={cellClass}>{t.driver?.name || <span className="rpt-na">—</span>}</td>
+      <td className={cellClass}>{t.active_user_name || <span className="rpt-na">—</span>}</td>
+      <td className={cellClass}>
+        <span
+          className="rpt-action-pill"
+          style={{
+            background: `${STATUS_COLORS[t.status === "CANCELLED" ? "CANCELLED" : t.is_verified ? "COLLECTED" : "ISSUED"] || "#64748b"}22`,
+            color: STATUS_COLORS[t.status === "CANCELLED" ? "CANCELLED" : t.is_verified ? "COLLECTED" : "ISSUED"] || "#64748b",
+          }}
+        >
+          {t.status === "CANCELLED" ? "Cancelled" : t.is_verified ? "Verified" : "Pending"}
+        </span>
       </td>
     </tr>
   );

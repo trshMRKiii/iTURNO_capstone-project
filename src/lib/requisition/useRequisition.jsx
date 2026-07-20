@@ -8,7 +8,6 @@ const EMPTY_SERIES = {
   box_no: "",
   start_no: "",
   end_no: "",
-  qty: "",
   total_value: "",
 };
 
@@ -100,35 +99,17 @@ export function useRequisition() {
     return { totalStock, totalValue, activeSeries, hasStock, stockLevel, allStock: enriched, byDenomination };
   }, [allSeries]);
 
-  const getNextStartNo = useCallback((ticketFormId) => {
-    if (!ticketFormId) return "";
-    const matching = allSeries.filter((s) => String(s.ticket_form) === String(ticketFormId));
-    if (matching.length === 0) return "";
-    const lastEndNo = Math.max(...matching.map((s) => parseInt(s.end_no) || 0));
-    return lastEndNo > 0 ? String(lastEndNo + 1) : "";
-  }, [allSeries]);
-
   const updateSeriesItem = (index, field, value) => {
     setSeriesItems((prev) => {
       const copy = [...prev];
       const updated = { ...copy[index], [field]: value };
 
-      if (field === "ticket_form") {
-        const nextStart = getNextStartNo(value);
-        if (nextStart) {
-          updated.start_no = nextStart;
-        }
-      }
-
-      if (field === "ticket_form" || field === "qty" || field === "start_no") {
+      if (field === "ticket_form" || field === "start_no" || field === "end_no") {
         const form = ticketForms.find((tf) => String(tf.id) === String(updated.ticket_form));
         const price = form ? parseFloat(form.price) || 0 : 0;
-        const qty = parseInt(updated.qty) || 0;
-        const pcs = qty * 1000;
-        const startNo = parseInt(updated.start_no) || 0;
-        if (qty > 0 && startNo > 0) {
-          updated.end_no = String(startNo + pcs - 1);
-        }
+        const start = parseInt(updated.start_no) || 0;
+        const end = parseInt(updated.end_no) || 0;
+        const pcs = end >= start && start > 0 ? end - start + 1 : 0;
         updated.total_value = (price * pcs).toFixed(2);
       }
 
@@ -174,7 +155,6 @@ export function useRequisition() {
             box_no: item.box_no || "",
             start_no: item.start_no,
             end_no: item.end_no,
-            qty: parseInt(item.qty) || 0,
             unit_value: 0,
             total_value: parseFloat(item.total_value) || 0,
             requisition: reqData.id,

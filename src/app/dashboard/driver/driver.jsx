@@ -1,14 +1,17 @@
 import React, { useState, useMemo } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { useDriver } from "../../../lib/useDriver";
 import { usePhilippineAddress } from "../../../lib/address/usePhilippineAddress";
 import { getDriverCode, getDriverDisplayName } from "../../../lib/driver-utils";
+import { useToast } from "../../../components/ui/ToastConfirmContext";
 import "../../../styles/Driver.css";
 
 function capitalizeWords(value) {
   return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
 }
 
-function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd }) {
+function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd, exposeExportQR }) {
   const {
     drivers,
     loading,
@@ -25,6 +28,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
     handleDelete,
   } = useDriver();
 
+  const showToast = useToast();
   const [internalSearch, setInternalSearch] = useState("");
   const searchTerm = embedded ? externalSearch : internalSearch;
   const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
@@ -92,6 +96,72 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
     setCurrentPage(1);
   }, [searchTerm]);
 
+  const exportQR = () => {
+    const toExport = filteredDrivers.filter((d) => d.qr_code);
+    if (!toExport.length) {
+      showToast(
+        "No QR codes to export. Drivers registered before this feature don't have a QR code yet — edit and re-save them to generate one.",
+        "info",
+      );
+      return;
+    }
+
+    const items = toExport.map((d) => {
+      const svgStr = renderToStaticMarkup(
+        <QRCodeSVG value={d.qr_code} size={140} level="H" includeMargin />
+      );
+      return `<div class="qr-item">
+        ${svgStr}
+        <div class="qr-plate">${getDriverDisplayName(d)}</div>
+        <div class="qr-code">${d.qr_code}</div>
+        ${d.iwp_number ? `<div class="qr-route">${d.iwp_number}</div>` : ""}
+      </div>`;
+    }).join("");
+
+    const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>Driver QR Codes</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 24px; background: #fff; }
+  h2 { font-size: 16px; margin-bottom: 4px; }
+  .meta { font-size: 11px; color: #666; margin-bottom: 16px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+  .print-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; background: #1a2744; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .print-btn:hover { background: #2d3e5f; }
+  .grid { display: flex; flex-wrap: wrap; gap: 20px; }
+  .qr-item { border: 1px solid #ddd; border-radius: 6px; padding: 12px; text-align: center; width: 180px; break-inside: avoid; }
+  .qr-item svg { display: block; margin: 0 auto; }
+  .qr-plate { font-weight: bold; font-size: 13px; margin-top: 8px; }
+  .qr-code { font-size: 10px; color: #555; margin-top: 2px; word-break: break-all; }
+  .qr-route { font-size: 10px; color: #888; margin-top: 2px; }
+  @media print { .toolbar { display: none; } body { margin: 12px; } }
+</style>
+</head><body>
+<div class="toolbar">
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span style="font-size:12px;color:#666;">${toExport.length} driver(s) &nbsp;|&nbsp; ${now}${searchTerm ? ` &nbsp;|&nbsp; Filter: "${searchTerm}"` : ""}</span>
+</div>
+<h2>Driver QR Codes</h2>
+<div class="grid">${items}</div>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) {
+      showToast(
+        "Your browser blocked the QR export popup. Please allow popups for this site and try again.",
+        "info",
+      );
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  };
+
+  React.useEffect(() => {
+    if (exposeExportQR) exposeExportQR(exportQR);
+  });
+
   return (
     <div className="drv-page">
       {/* Header */}
@@ -131,6 +201,20 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
             </svg>
             Register Driver
           </button>
+          {!embedded && (
+            <button className="drv-export-qr-btn" onClick={exportQR} title="Export QR codes for filtered drivers">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="3" height="3" rx="0.5" />
+                <rect x="18" y="14" width="3" height="3" rx="0.5" />
+                <rect x="14" y="18" width="3" height="3" rx="0.5" />
+                <rect x="18" y="18" width="3" height="3" rx="0.5" />
+              </svg>
+              Export QR
+            </button>
+          )}
         </div>
       </div>
 
@@ -657,6 +741,28 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                   </div>
                 </div>
               </div>
+
+              {editing && form.qr_code && (
+                <div className="drv-profile-section">
+                  <h3 className="drv-profile-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    Driver QR Code
+                  </h3>
+                  <div className="drv-qr-display">
+                    <QRCodeSVG
+                      value={form.qr_code}
+                      size={160}
+                      level="H"
+                      includeMargin
+                    />
+                    <span className="drv-qr-label">{form.qr_code}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="drv-modal-footer">
                 <button

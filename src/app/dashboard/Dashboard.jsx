@@ -13,7 +13,6 @@ import {
 import { apiService } from "../../lib/api-service";
 import "../../styles/Dashboard.css";
 import "../../styles/Ticket.css";
-import schedule from "../../../backend/schedules.json";
 
 const peso = (n) => {
   const num = parseFloat(n);
@@ -65,6 +64,15 @@ function StatCard({ label, value, sub, icon }) {
   );
 }
 
+// Local (not UTC) YYYY-MM-DD — avoids toISOString's UTC-shift off-by-one.
+const todayStr = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -76,13 +84,30 @@ export default function Dashboard() {
   // "tickets" | "revenue"
   const [chartMode, setChartMode] = useState("tickets");
 
+  const today = todayStr();
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
+
+  const handleFromChange = (value) => {
+    if (value > today) value = today;
+    setFromDate(value);
+    if (value > toDate) setToDate(value);
+  };
+
+  const handleToChange = (value) => {
+    if (value > today) value = today;
+    setToDate(value);
+    if (value < fromDate) setFromDate(value);
+  };
+
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
       setError("");
       try {
+        const range = { start_date: fromDate, end_date: toDate };
         const [statsData, chartJson] = await Promise.all([
-          apiService.getDashboardStats(),
+          apiService.getDashboardStats(range),
           apiService.getReportChart(),
         ]);
         setStats(statsData);
@@ -90,7 +115,7 @@ export default function Dashboard() {
         setChartData(data);
         // Routes fetched separately so a failure doesn't kill the dashboard
         try {
-          const routeData = await apiService.getRoutes();
+          const routeData = await apiService.getRoutes(range);
           setRoutes(Array.isArray(routeData) ? routeData : []);
         } catch {
           setRoutes([]);
@@ -102,7 +127,7 @@ export default function Dashboard() {
       }
     };
     fetchAll();
-  }, []);
+  }, [fromDate, toDate]);
 
   // Derive Y-axis tick formatter and bar data keys from chartMode
   const isRevenue = chartMode === "revenue";
@@ -110,6 +135,14 @@ export default function Dashboard() {
     ? (v) =>
         `₱${Number(v).toLocaleString("en-PH", { maximumFractionDigits: 0 })}`
     : (v) => `${v}`;
+
+  const isSingleDay = fromDate === toDate;
+  const isTodayOnly = isSingleDay && fromDate === today;
+  const rangeLabel = isTodayOnly
+    ? "Today"
+    : isSingleDay
+      ? fromDate
+      : `${fromDate} – ${toDate}`;
 
   return (
     <div className="dashboard-page">
@@ -120,11 +153,31 @@ export default function Dashboard() {
           <div>
             <h1 className="col-title">Dashboard</h1>
             <p className="col-subtitle">
-              Overview of today's collection and activity
+              Overview of collection and activity for {rangeLabel}
             </p>
           </div>
         </div>
         <div className="col-header-right">
+          <div className="dashboard-date-filter">
+            <label>
+              From
+              <input
+                type="date"
+                value={fromDate}
+                max={today}
+                onChange={(e) => handleFromChange(e.target.value)}
+              />
+            </label>
+            <label>
+              To
+              <input
+                type="date"
+                value={toDate}
+                max={today}
+                onChange={(e) => handleToChange(e.target.value)}
+              />
+            </label>
+          </div>
           <button className="ticket-mobile-scan-btn" onClick={() => navigate("/mobile-scan")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M3 7V5a2 2 0 0 1 2-2h2" />
@@ -148,38 +201,34 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          {/* ─── Today's Batch Cards ─────────────────────────────────────────── */}
+          {/* ─── Collections ─────────────────────────────────────────────────── */}
           <div>
-            <div className="dashboard-section-label">Today's Collections</div>
+            <div className="dashboard-section-label">
+              Collections <span className="dashboard-section-range">({rangeLabel})</span>
+            </div>
             <div className="stat-cards-row">
               <StatCard
-                label="Batch 1 (AM)"
-                value={stats?.batch1_today?.count ?? 0}
-                sub={peso(stats?.batch1_today?.total ?? 0)}
-              />
-              <StatCard
-                label="Batch 2 (PM)"
-                value={stats?.batch2_today?.count ?? 0}
-                sub={peso(stats?.batch2_today?.total ?? 0)}
-              />
-              <StatCard
-                label="Today Total"
+                label="Total"
                 value={stats?.today_total?.count ?? 0}
                 sub={peso(stats?.today_total?.total ?? 0)}
               />
             </div>
           </div>
-          {/* ─── Overall Stats ────────────────────────────────────────────────── */}
+          {/* ─── Check-Ins ──────────────────────────────────────────────────── */}
           <div className="dashboard-section">
-            <div className="dashboard-section-label">Overall</div>
+            <div className="dashboard-section-label">
+              Check-Ins <span className="dashboard-section-range">({rangeLabel})</span>
+            </div>
             <div className="stat-cards-row">
               <StatCard
-                label="Active Vehicles"
+                label="Vehicles Checked In"
                 value={stats?.active_vehicles ?? 0}
+                sub={isTodayOnly ? "Resets daily" : rangeLabel}
               />
               <StatCard
-                label="Active Drivers"
+                label="Drivers Checked In"
                 value={stats?.active_drivers ?? 0}
+                sub={isTodayOnly ? "Resets daily" : rangeLabel}
               />
             </div>
           </div>
@@ -190,7 +239,7 @@ export default function Dashboard() {
               <div className="chart-card">
                 <div className="chart-card-header">
                   <span className="chart-card-title">
-                    Collections Per Day — Batch 1 vs Batch 2
+                    Collections Per Day
                   </span>
                   <div className="chart-card-controls">
                     <div className="chart-mode-toggle">
@@ -250,39 +299,21 @@ export default function Dashboard() {
                           wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
                         />
                         {isRevenue ? (
-                          <>
-                            <Bar
-                              dataKey="batch1_total"
-                              name="Batch 1 — Amount (₱)"
-                              fill="#c9a84c"
-                              radius={[4, 4, 0, 0]}
-                              maxBarSize={32}
-                            />
-                            <Bar
-                              dataKey="batch2_total"
-                              name="Batch 2 — Amount (₱)"
-                              fill="#2d3e5f"
-                              radius={[4, 4, 0, 0]}
-                              maxBarSize={32}
-                            />
-                          </>
+                          <Bar
+                            dataKey="total"
+                            name="Amount (₱)"
+                            fill="#c9a84c"
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={32}
+                          />
                         ) : (
-                          <>
-                            <Bar
-                              dataKey="batch1_count"
-                              name="Batch 1 — Tickets"
-                              fill="#c9a84c"
-                              radius={[4, 4, 0, 0]}
-                              maxBarSize={32}
-                            />
-                            <Bar
-                              dataKey="batch2_count"
-                              name="Batch 2 — Tickets"
-                              fill="#2d3e5f"
-                              radius={[4, 4, 0, 0]}
-                              maxBarSize={32}
-                            />
-                          </>
+                          <Bar
+                            dataKey="count"
+                            name="Tickets"
+                            fill="#c9a84c"
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={32}
+                          />
                         )}
                       </BarChart>
                     </ResponsiveContainer>
@@ -331,6 +362,12 @@ export default function Dashboard() {
                             {route.origin}
                           </span>
                         )}
+                      </div>
+                      <div
+                        className="dashboard-route-item-count"
+                        title={`Checked in (${rangeLabel})`}
+                      >
+                        {route.checked_in_today ?? 0}
                       </div>
                     </div>
                   ))

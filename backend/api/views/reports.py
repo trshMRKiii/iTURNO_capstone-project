@@ -6,8 +6,8 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ..models import TicketPrice
-from .helpers import filter_collected, get_batch, load_schedule, summarize
+from ..models import TicketPrice, Ticket, RemittanceBatch
+from .helpers import filter_collected, summarize, parse_date_start, parse_date_end
 
 
 @api_view(['GET'])
@@ -28,17 +28,9 @@ def report_summary(request):
     latest_price = TicketPrice.objects.order_by('-effective_date').first()
     fallback_amount = float(latest_price.amount) if latest_price else 0.0
 
-    schedule = load_schedule()
-    batch_stats = {}
-    for key in schedule.keys():
-        normalized = key.lower().replace("_", "")
-        batch_tickets = [t for t in tickets if get_batch(t) == key]
-        batch_stats[normalized] = summarize(batch_tickets, fallback_amount)
-
     today = [t for t in tickets if today_utc_start <= t.issued_at <= today_utc_end]
 
     return Response({
-        **batch_stats,
         'today': summarize(today, fallback_amount),
         'grand_total': round(sum(
             float(t.collection_amount) if (t.collection_amount and float(t.collection_amount) > 0) else fallback_amount
@@ -60,7 +52,6 @@ def report_collections(request):
         local_dt = t.issued_at + timedelta(hours=8)
         data.append({
             'id': t.id,
-            'batch': get_batch(t).replace("_", " ").title() if get_batch(t) else '',
             'issued_at': local_dt.strftime('%Y-%m-%d %H:%M'),
             'issued_date': local_dt.strftime('%Y-%m-%d'),
             'driver': str(t.driver) if t.driver else '',
@@ -79,7 +70,6 @@ def report_daily_chart(request):
     end_date = request.query_params.get('end_date')
 
     tickets = filter_collected(start_date, end_date)
-    schedule = load_schedule()
 
     latest_price = TicketPrice.objects.order_by('-effective_date').first()
     fallback_amount = float(latest_price.amount) if latest_price else 0.0
@@ -88,23 +78,76 @@ def report_daily_chart(request):
     for t in tickets:
         local_dt = t.issued_at + timedelta(hours=8)
         day_key = local_dt.strftime('%Y-%m-%d')
-        batch = get_batch(t)
 
         amount = float(t.collection_amount) if (t.collection_amount and float(t.collection_amount) > 0) else fallback_amount
 
         if day_key not in daily:
-            daily[day_key] = {'date': day_key}
-            for key in schedule.keys():
-                normalized = key.lower().replace("_", "")
-                daily[day_key][f"{normalized}_count"] = 0
-                daily[day_key][f"{normalized}_total"] = 0.0
+            daily[day_key] = {'date': day_key, 'count': 0, 'total': 0.0}
 
-        if batch:
-            normalized = batch.lower().replace("_", "")
-            daily[day_key][f"{normalized}_count"] += 1
-            daily[day_key][f"{normalized}_total"] = round(daily[day_key][f"{normalized}_total"] + amount, 2)
+        daily[day_key]['count'] += 1
+        daily[day_key]['total'] = round(daily[day_key]['total'] + amount, 2)
 
     return Response({'chart_data': sorted(daily.values(), key=lambda x: x['date'])})
+
+
+@api_view(['GET'])
+def eod_reconciliation(request):
+    date_str = request.query_params.get('date')
+    if not date_str:
+        now_ph = timezone.now() + timedelta(hours=8)
+        date_str = now_ph.strftime('%Y-%m-%d')
+
+    day_start = parse_date_start(date_str)
+    day_end = parse_date_end(date_str)
+
+    dispatched_today = list(Ticket.objects.filter(
+        status__in=['DISPATCHED', 'COLLECTED'],
+        dispatched_at__gte=day_start,
+        dispatched_at__lte=day_end,
+    ).select_related('series'))
+
+    checkout_count = len(dispatched_today)
+    expected_cash = round(sum(float(t.collection_amount or 0) for t in dispatched_today), 2)
+
+    batches_today = RemittanceBatch.objects.filter(issued_at__gte=day_start, issued_at__lte=day_end)
+    actual_cash = round(sum(float(b.total_amount or 0) for b in batches_today), 2)
+
+    by_series = {}
+    for t in dispatched_today:
+        if t.series_id:
+            by_series.setdefault(t.series_id, []).append(t)
+
+    ticket_number_gaps = []
+    for series_tickets in by_series.values():
+        try:
+            numbers = sorted(int(t.id) for t in series_tickets)
+        except ValueError:
+            continue
+        missing = [n for n in range(numbers[0], numbers[-1] + 1) if n not in numbers]
+        if missing:
+            series_obj = series_tickets[0].series
+            ticket_number_gaps.append({
+                'series_no': series_obj.series_no if series_obj else '',
+                'missing_numbers': missing,
+            })
+
+    open_sessions = Ticket.objects.filter(status='ISSUED').select_related('vehicle', 'driver').order_by('issued_at')
+    open_sessions_data = [{
+        'ticket_id': t.id,
+        'plate_number': t.vehicle.plate_number if t.vehicle else None,
+        'driver': str(t.driver) if t.driver else None,
+        'issued_at': t.issued_at,
+    } for t in open_sessions]
+
+    return Response({
+        'date': date_str,
+        'checkout_count': checkout_count,
+        'expected_cash': expected_cash,
+        'actual_cash': actual_cash,
+        'difference': round(expected_cash - actual_cash, 2),
+        'ticket_number_gaps': ticket_number_gaps,
+        'open_sessions': open_sessions_data,
+    })
 
 
 @api_view(['GET'])
@@ -121,7 +164,7 @@ def export_collections_csv(request):
 
     writer = csv.writer(response)
     writer.writerow([
-        "Ticket ID", "Batch", "Issued Date", "Issued Time",
+        "Ticket ID", "Issued Date", "Issued Time",
         "Driver", "Vehicle", "Route", "Collection Amount",
         "Status", "User"
     ])
@@ -130,7 +173,6 @@ def export_collections_csv(request):
         local_dt = t.issued_at + timedelta(hours=8)
         writer.writerow([
             t.id,
-            get_batch(t).replace("_", " ").title() if get_batch(t) else "",
             local_dt.strftime('%Y-%m-%d'),
             local_dt.strftime('%H:%M'),
             str(t.driver) if t.driver else "",

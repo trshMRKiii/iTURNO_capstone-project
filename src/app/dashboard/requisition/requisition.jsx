@@ -330,7 +330,7 @@ function Requisition() {
                                       <td>{ts.series_no}</td>
                                       <td>{ts.ticket_form_label || "—"}</td>
                                       
-                                      <td>{ts.qty}</td>
+                                      <td>{(ts.pcs ?? (Math.max((parseInt(ts.end_no) || 0) - (parseInt(ts.start_no) || 0) + 1, 0))).toLocaleString()}</td>
                                       <td>{formatCurrency(ts.total_value)}</td>
                                     </tr>
                                   ))}

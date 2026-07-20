@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import CreateBatchForm from "../../../lib/remittance/createRemittance";
 import ViewRemittance from "../../../lib/remittance/viewRemittance";
 import { useRemittance } from "../../../lib/remittance/useRemittance";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
+import { apiService } from "../../../lib/api-service";
+import { today } from "../../../lib/report/reportHook";
+import EodReconciliation from "../../../lib/report/tables/EodReconciliation";
 import "../../../styles/Remittance.css";
+import "../../../styles/Report.css";
 
 const STATUS_COLOR = {
   OPEN: "rem-status--open",
@@ -26,6 +30,25 @@ export default function Remittance() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewBatch, setViewBatch] = useState(null);
+  const [eodDate, setEodDate] = useState(today);
+  const [eod, setEod] = useState(null);
+  const [eodLoading, setEodLoading] = useState(false);
+
+  const fetchEod = useCallback(async () => {
+    setEodLoading(true);
+    try {
+      const data = await apiService.get(`/report/eod-reconciliation/?date=${eodDate}`);
+      setEod(data);
+    } catch {
+      console.error("Failed to load end-of-day reconciliation");
+    } finally {
+      setEodLoading(false);
+    }
+  }, [eodDate]);
+
+  useEffect(() => {
+    fetchEod();
+  }, [fetchEod]);
 
   const handleDeleteClick = async (batch) => {
     const ok = await showConfirm(
@@ -96,6 +119,13 @@ export default function Remittance() {
         </div>
       )}
 
+      <EodReconciliation
+        eodDate={eodDate}
+        setEodDate={setEodDate}
+        eod={eod}
+        eodLoading={eodLoading}
+      />
+
       {/* Table card */}
       <div className="rem-card">
         <div className="rem-table-wrap">
@@ -153,7 +183,7 @@ export default function Remittance() {
                         ₱{Number(b.total_amount).toLocaleString()}
                       </span>
                     </td>
-                    
+
                     <td>
                       <div className="rem-actions">
                         <button className="rem-btn rem-btn--view" onClick={() => setViewBatch(b)}>

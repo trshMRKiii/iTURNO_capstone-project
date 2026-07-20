@@ -5,7 +5,6 @@ import "../../../styles/User.css";
 
 const EMPTY_FORM = {
   username: "",
-  email: "",
   first_name: "",
   middle_name: "",
   last_name: "",
@@ -18,11 +17,17 @@ function capitalizeWords(value) {
   return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(value) {
+  return EMAIL_PATTERN.test(value);
+}
+
 const ROLE_CLASS = {
   MANAGER: "usr-role--manager",
   SUPERVISOR: "usr-role--supervisor",
   PERSONNEL: "usr-role--personnel",
-  ADMIN: "usr-role--admin",
+  SUPERADMIN: "usr-role--admin",
 };
 
 const Field = ({ label, children }) => (
@@ -63,10 +68,15 @@ function User() {
     }
   };
 
-  const UNIQUE_ROLES = ["ADMIN", "SUPERVISOR", "MANAGER"];
+  const UNIQUE_ROLES = ["SUPERADMIN", "SUPERVISOR", "MANAGER"];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!isValidEmail(form.username)) {
+      setError("Username must be a valid email address.");
+      return;
+    }
 
     const role = form.role;
     const isActive = !!form.is_active;
@@ -101,7 +111,6 @@ function User() {
 
       const payload = {
         username: form.username || "",
-        email: form.email || "",
         first_name: form.first_name || "",
         middle_name: form.middle_name || "",
         last_name: form.last_name || "",
@@ -125,7 +134,6 @@ function User() {
     setEditing(user);
     setForm({
       username: user.username,
-      email: user.email,
       first_name: user.first_name,
       middle_name: user.middle_name || "",
       last_name: user.last_name,
@@ -236,9 +244,9 @@ function User() {
             <thead>
               <tr>
                 {[
-                  
+
                   "Full Name",
-                  "Email Address",
+                  "Username (Email)",
                   "Role",
                   "Status",
                   "Actions",
@@ -290,7 +298,7 @@ function User() {
                         .filter(Boolean)
                         .join(" ")}
                     </td>
-                    <td className="usr-td-email">{user.email}</td>
+                    <td className="usr-td-email">{user.username}</td>
                     <td>
                       <span
                         className={`usr-role ${ROLE_CLASS[user.role] || "usr-role--personnel"}`}
@@ -483,26 +491,17 @@ function User() {
                   </svg>
                   Account Information
                 </h3>
-                <Field label="Username">
+                <Field label="Username (Email Address)">
                   <input
-                    type="text"
+                    type="email"
                     className={inputCls}
-                    placeholder="Username"
+                    placeholder="name@example.com"
                     value={form.username}
                     onChange={(e) =>
                       setForm({ ...form, username: e.target.value })
                     }
-                    required
-                  />
-                </Field>
-
-                <Field label="Email Address">
-                  <input
-                    type="email"
-                    className={inputCls}
-                    placeholder="Email address"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+                    title="Enter a valid email address"
                     required
                   />
                 </Field>
@@ -541,7 +540,7 @@ function User() {
                       <option value="PERSONNEL">Personnel</option>
                       <option value="SUPERVISOR">Supervisor</option>
                       <option value="MANAGER">Manager</option>
-                      <option value="ADMIN">Admin</option>
+                      <option value="SUPERADMIN">Super Admin</option>
                     </select>
                   </Field>
                   <Field label="Status">

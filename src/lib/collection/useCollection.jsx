@@ -1,22 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
-import { OperationsService } from "../operations-service";
 import { apiService } from "../api-service";
 
-export function useCollection(shifts, userRole) {
+export function useCollection(userRole) {
   const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [batchStats, setBatchStats] = useState(null);
-  const [verifyingBatch, setVerifyingBatch] = useState(null);
+  const [todayStats, setTodayStats] = useState(null);
+  const [verifyingAll, setVerifyingAll] = useState(false);
   const [verifyingTicketId, setVerifyingTicketId] = useState(null);
+  const [verifyingOverride, setVerifyingOverride] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [verifiedBatches, setVerifiedBatches] = useState({
-    batch1: null,
-    batch2: null,
-  });
-
-  const STORAGE_KEY = "batch_verifications";
 
   const getTodayDateString = (date) => {
     const year = date.getFullYear();
@@ -32,42 +26,7 @@ export function useCollection(shifts, userRole) {
     );
   };
 
-  const loadVerifiedBatches = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const today = getTodayDateString(new Date());
-
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Reset if date changed
-      if (parsed.date !== today) {
-        setVerifiedBatches({});
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today }));
-      } else {
-        setVerifiedBatches(parsed);
-      }
-    } else {
-      const today = getTodayDateString(new Date());
-      setVerifiedBatches({});
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today }));
-    }
-  };
-
-  const getShiftByName = (batchName) =>
-    Object.values(shifts || {}).find((shift) => shift.name === batchName);
-
-  const isBatchEnded = (batchKey) => {
-    const shift = getShiftByName(batchKey);
-    if (!shift) return false;
-    const now = new Date();
-    return now.getHours() >= shift.endHour;
-  };
-
-  const isBatchVerifiable = (batchKey) => {
-    return isBatchEnded(batchKey);
-  };
-
   useEffect(() => {
-    loadVerifiedBatches();
     fetchTickets();
   }, []);
 
@@ -87,14 +46,17 @@ export function useCollection(shifts, userRole) {
   const todaysTickets = useMemo(() => tickets.filter(isTodayTicket), [tickets]);
 
   useEffect(() => {
-    if (todaysTickets.length > 0 && Object.keys(shifts || {}).length > 0) {
-      setBatchStats(
-        OperationsService.calculateBatchStats(todaysTickets, shifts),
-      );
-    } else {
-      setBatchStats(null);
+    const active = todaysTickets.filter((t) => t.status !== "CANCELLED");
+    if (active.length === 0) {
+      setTodayStats(null);
+      return;
     }
-  }, [todaysTickets, shifts]);
+    setTodayStats({
+      total: active.reduce((sum, t) => sum + Number(t.collection_amount || 0), 0),
+      count: active.filter((t) => t.status !== "COLLECTED").length,
+      pending: active.filter((t) => !t.is_verified).length,
+    });
+  }, [todaysTickets]);
 
   const safeLower = (val) => String(val ?? "").toLowerCase();
 
@@ -119,51 +81,36 @@ export function useCollection(shifts, userRole) {
     );
   }, [searchTerm, tickets]);
 
-  const handleVerifyBatch = async (batchName) => {
+  const handleVerifyAllPending = async () => {
     try {
-      setVerifyingBatch(batchName);
-      const batchTickets = tickets.filter(
-        (t) =>
-          isTodayTicket(t) &&
-          !t.is_verified &&
-          t.status === "DISPATCHED" &&
-          OperationsService.getEffectiveBatchName(t, shifts) === batchName,
+      setVerifyingAll(true);
+      const pendingTickets = tickets.filter(
+        (t) => isTodayTicket(t) && !t.is_verified && t.status !== "CANCELLED",
       );
 
-      if (batchTickets.length === 0) {
-        setSuccessMessage("No pending tickets to verify in this batch.");
+      if (pendingTickets.length === 0) {
+        setSuccessMessage("No pending tickets to verify.");
         setTimeout(() => setSuccessMessage(""), 3000);
-        setVerifyingBatch(null);
+        setVerifyingAll(false);
         return;
       }
 
-      for (const ticket of batchTickets) {
+      for (const ticket of pendingTickets) {
         await apiService.patch(`/tickets/${ticket.id}/`, {
           is_verified: true,
           status: "COLLECTED",
         });
       }
 
-      // Mark batch as verified today
-      const today = getTodayDateString(new Date());
-      const normalizedKey = batchName.toLowerCase().replace(/\s+/g, "");
-      const updated = {
-        ...verifiedBatches,
-        [normalizedKey]: today,
-        date: today,
-      };
-      setVerifiedBatches(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-
       setSuccessMessage(
-        `${batchTickets.length} ticket(s) in ${batchName} verified successfully.`,
+        `${pendingTickets.length} ticket(s) verified successfully.`,
       );
       setTimeout(() => setSuccessMessage(""), 3000);
       fetchTickets();
     } catch (err) {
       setError(err.message);
     } finally {
-      setVerifyingBatch(null);
+      setVerifyingAll(false);
     }
   };
 
@@ -184,6 +131,42 @@ export function useCollection(shifts, userRole) {
     }
   };
 
+  // All unverified tickets regardless of date — used by the manual override
+  // so stuck/orphaned tickets from any day can be force-verified.
+  const unverifiedTickets = useMemo(
+    () =>
+      tickets
+        .filter((t) => !t.is_verified && t.status !== "CANCELLED")
+        .sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at)),
+    [tickets],
+  );
+
+  const handleVerifyAllOverride = async () => {
+    if (unverifiedTickets.length === 0) {
+      setSuccessMessage("No unverified tickets to override.");
+      setTimeout(() => setSuccessMessage(""), 3000);
+      return;
+    }
+    try {
+      setVerifyingOverride(true);
+      for (const ticket of unverifiedTickets) {
+        await apiService.patch(`/tickets/${ticket.id}/`, {
+          is_verified: true,
+          status: "COLLECTED",
+        });
+      }
+      setSuccessMessage(
+        `${unverifiedTickets.length} ticket(s) force-verified via override.`,
+      );
+      setTimeout(() => setSuccessMessage(""), 3000);
+      await fetchTickets();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setVerifyingOverride(false);
+    }
+  };
+
   const clearSuccessMessage = () => setSuccessMessage("");
   const clearError = () => setError(null);
 
@@ -193,20 +176,21 @@ export function useCollection(shifts, userRole) {
     searchTerm,
     loading,
     error,
-    batchStats,
-    verifyingBatch,
+    todayStats,
+    verifyingAll,
     verifyingTicketId,
+    verifyingOverride,
+    unverifiedTickets,
     successMessage,
     setSearchTerm,
     setError,
     setSuccessMessage,
     fetchTickets,
-    handleVerifyBatch,
+    handleVerifyAllPending,
     handleVerifyTicket,
+    handleVerifyAllOverride,
     clearSuccessMessage,
     clearError,
-    isBatchVerifiable,
-    isBatchEnded,
   };
 }
 
@@ -225,94 +209,3 @@ export const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
     amount || 0,
   );
-
-export const BatchCard = ({
-  label,
-  stats,
-  batchKey,
-  onVerify,
-  verifyingBatch,
-  userRole,
-  isBatchEnded,
-}) => {
-  const disabled = !isBatchEnded || userRole === "MANAGER";
-
-  return (
-    <div className="bc-card">
-      <div className="bc-header">
-        <span className="bc-label">{label}</span>
-      </div>
-      <div className="bc-body">
-        {stats && (
-          <div className="bc-rows">
-            {[
-              {
-                label: "Revenue",
-                value: formatCurrency(stats.total),
-                bold: true,
-              },
-              { label: "Active Dispatches", value: stats.count },
-              {
-                label: "Pending Verification",
-                value: stats.pending,
-                warn: stats.pending > 0,
-              },
-            ].map(({ label: l, value, warn }) => (
-              <div key={l} className="bc-row">
-                <span className="bc-row-label">{l}</span>
-                <span
-                  className={`bc-row-value ${warn ? "bc-row-value--warn" : ""}`}
-                >
-                  {value}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          className="bc-verify-btn"
-          onClick={() => onVerify(batchKey)}
-          disabled={disabled}
-        >
-          {verifyingBatch === batchKey ? (
-            <>
-              <span className="bc-spinner" />
-              Verifying…
-            </>
-          ) : !isBatchEnded ? (
-            <>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              Batch In Progress
-            </>
-          ) : (
-            <>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-              Verify {batchKey}
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-};

@@ -1,7 +1,6 @@
 import { DataTable } from "../../../components/ui/dataTable";
 import { useState } from "react";
 import ReportTableModal from "./ReportTableModal";
-import { peso } from "../reportHook";
 
 const VEHICLE_COLUMNS = [
   "Plate Number",
@@ -11,7 +10,6 @@ const VEHICLE_COLUMNS = [
   "Active Driver",
 ];
 const DRIVER_COLUMNS = ["IWP", "Full Name", "Contact No.", "Address"];
-const REWARD_COLUMNS = ["Date", "Driver", "Points Redeemed", "Peso Value", "Approved By"];
 
 export default function FleetRecords({
   vehiclesTotal,
@@ -27,11 +25,6 @@ export default function FleetRecords({
   visibleDrivers,
   handleExportDriversCSV,
   handleExportDriversPDF,
-
-  redemptions,
-  redemptionsTotal,
-  handleExportRedemptionsCSV,
-  handleExportRedemptionsPDF,
 }) {
   const [activeTab, setActiveTab] = useState("vehicles");
   const [search, setSearch] = useState("");
@@ -39,7 +32,6 @@ export default function FleetRecords({
   const [modalSearch, setModalSearch] = useState("");
 
   const isVehicles = activeTab === "vehicles";
-  const isRewards = activeTab === "rewards";
 
   const searchedVehicles = visibleVehicles.filter((v) => {
     if (!search) return true;
@@ -56,18 +48,10 @@ export default function FleetRecords({
       .some((val) => val && String(val).toLowerCase().includes(q));
   });
 
-  const searchedRewards = (redemptions || []).filter((r) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return [r.driver_name, r.status].some(
-      (val) => val && String(val).toLowerCase().includes(q),
-    );
-  });
-
-  const searched = isVehicles ? searchedVehicles : isRewards ? searchedRewards : searchedDrivers;
-  const showAll = isVehicles ? showAllVehicles : !isRewards && showAllDrivers;
-  const total = isVehicles ? vehiclesTotal : isRewards ? redemptionsTotal : driversTotal;
-  const preview = isRewards ? searched.slice(0, 5) : showAll ? searched.slice(0, 5) : searched;
+  const searched = isVehicles ? searchedVehicles : searchedDrivers;
+  const showAll = isVehicles ? showAllVehicles : showAllDrivers;
+  const total = isVehicles ? vehiclesTotal : driversTotal;
+  const preview = showAll ? searched.slice(0, 5) : searched;
 
   const renderVehicleRow = (v, idx, { rowClass, cellClass }) => (
     <tr key={v.id} className={rowClass}>
@@ -83,7 +67,7 @@ export default function FleetRecords({
       <td className={cellClass}>
         {v.franchise_number || <span className="rpt-na">—</span>}
       </td>
-    
+
       <td className={cellClass}>
         {v.active_driver_name || <span className="rpt-na">Unassigned</span>}
       </td>
@@ -98,16 +82,6 @@ export default function FleetRecords({
       <td className={cellClass}>
         {[d.barangay, d.city, d.province].filter(Boolean).join(", ") || "—"}
       </td>
-    </tr>
-  );
-
-  const renderRewardRow = (r, idx, { rowClass, cellClass }) => (
-    <tr key={r.id} className={rowClass}>
-      <td className={cellClass}>{r.created_at ? r.created_at.slice(0, 10) : "—"}</td>
-      <td className={`${cellClass} rpt-bold`}>{r.driver_name || "—"}</td>
-      <td className={cellClass}>{r.points_redeemed}</td>
-      <td className={cellClass}>{peso(r.peso_value)}</td>
-      <td className={cellClass}>{r.approved_by_name || <span className="rpt-na">—</span>}</td>
     </tr>
   );
 
@@ -126,15 +100,7 @@ export default function FleetRecords({
       .some((val) => val && String(val).toLowerCase().includes(q));
   });
 
-  const modalSearchedRewards = searchedRewards.filter((r) => {
-    if (!modalSearch) return true;
-    const q = modalSearch.toLowerCase();
-    return [r.driver_name, r.status].some(
-      (val) => val && String(val).toLowerCase().includes(q),
-    );
-  });
-
-  const modalData = isVehicles ? modalSearchedVehicles : isRewards ? modalSearchedRewards : modalSearchedDrivers;
+  const modalData = isVehicles ? modalSearchedVehicles : modalSearchedDrivers;
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -145,7 +111,7 @@ export default function FleetRecords({
 
   const handleViewAll = () => {
     if (isVehicles) setShowAllVehicles(true);
-    else if (!isRewards) setShowAllDrivers(true);
+    else setShowAllDrivers(true);
     setShowModal(true);
   };
 
@@ -153,7 +119,7 @@ export default function FleetRecords({
     setShowModal(false);
     setModalSearch("");
     if (isVehicles) setShowAllVehicles(false);
-    else if (!isRewards) setShowAllDrivers(false);
+    else setShowAllDrivers(false);
   };
 
   return (
@@ -168,16 +134,10 @@ export default function FleetRecords({
               Vehicle Records
             </button>
             <button
-              className={`rpt-tab ${!isVehicles && !isRewards ? "rpt-tab--active" : ""}`}
+              className={`rpt-tab ${!isVehicles ? "rpt-tab--active" : ""}`}
               onClick={() => handleTabChange("drivers")}
             >
               Driver Records
-            </button>
-            <button
-              className={`rpt-tab ${isRewards ? "rpt-tab--active" : ""}`}
-              onClick={() => handleTabChange("rewards")}
-            >
-              Reward Logs
             </button>
           </div>
           <span className="rpt-record-count">
@@ -188,7 +148,7 @@ export default function FleetRecords({
           <input
             type="text"
             className="rpt-search-input"
-            placeholder={isVehicles ? "Search vehicles…" : isRewards ? "Search redemptions…" : "Search drivers…"}
+            placeholder={isVehicles ? "Search vehicles…" : "Search drivers…"}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -199,7 +159,7 @@ export default function FleetRecords({
           )}
           <button
             className="rpt-btn-export rpt-btn-export--green"
-            onClick={isVehicles ? handleExportVehiclesCSV : isRewards ? handleExportRedemptionsCSV : handleExportDriversCSV}
+            onClick={isVehicles ? handleExportVehiclesCSV : handleExportDriversCSV}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -209,7 +169,7 @@ export default function FleetRecords({
           </button>
           <button
             className="rpt-btn-export rpt-btn-export--red"
-            onClick={isVehicles ? handleExportVehiclesPDF : isRewards ? handleExportRedemptionsPDF : handleExportDriversPDF}
+            onClick={isVehicles ? handleExportVehiclesPDF : handleExportDriversPDF}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -222,32 +182,26 @@ export default function FleetRecords({
 
       {isVehicles ? (
         <DataTable columns={VEHICLE_COLUMNS} data={preview} rowRenderer={renderVehicleRow} />
-      ) : isRewards ? (
-        <DataTable columns={REWARD_COLUMNS} data={preview} rowRenderer={renderRewardRow} />
       ) : (
         <DataTable columns={DRIVER_COLUMNS} data={preview} rowRenderer={renderDriverRow} />
       )}
 
       {showModal && (
         <ReportTableModal
-          title={isVehicles ? "Vehicle Records" : isRewards ? "Reward Logs" : "Driver Records"}
+          title={isVehicles ? "Vehicle Records" : "Driver Records"}
           subtitle={
             isVehicles
               ? "Complete registered vehicle fleet"
-              : isRewards
-              ? "Complete history of driver reward redemptions"
               : "Complete registered driver roster"
           }
           count={modalData.length}
           onClose={handleCloseModal}
           searchValue={modalSearch}
           onSearchChange={setModalSearch}
-          searchPlaceholder={isVehicles ? "Search vehicles…" : isRewards ? "Search redemptions…" : "Search drivers…"}
+          searchPlaceholder={isVehicles ? "Search vehicles…" : "Search drivers…"}
         >
           {isVehicles ? (
             <DataTable columns={VEHICLE_COLUMNS} data={modalData} rowRenderer={renderVehicleRow} />
-          ) : isRewards ? (
-            <DataTable columns={REWARD_COLUMNS} data={modalData} rowRenderer={renderRewardRow} />
           ) : (
             <DataTable columns={DRIVER_COLUMNS} data={modalData} rowRenderer={renderDriverRow} />
           )}

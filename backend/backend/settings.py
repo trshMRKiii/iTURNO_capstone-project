@@ -32,6 +32,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
 
     'corsheaders',
     'rest_framework',
+    'channels',
     'api',
 ]
 
@@ -74,6 +77,15 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+ASGI_APPLICATION = 'backend.asgi.application'
+
+# Dev-only channel layer (single-process, in-memory). Swap for
+# channels_redis.core.RedisChannelLayer if running multiple workers/processes.
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 
 # Database
@@ -146,3 +158,19 @@ SIMPLE_JWT = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+
+# Email (Google SMTP)
+# Fill in EMAIL_HOST_USER / EMAIL_HOST_PASSWORD yourself.
+# Use a Gmail "App Password" (not your normal Google account password) —
+# https://myaccount.google.com/apppasswords
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ms8251765@gmail.com'
+EMAIL_HOST_PASSWORD = 'ofiv jzdo moiz xmwh'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Base URL of the frontend app, used to build the password-reset link sent by email
+FRONTEND_URL = 'http://localhost:5173'

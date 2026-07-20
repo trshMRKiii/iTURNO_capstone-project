@@ -35,13 +35,11 @@ export default function Report() {
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
-    batch: "all",
   });
   const [summary, setSummary] = useState(null);
   const [collections, setCollections] = useState([]);
   const [chartData, setChartData] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [logsTotal, setLogsTotal] = useState(0);
+  const [tickets, setTickets] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLogsTotal, setAuditLogsTotal] = useState(0);
   const [vehicles, setVehicles] = useState([]);
@@ -49,14 +47,8 @@ export default function Report() {
   const [drivers, setDrivers] = useState([]);
   const [driversTotal, setDriversTotal] = useState(0);
   const [showAllCollections, setShowAllCollections] = useState(false);
-  const [showAllLogs, setShowAllLogs] = useState(false);
   const [showAllVehicles, setShowAllVehicles] = useState(false);
   const [showAllDrivers, setShowAllDrivers] = useState(false);
-  const [roaming, setRoaming] = useState([]);
-  const [roamingTotal, setRoamingTotal] = useState(0);
-  const [showAllRoaming, setShowAllRoaming] = useState(false);
-  const [redemptions, setRedemptions] = useState([]);
-  const [redemptionsTotal, setRedemptionsTotal] = useState(0);
   const [requisitions, setRequisitions] = useState([]);
   const [requisitionsTotal, setRequisitionsTotal] = useState(0);
   const [remittance, setRemittance] = useState([]);
@@ -64,14 +56,13 @@ export default function Report() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchLogs = useCallback(async () => {
+  const fetchTickets = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/logs/?all=true`);
+      const res = await fetch(`${API_BASE}/tickets/`);
       const data = await res.json();
-      setLogs(data.logs || []);
-      setLogsTotal(data.total || 0);
+      setTickets(Array.isArray(data) ? data : data.results || []);
     } catch {
-      console.error("Failed to load logs");
+      console.error("Failed to load tickets");
     }
   }, []);
 
@@ -137,30 +128,6 @@ export default function Report() {
     }
   }, []);
 
-  const fetchRoaming = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/roaming-logs/`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : data.results || [];
-      setRoaming(list);
-      setRoamingTotal(data.count ?? list.length);
-    } catch {
-      console.error("Failed to load roaming logs");
-    }
-  }, []);
-
-  const fetchRedemptions = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/rewards/redemptions/`);
-      const data = await res.json();
-      const list = data.redemptions || [];
-      setRedemptions(list);
-      setRedemptionsTotal(list.length);
-    } catch {
-      console.error("Failed to load reward redemptions");
-    }
-  }, []);
-
   const fetchRequisitions = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/requisitions/`);
@@ -187,37 +154,46 @@ export default function Report() {
 
   useEffect(() => {
     fetchData();
-    fetchLogs();
+    fetchTickets();
     fetchAuditLogs();
     fetchVehicles();
     fetchDrivers();
-    fetchRoaming();
-    fetchRedemptions();
     fetchRequisitions();
     fetchRemittance();
   }, []);
 
-  const filteredLogs = logs.filter((l) => {
-    const d = l.timestamp ? l.timestamp.slice(0, 10) : "";
-    if (filters.startDate && d < filters.startDate) return false;
-    if (filters.endDate && d > filters.endDate) return false;
-    return true;
-  });
+  // Roaming vehicles are tickets issued with mode "UNLOAD" (see ticket.jsx issuance flow),
+  // same split used by the Collection page so the two pages agree on what counts as roaming.
+  const roamingTickets = tickets.filter((t) => t.mode === "UNLOAD");
+  const transactionTickets = tickets.filter((t) => t.mode !== "UNLOAD");
 
-  const filteredAuditLogs = auditLogs.filter((a) => {
-    const d = a.created_at ? a.created_at.slice(0, 10) : "";
+  const inDateRange = (dateStr) => {
+    const d = dateStr ? dateStr.slice(0, 10) : "";
     if (filters.startDate && d < filters.startDate) return false;
     if (filters.endDate && d > filters.endDate) return false;
     return true;
-  });
+  };
 
-  const filteredRoaming = roaming.filter((r) => {
-    if (!r.recorded_at) return true;
-    const d = r.recorded_at.slice(0, 10);
-    if (filters.startDate && d < filters.startDate) return false;
-    if (filters.endDate && d > filters.endDate) return false;
-    return true;
-  });
+  const filteredLogs = transactionTickets
+    .filter((t) => inDateRange(t.created_at))
+    .map((t) => ({
+      id: t.id,
+      timestamp: t.created_at,
+      ticket_id: t.id,
+      action: t.status,
+      driver: t.driver?.name || "",
+      vehicle: t.vehicle?.plate_number || "",
+      route: t.route_name || "",
+      amount: t.collection_amount,
+      user: t.active_user_name || "System",
+    }))
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const filteredAuditLogs = auditLogs.filter((a) => inDateRange(a.created_at));
+
+  const filteredRoaming = roamingTickets
+    .filter((t) => inDateRange(t.issued_at))
+    .sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at));
 
   const handleDateChange = (field, value) => {
     setFilters((prev) => {
@@ -231,7 +207,7 @@ export default function Report() {
   };
 
   const handleClearFilter = () => {
-    setFilters({ startDate: "", endDate: "", batch: "all" });
+    setFilters({ startDate: "", endDate: "" });
     setTimeout(() => fetchData(), 0);
   };
 
@@ -277,23 +253,6 @@ export default function Report() {
 
   const handleExportDriversPDF = () =>
     exportTablePDF(drivers.map(buildDriverExportRow), "Driver Records");
-
-  const buildRedemptionExportRow = (r) => ({
-    Date: r.created_at ? r.created_at.slice(0, 10) : "—",
-    Driver: r.driver_name || "—",
-    "Points Redeemed": r.points_redeemed,
-    "Peso Value": r.peso_value,
-    "Approved By": r.approved_by_name || "—",
-  });
-
-  const handleExportRedemptionsCSV = () =>
-    exportCSV(
-      redemptions.map(buildRedemptionExportRow),
-      `reward_redemptions_${Date.now()}.csv`,
-    );
-
-  const handleExportRedemptionsPDF = () =>
-    exportTablePDF(redemptions.map(buildRedemptionExportRow), "Reward Redemptions");
 
   const buildRequisitionExportRow = (r) => ({
     "Date Requested": r.date_requested ? r.date_requested.slice(0, 10) : "—",
@@ -455,14 +414,9 @@ export default function Report() {
         visibleDrivers={showAllDrivers ? drivers : drivers.slice(0, 5)}
         handleExportDriversCSV={handleExportDriversCSV}
         handleExportDriversPDF={handleExportDriversPDF}
-        redemptions={redemptions}
-        redemptionsTotal={redemptionsTotal}
-        handleExportRedemptionsCSV={handleExportRedemptionsCSV}
-        handleExportRedemptionsPDF={handleExportRedemptionsPDF}
       />
 
       <AuditTrail filteredAuditLogs={filteredAuditLogs} />
-      
     </div>
   );
 }

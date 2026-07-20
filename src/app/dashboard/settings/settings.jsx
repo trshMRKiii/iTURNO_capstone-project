@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
-import { useShifts } from "../../../lib/useShifts";
 import { useTerminalPrice } from "../../../lib/useTerminalPrice";
 import SettingsModal from "../../../components/ui/settingsModal";
-import ClockTimePicker from "../../../components/ui/clockTimePicker";
 import "../../../styles/Settings.css";
 
 const TABS = [
@@ -44,21 +42,6 @@ const TABS = [
     ),
   },
   {
-    key: "rewards",
-    label: "Rewards",
-    description: "Points redemption rules for the driver rewards program",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-        <path d="M4 22h16" />
-        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-      </svg>
-    ),
-  },
-  {
     key: "terminalPrice",
     label: "Terminal Price",
     description: "Maximum total collection amount allowed per issued ticket",
@@ -67,17 +50,6 @@ const TABS = [
         <circle cx="12" cy="12" r="10" />
         <path d="M12 6v12" />
         <path d="M15 9.5c0-1.38-1.34-2.5-3-2.5s-3 1.12-3 2.5 1.34 2.5 3 2.5 3 1.12 3 2.5-1.34 2.5-3 2.5-3-1.12-3-2.5" />
-      </svg>
-    ),
-  },
-  {
-    key: "batchSchedule",
-    label: "Batch Schedule",
-    description: "Start and end hours for each collection batch",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
       </svg>
     ),
   },
@@ -147,7 +119,7 @@ function Settings() {
 
   useEffect(() => {
     apiService.getCurrentUser()
-      .then((user) => setIsAdmin((user?.role || "").toUpperCase() === "ADMIN"))
+      .then((user) => setIsAdmin((user?.role || "").toUpperCase() === "SUPERADMIN"))
       .catch((err) => console.error("Failed to load current user:", err));
   }, []);
 
@@ -163,25 +135,10 @@ function Settings() {
   const [newTicketForm, setNewTicketForm] = useState("");
   const [newTicketFormPrice, setNewTicketFormPrice] = useState("");
 
-  const [rewardConfig, setRewardConfig] = useState(null);
-  const [rewardForm, setRewardForm] = useState({
-    points_per_redemption: "",
-    peso_value_per_redemption: "",
-    max_redemptions_per_year: "",
-    cooldown_months: "",
-  });
-  const [savingRewardConfig, setSavingRewardConfig] = useState(false);
   const showToast = useToast();
 
   const [search, setSearch] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
-
-  const {
-    shifts,
-    loading: shiftsLoading,
-    error: shiftsError,
-    updateShifts,
-  } = useShifts();
 
   const {
     terminalPrice,
@@ -210,89 +167,6 @@ function Settings() {
       setSavingTerminalPrice(false);
     }
   };
-  const [editingShifts, setEditingShifts] = useState({});
-  const [savingSchedule, setSavingSchedule] = useState(false);
-
-  useEffect(() => {
-    if (shifts && Object.keys(shifts).length > 0) {
-      setEditingShifts(JSON.parse(JSON.stringify(shifts)));
-    }
-  }, [shifts]);
-
-  const formatLabel = (name, startHour, endHour) => {
-    const start =
-      startHour < 12
-        ? `${startHour}am`
-        : startHour === 12
-          ? "12pm"
-          : `${startHour - 12}pm`;
-    const end =
-      endHour < 12
-        ? `${endHour}am`
-        : endHour === 12
-          ? "12pm"
-          : `${endHour - 12}pm`;
-    return `${name} (${start}-${end})`;
-  };
-
-  const handleScheduleFieldChange = (key, field, value) => {
-    setEditingShifts((prev) => {
-      const updated = {
-        ...prev,
-        [key]: {
-          ...prev[key],
-          [field]: field === "startHour" || field === "endHour" ? Number(value) : value,
-        },
-      };
-      if (field === "startHour" || field === "endHour") {
-        updated[key].label = formatLabel(updated[key].name, updated[key].startHour, updated[key].endHour);
-      }
-      return updated;
-    });
-  };
-
-  // splits an hour range into non-wrapping [start, end) segments, handling overnight wrap
-  const expandHourRange = (startHour, endHour) =>
-    endHour > startHour ? [[startHour, endHour]] : [[startHour, 24], [0, endHour]];
-
-  const findOverlappingBatches = (shiftsObj) => {
-    const entries = Object.entries(shiftsObj);
-    for (let i = 0; i < entries.length; i++) {
-      for (let j = i + 1; j < entries.length; j++) {
-        const [, a] = entries[i];
-        const [, b] = entries[j];
-        const aRanges = expandHourRange(a.startHour, a.endHour);
-        const bRanges = expandHourRange(b.startHour, b.endHour);
-        for (const [aStart, aEnd] of aRanges) {
-          for (const [bStart, bEnd] of bRanges) {
-            if (aStart < bEnd && bStart < aEnd) {
-              return [a.name, b.name];
-            }
-          }
-        }
-      }
-    }
-    return null;
-  };
-
-  const handleSaveSchedule = async () => {
-    const overlap = findOverlappingBatches(editingShifts);
-    if (overlap) {
-      showToast?.(`${overlap[0]} and ${overlap[1]} overlap. Adjust the hours before saving.`, "info");
-      return;
-    }
-    setSavingSchedule(true);
-    try {
-      await updateShifts(editingShifts);
-      showToast?.("Batch schedule saved", "success");
-    } catch (err) {
-      console.error("Failed to save schedule", err);
-      showToast?.("Failed to save batch schedule", "info");
-    } finally {
-      setSavingSchedule(false);
-    }
-  };
-
   useEffect(() => {
     apiService.getPUVTypes()
       .then(setPuvTypes)
@@ -372,39 +246,6 @@ function Settings() {
       setTicketForms(ticketForms.filter(t => t.id !== id));
     } catch (err) {
       console.error("Failed to delete ticket form:", err);
-    }
-  };
-
-  useEffect(() => {
-    apiService.getRewardConfig()
-      .then((cfg) => {
-        setRewardConfig(cfg);
-        setRewardForm({
-          points_per_redemption: cfg.points_per_redemption,
-          peso_value_per_redemption: cfg.peso_value_per_redemption,
-          max_redemptions_per_year: cfg.max_redemptions_per_year,
-          cooldown_months: cfg.cooldown_months,
-        });
-      })
-      .catch(err => console.error("Failed to load reward config:", err));
-  }, []);
-
-  const handleSaveRewardConfig = async () => {
-    setSavingRewardConfig(true);
-    try {
-      const updated = await apiService.updateRewardConfig({
-        points_per_redemption: parseInt(rewardForm.points_per_redemption, 10) || 0,
-        peso_value_per_redemption: parseFloat(rewardForm.peso_value_per_redemption) || 0,
-        max_redemptions_per_year: parseInt(rewardForm.max_redemptions_per_year, 10) || 0,
-        cooldown_months: parseInt(rewardForm.cooldown_months, 10) || 0,
-      });
-      setRewardConfig(updated);
-      showToast?.("Reward settings saved", "success");
-    } catch (err) {
-      console.error("Failed to save reward config:", err);
-      showToast?.("Failed to save reward settings", "info");
-    } finally {
-      setSavingRewardConfig(false);
     }
   };
 
@@ -544,9 +385,7 @@ function Settings() {
     puv: puvTypes.length,
     routes: routes.length,
     ticketForms: ticketForms.length,
-    rewards: rewardConfig ? 1 : 0,
     terminalPrice: terminalPrice ? 1 : 0,
-    batchSchedule: Object.keys(shifts || {}).length,
     system: systemBackups.length,
   };
 
@@ -585,7 +424,7 @@ function Settings() {
             <h2 className="set-panel-title">{TABS.find(t => t.key === activeTab)?.label}</h2>
 
           </div>
-          {activeTab !== "rewards" && activeTab !== "terminalPrice" && activeTab !== "batchSchedule" && activeTab !== "system" && (
+          {activeTab !== "terminalPrice" && activeTab !== "system" && (
             <div className="set-toolbar-actions">
               <button className="set-add-btn" onClick={() => setAddModalOpen(true)}>
                 <PlusIcon />
@@ -717,69 +556,6 @@ function Settings() {
           </>
         )}
 
-        {/* Rewards */}
-        {activeTab === "rewards" && (
-          <div className="set-rewards-form">
-            <p className="set-rewards-note">
-              Drivers earn 1 point per queue logged, plus a +3 bonus for 4 queues in a day
-              (replaced by +5 if they reach 5+ that same day), +10 for a 5-day consecutive
-              queue streak, and +30 for being active 20+ days in a month. The settings below
-              only control redemption: how many points are needed, how much they're worth in
-              pesos, and the yearly limit and cooldown between redemptions.
-            </p>
-            <div className="set-add-row">
-              <label className="set-field">
-                <span className="set-field-label">Points per redemption</span>
-                <input
-                  type="number"
-                  className="set-input"
-                  value={rewardForm.points_per_redemption}
-                  onChange={(e) => setRewardForm({ ...rewardForm, points_per_redemption: e.target.value })}
-                  placeholder="1000"
-                />
-              </label>
-              <label className="set-field">
-                <span className="set-field-label">Peso value (₱)</span>
-                <input
-                  type="number"
-                  className="set-input"
-                  value={rewardForm.peso_value_per_redemption}
-                  onChange={(e) => setRewardForm({ ...rewardForm, peso_value_per_redemption: e.target.value })}
-                  placeholder="500"
-                />
-              </label>
-            </div>
-            <div className="set-add-row">
-              <label className="set-field">
-                <span className="set-field-label">Max redemptions per year</span>
-                <input
-                  type="number"
-                  className="set-input"
-                  value={rewardForm.max_redemptions_per_year}
-                  onChange={(e) => setRewardForm({ ...rewardForm, max_redemptions_per_year: e.target.value })}
-                  placeholder="2"
-                />
-              </label>
-              <label className="set-field">
-                <span className="set-field-label">Cooldown (months)</span>
-                <input
-                  type="number"
-                  className="set-input"
-                  value={rewardForm.cooldown_months}
-                  onChange={(e) => setRewardForm({ ...rewardForm, cooldown_months: e.target.value })}
-                  placeholder="6"
-                />
-              </label>
-            </div>
-            <div className="set-add-row">
-              <button className="set-add-btn" onClick={handleSaveRewardConfig} disabled={savingRewardConfig}>
-                <PlusIcon />
-                {savingRewardConfig ? "Saving..." : "Save Rewards Settings"}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Terminal Price */}
         {activeTab === "terminalPrice" && (
           <div className="set-rewards-form">
@@ -817,57 +593,12 @@ function Settings() {
           </div>
         )}
 
-        {/* Batch Schedule */}
-        {activeTab === "batchSchedule" && (
-          <div className="set-rewards-form">
-            {shiftsLoading ? (
-              <p className="set-rewards-note">Loading schedule...</p>
-            ) : Object.keys(editingShifts).length === 0 ? (
-              <p className="set-rewards-note">No shift configuration found.</p>
-            ) : (
-              Object.entries(editingShifts).map(([key, shift]) => (
-                <div key={key} className="set-add-row" style={{ alignItems: "flex-end" }}>
-                  <label className="set-field">
-                    <span className="set-field-label">{shift.name} — {shift.label}</span>
-                  </label>
-                  <label className="set-field">
-                    <span className="set-field-label">Start Hour</span>
-                    <ClockTimePicker
-                      value={shift.startHour}
-                      onChange={(hour) => handleScheduleFieldChange(key, "startHour", hour)}
-                    />
-                  </label>
-                  <label className="set-field">
-                    <span className="set-field-label">End Hour</span>
-                    <ClockTimePicker
-                      value={shift.endHour}
-                      onChange={(hour) => handleScheduleFieldChange(key, "endHour", hour)}
-                    />
-                  </label>
-                </div>
-              ))
-            )}
-            {(shiftsError) && (
-              <p className="set-rewards-note" style={{ color: "#c0392b" }}>{shiftsError}</p>
-            )}
-            <p className="set-rewards-note">
-              Changes take effect immediately after saving. Tickets already issued retain their original batch assignment.
-            </p>
-            <div className="set-add-row">
-              <button className="set-add-btn" onClick={handleSaveSchedule} disabled={savingSchedule || Object.keys(editingShifts).length === 0}>
-                <PlusIcon />
-                {savingSchedule ? "Saving..." : "Save Batch Schedule"}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* System Backup / Restore / Rollback */}
         {activeTab === "system" && isAdmin && (
           <div className="set-rewards-form">
             <p className="set-rewards-note">
               A backup captures the entire system — drivers, vehicles, tickets, routes,
-              remittances, rewards, users, and every other record. Restoring or rolling back
+              remittances, users, and every other record. Restoring or rolling back
               replaces ALL current data with the chosen backup. A safety snapshot of the
               current state is always taken automatically right before a restore or rollback,
               so that action itself can be undone.

@@ -18,22 +18,11 @@ from .reports import (
     report_summary,
     report_collections,
     report_daily_chart,
+    eod_reconciliation,
     export_collections_csv,
 )
 
-from .rewards import (
-    reward_summary,
-    reward_history,
-    reward_redemptions,
-    reward_redemptions_all,
-    reward_redeem,
-    reward_leaderboard,
-    reward_config,
-    terminal_price_config,
-)
-
 from .records import (
-    issue_late_ticket,
     transaction_logs,
     audit_logs,
     dashboard_stats,
@@ -41,8 +30,8 @@ from .records import (
     driver_records,
     public_queue,
     server_time,
-    schedules_view,
     remittance_batches,
+    terminal_price_config,
 )
 
 from .system import (
@@ -51,4 +40,9 @@ from .system import (
     system_backup_download,
     system_backup_restore,
     system_backup_restore_upload,
+)
+
+from .auth import (
+    forgot_password,
+    reset_password,
 )

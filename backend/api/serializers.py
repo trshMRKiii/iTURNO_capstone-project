@@ -1,25 +1,32 @@
+from datetime import datetime, timedelta
+
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, DriverRewardProfile, PointsTransaction, Redemption, RewardConfig, AuditLog, BackupRecord, TerminalPrice
+from rest_framework.validators import UniqueValidator
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, AuditLog, BackupRecord, TerminalPrice
 
 
 class UserSerializer(serializers.ModelSerializer):
+    username = serializers.EmailField(
+        error_messages={'invalid': 'Enter a valid email address.'},
+        validators=[UniqueValidator(queryset=User.objects.all(), message='A user with that email already exists.')],
+    )
+
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'middle_name', 'last_name',
+            'id', 'username', 'first_name', 'middle_name', 'last_name',
             'role', 'is_active', 'password',
         ]
         extra_kwargs = {
             'password': {'write_only': True, 'required': False},
-            'username': {'required': False},
-            'email': {'required': False}
         }
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         user = User(
             username=validated_data['username'],
-            email=validated_data['email'],
             first_name=validated_data.get('first_name', ''),
             middle_name=validated_data.get('middle_name', ''),
             last_name=validated_data.get('last_name', ''),
@@ -49,7 +56,7 @@ class DriverSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'iwp_number', 'last_name', 'first_name', 'middle_name',
             'gender', 'birthdate', 'province', 'city', 'barangay', 'street', 'photo',
-            'contact', 'status', 'is_archived', 'created_at', 'updated_at', 'name'
+            'contact', 'qr_code', 'status', 'is_archived', 'created_at', 'updated_at', 'name'
         ]
 
     def get_name(self, obj):
@@ -129,25 +136,66 @@ class TicketSerializer(serializers.ModelSerializer):
         vehicle_id = validated_data.pop('vehicle_id')
         driver_id = validated_data.pop('driver_id')
         series_id = validated_data.pop('series_id', None)
+        issuance_group = validated_data.get('issuance_group', '')
+        is_roam = validated_data.get('mode') == 'UNLOAD'
 
-        vehicle = Vehicle.objects.get(id=vehicle_id)
+        with transaction.atomic():
+            vehicle = Vehicle.objects.get(id=vehicle_id)
 
-        if not driver_id and vehicle.active_driver_id:
-            driver_id = vehicle.active_driver_id
+            if not driver_id and vehicle.active_driver_id:
+                driver_id = vehicle.active_driver_id
 
-        driver = Driver.objects.get(id=driver_id)
+            driver = Driver.objects.get(id=driver_id)
 
-        series = None
-        if series_id:
-            series = TicketSeries.objects.get(id=series_id)
-            start = int(series.start_no)
-            end = int(series.end_no)
-            if start >= end:
-                raise serializers.ValidationError({"series_id": "This ticket series is depleted."})
-            series.start_no = str(start + 1)
-            series.save(update_fields=['start_no', 'updated_at'])
+            open_tickets = list(Ticket.objects.filter(vehicle=vehicle, status='ISSUED'))
+            # A quantity>1 issuance makes several sequential create() calls that share one
+            # issuance_group — those are the same check-in, not a duplicate one.
+            is_continuation = bool(issuance_group) and open_tickets and all(
+                t.issuance_group == issuance_group for t in open_tickets
+            )
 
-        return Ticket.objects.create(vehicle=vehicle, driver=driver, series=series, **validated_data)
+            if open_tickets and not is_continuation:
+                raise serializers.ValidationError(
+                    {"vehicle_id": "This vehicle already has an open session — dispatch or cancel it before checking in again."}
+                )
+
+            if not is_continuation:
+                if vehicle.status not in ('AVAILABLE', 'DISPATCHED'):
+                    raise serializers.ValidationError(
+                        {"vehicle_id": f"Vehicle is currently {vehicle.status} and cannot be checked in."}
+                    )
+                if driver.status != 'ACTIVE':
+                    raise serializers.ValidationError(
+                        {"driver_id": "Selected driver is not active and cannot be assigned."}
+                    )
+
+            series = None
+            if series_id:
+                series = TicketSeries.objects.get(id=series_id)
+                start = int(series.start_no)
+                end = int(series.end_no)
+                if start >= end:
+                    raise serializers.ValidationError({"series_id": "This ticket series is depleted."})
+                series.start_no = str(start + 1)
+                series.save(update_fields=['start_no', 'updated_at'])
+
+            if is_roam:
+                # Roam check-in is also check-out — dispatch is automatic,
+                # so the ticket is born already dispatched with no queue step.
+                validated_data['status'] = 'DISPATCHED'
+                validated_data['dispatched_at'] = timezone.now()
+
+            ticket = Ticket.objects.create(vehicle=vehicle, driver=driver, series=series, **validated_data)
+
+            if is_roam:
+                vehicle.active_driver = driver
+                vehicle.save(update_fields=['active_driver', 'updated_at'])
+            else:
+                vehicle.status = 'QUEUED'
+                vehicle.active_driver = driver
+                vehicle.save(update_fields=['status', 'active_driver', 'updated_at'])
+
+        return ticket
 
 class TicketPriceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -161,13 +209,43 @@ class PUVTypeSerializer(serializers.ModelSerializer):
 
 class RouteSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
+    checked_in_today = serializers.SerializerMethodField()
 
     class Meta:
         model = Route
-        fields = ['id', 'origin', 'is_active', 'created_at', 'updated_at', 'full_name']
+        fields = ['id', 'origin', 'is_active', 'created_at', 'updated_at', 'full_name', 'checked_in_today']
 
     def get_full_name(self, obj):
         return f"{obj.origin} - San Fernando"
+
+    def get_checked_in_today(self, obj):
+        now_ph = timezone.now() + timedelta(hours=8)
+        today_str = now_ph.strftime('%Y-%m-%d')
+
+        request = self.context.get('request')
+        start_date = today_str
+        end_date = today_str
+        if request:
+            start_date = request.query_params.get('start_date') or today_str
+            end_date = request.query_params.get('end_date') or today_str
+            # A future "to" date can't tell us anything — clamp it to today.
+            if end_date > today_str:
+                end_date = today_str
+            if start_date > end_date:
+                start_date = end_date
+
+        start_d = datetime.strptime(start_date, '%Y-%m-%d')
+        end_d = datetime.strptime(end_date, '%Y-%m-%d')
+        range_start = timezone.make_aware(
+            datetime(start_d.year, start_d.month, start_d.day, 0, 0, 0) - timedelta(hours=8)
+        )
+        range_end = timezone.make_aware(
+            datetime(end_d.year, end_d.month, end_d.day, 23, 59, 59) - timedelta(hours=8)
+        )
+
+        return Ticket.objects.filter(
+            route=obj, issued_at__gte=range_start, issued_at__lte=range_end
+        ).values('vehicle_id').distinct().count()
     
 class TicketFormSerializer(serializers.ModelSerializer):
     class Meta:
@@ -229,7 +307,7 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
         model = TicketSeries
         fields = [
             'id', 'series_no', 'ticket_form', 'ticket_form_label', 'ticket_form_price',
-            'pad_no', 'box_no', 'start_no', 'end_no', 'qty',
+            'pad_no', 'box_no', 'start_no', 'end_no',
             'unit_value', 'total_value', 'requisition',
             'issued_to', 'issued_to_name', 'date_issued',
             'beginning', 'remaining',
@@ -280,69 +358,6 @@ class RoamingLogSerializer(serializers.ModelSerializer):
         if obj.driver:
             return f"{obj.driver.last_name}, {obj.driver.first_name}".strip()
         return None
-
-class PointsTransactionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PointsTransaction
-        fields = ['id', 'type', 'points', 'description', 'created_at']
-
-
-class RedemptionSerializer(serializers.ModelSerializer):
-    approved_by_name = serializers.SerializerMethodField()
-    driver_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Redemption
-        fields = ['id', 'points_redeemed', 'peso_value', 'status', 'approved_by', 'approved_by_name', 'driver_name', 'created_at']
-
-    def get_approved_by_name(self, obj):
-        if obj.approved_by:
-            full = f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip()
-            return full or obj.approved_by.username
-        return None
-
-    def get_driver_name(self, obj):
-        driver = obj.profile.driver
-        return f"{driver.last_name}, {driver.first_name}".strip()
-
-
-class RewardConfigSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RewardConfig
-        fields = [
-            'id', 'points_per_redemption', 'peso_value_per_redemption',
-            'max_redemptions_per_year', 'cooldown_months', 'updated_at',
-        ]
-
-
-class DriverRewardProfileSerializer(serializers.ModelSerializer):
-    driver_name = serializers.SerializerMethodField()
-    can_redeem = serializers.SerializerMethodField()
-    redeem_message = serializers.SerializerMethodField()
-
-    class Meta:
-        model = DriverRewardProfile
-        fields = [
-            'id', 'driver', 'driver_name', 'total_points',
-            'current_streak', 'last_queue_date',
-            'redemptions_this_year', 'last_redemption_date',
-            'can_redeem', 'redeem_message',
-            'created_at', 'updated_at',
-        ]
-
-    def get_driver_name(self, obj):
-        return f"{obj.driver.last_name}, {obj.driver.first_name}".strip()
-
-    def get_can_redeem(self, obj):
-        from .rewards import can_redeem
-        eligible, _ = can_redeem(obj)
-        return eligible
-
-    def get_redeem_message(self, obj):
-        from .rewards import can_redeem
-        _, msg = can_redeem(obj)
-        return msg
-
 
 class AuditLogSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()

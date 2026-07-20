@@ -60,7 +60,7 @@ const TicketPriceModal = ({
                 <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
               </svg>
               <p>
-                Editing the <strong>Ticket Price</strong> requires Supervisor, Manager, or Admin authorization.
+                Editing the <strong>Ticket Price</strong> requires Supervisor, Manager, or Super Admin authorization.
                 Have a privileged user sign in below to grant a <strong>30-minute editing window</strong>.
               </p>
             </div>
@@ -70,7 +70,7 @@ const TicketPriceModal = ({
                 <input
                   type="text"
                   className="ticket-select"
-                  placeholder="Supervisor / Manager / Admin username"
+                  placeholder="Supervisor / Manager / Super Admin username"
                   value={grantUsername}
                   onChange={(e) => setGrantUsername(e.target.value)}
                   autoComplete="off"

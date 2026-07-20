@@ -1,5 +1,3 @@
-import json
-import os
 from datetime import datetime, timedelta
 
 from django.db.models import Sum
@@ -7,79 +5,9 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ..models import Ticket, TicketPrice, Vehicle, Driver, Route, RemittanceBatch, Collection, Deposit, AuditLog
-from ..serializers import TicketSerializer, RemittanceBatchSerializer, AuditLogSerializer
-from .helpers import get_batch, load_schedule, summarize, parse_iso_datetime, generate_ticket_id, record_audit_log, parse_date_start, parse_date_end
-
-
-@api_view(['POST'])
-def issue_late_ticket(request):
-    try:
-        data = request.data
-
-        required_fields = ['vehicle', 'driver', 'route', 'intended_batch']
-        for field in required_fields:
-            if not data.get(field):
-                return Response(
-                    {"error": f"Missing required field: {field}"},
-                    status=400
-                )
-
-        if not data.get('route') or data.get('route') == 'N/A':
-            return Response(
-                {"error": "Route cannot be empty or 'N/A'. Please select a valid vehicle with a route."},
-                status=400
-            )
-
-        issued_at = parse_iso_datetime(data.get('issued_at'))
-        ticket_id = generate_ticket_id(issued_at, data['intended_batch'])
-
-        route_value = data.get('route')
-        route_obj = None
-        if route_value:
-            if isinstance(route_value, int) or (isinstance(route_value, str) and route_value.isdigit()):
-                route_obj = Route.objects.filter(id=int(route_value)).first()
-            elif hasattr(route_value, 'pk'):
-                route_obj = route_value
-            else:
-                route_obj = Route.objects.filter(origin=route_value).first()
-
-        if not route_obj:
-            return Response(
-                {"error": "Route cannot be found. Please select a valid route."},
-                status=400
-            )
-
-        ticket = Ticket.objects.create(
-            id=ticket_id,
-            vehicle_id=data['vehicle'],
-            driver_id=data['driver'],
-            route=route_obj,
-            status='ISSUED',
-            is_late=True,
-            intended_batch=data['intended_batch'],
-            issued_at=issued_at,
-            active_user=request.user if request.user.is_authenticated else None,
-        )
-
-        from ..rewards import award_queue_point
-        try:
-            award_queue_point(ticket.driver, queue_date=issued_at.date())
-        except Exception:
-            import logging
-            logging.getLogger(__name__).exception("award_queue_point failed for ticket %s", ticket.id)
-
-        serializer = TicketSerializer(ticket)
-        return Response({
-            "message": "Late ticket issued successfully",
-            "ticket": serializer.data
-        }, status=201)
-
-    except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=400
-        )
+from ..models import Ticket, TicketPrice, Vehicle, Driver, Route, RemittanceBatch, Collection, Deposit, AuditLog, TerminalPrice
+from ..serializers import TicketSerializer, RemittanceBatchSerializer, AuditLogSerializer, TerminalPriceSerializer
+from .helpers import summarize, parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_queue_tickets
 
 
 @api_view(['GET'])
@@ -101,7 +29,6 @@ def transaction_logs(request):
             'amount': float(t.collection_amount or 0),
             'timestamp': local_dt.strftime('%Y-%m-%d %H:%M:%S'),
             'user': t.active_user.get_full_name() or t.active_user.username if t.active_user else 'System',
-            'batch': get_batch(t),
         })
 
     total = len(data)
@@ -141,33 +68,38 @@ def audit_logs(request):
 @api_view(['GET'])
 def dashboard_stats(request):
     now_ph = timezone.now() + timedelta(hours=8)
-    today_start = timezone.make_aware(
-        datetime(now_ph.year, now_ph.month, now_ph.day, 0, 0, 0) - timedelta(hours=8)
-    )
+    today_str = now_ph.strftime('%Y-%m-%d')
 
-    today_dispatched = Ticket.objects.filter(
+    start_date = request.query_params.get('start_date') or today_str
+    end_date = request.query_params.get('end_date') or today_str
+    # A future "to" date can't tell us anything — clamp it to today.
+    if end_date > today_str:
+        end_date = today_str
+    if start_date > end_date:
+        start_date = end_date
+
+    range_start = parse_date_start(start_date)
+    range_end = parse_date_end(end_date)
+
+    range_dispatched = Ticket.objects.filter(
         dispatched_at__isnull=False,
-        dispatched_at__gte=today_start
+        dispatched_at__gte=range_start,
+        dispatched_at__lte=range_end,
     )
+    range_issued = Ticket.objects.filter(issued_at__gte=range_start, issued_at__lte=range_end)
 
     latest_price = TicketPrice.objects.order_by('-effective_date').first()
     fallback_amount = float(latest_price.amount) if latest_price else 0.0
 
-    schedule = load_schedule()
-    batch_stats = {}
-    for key in schedule.keys():
-        batch_tickets = [t for t in today_dispatched if get_batch(t) == key]
-        normalized = key.lower().replace("_", "")
-        batch_stats[f"{normalized}_today"] = summarize(batch_tickets, fallback_amount)
-
     return Response({
-        **batch_stats,
-        'today_total': summarize(today_dispatched, fallback_amount),
+        'today_total': summarize(range_dispatched, fallback_amount),
         'total_tickets': Ticket.objects.count(),
         'total_dispatched': Ticket.objects.filter(dispatched_at__isnull=False).count(),
-        'total_revenue': round(float(today_dispatched.aggregate(s=Sum('collection_amount'))['s'] or 0), 2),
-        'active_vehicles': Vehicle.objects.filter(is_archived=False).count(),
-        'active_drivers': Driver.objects.filter(is_archived=False).count(),
+        'total_revenue': round(float(range_dispatched.aggregate(s=Sum('collection_amount'))['s'] or 0), 2),
+        'active_vehicles': range_issued.values('vehicle_id').distinct().count(),
+        'active_drivers': range_issued.values('driver_id').distinct().count(),
+        'start_date': start_date,
+        'end_date': end_date,
     })
 
 
@@ -220,6 +152,7 @@ def driver_records(request):
 
 @api_view(['GET'])
 def public_queue(request):
+    expire_stale_queue_tickets()
     vehicles_with_issued_tickets = Vehicle.objects.filter(
         tickets__status='ISSUED',
         is_archived=False
@@ -252,34 +185,23 @@ def server_time(request):
 
 
 @api_view(['GET', 'PUT'])
-def schedules_view(request):
-    from django.conf import settings as django_settings
-    file_path = os.path.join(django_settings.BASE_DIR, 'schedules.json')
+def terminal_price_config(request):
+    config = TerminalPrice.get_solo()
     if request.method == 'GET':
-        try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-            return Response(data)
-        except FileNotFoundError:
-            return Response({'error': 'Schedules file not found'}, status=404)
-        except json.JSONDecodeError:
-            return Response({'error': 'Invalid JSON'}, status=500)
-    elif request.method == 'PUT':
-        try:
-            data = request.data
-            with open(file_path, 'w') as f:
-                json.dump(data, f, indent=2)
-            record_audit_log(
-                user=request.user,
-                action='UPDATE',
-                model_name='Schedule',
-                object_id='schedules.json',
-                object_repr='Batch schedule configuration',
-                changes=data,
-            )
-            return Response({'status': 'updated'})
-        except Exception as e:
-            return Response({'error': str(e)}, status=500)
+        return Response(TerminalPriceSerializer(config).data)
+
+    serializer = TerminalPriceSerializer(config, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    record_audit_log(
+        user=request.user,
+        action='UPDATE',
+        model_name='TerminalPrice',
+        object_id=config.pk,
+        object_repr='Terminal price configuration',
+        changes=request.data,
+    )
+    return Response(serializer.data)
 
 
 @api_view(['GET', 'POST'])

@@ -287,7 +287,7 @@
   box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
 }
 
-/* ── Rewards settings form ── */
+/* ── Settings sub-panel form (terminal price, schedule, system) ── */
 .set-rewards-form .set-add-row {
   gap: 16px;
 }

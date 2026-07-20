@@ -1,30 +1,9 @@
-import json
-import os
 from datetime import datetime, timedelta, timezone as dt_timezone
 
-from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
-from ..models import Ticket, TicketPrice, AuditLog
-
-
-def load_schedule():
-    schedule_path = os.path.join(settings.BASE_DIR, "schedules.json")
-    with open(schedule_path, "r") as f:
-        return json.load(f)
-
-
-def get_batch(ticket):
-    if ticket.batch:
-        return ticket.batch
-    # Legacy tickets saved before the batch field existed: fall back to
-    # computing from the current schedule (may drift if schedule changed since).
-    local_hour = (ticket.issued_at + timedelta(hours=8)).hour
-    schedule = load_schedule()
-    for key, shift in schedule.items():
-        if shift["startHour"] <= local_hour < shift["endHour"]:
-            return key
-    return None
+from ..models import Ticket, TicketPrice, AuditLog, Vehicle
 
 
 def parse_date_start(date_str):
@@ -39,12 +18,6 @@ def parse_date_end(date_str):
     return timezone.make_aware(ph_end - timedelta(hours=8))
 
 
-def get_batch_code(batch_name):
-    schedule = load_schedule()
-    codes = {name.replace("_", " ").title(): str(shift["startHour"]).zfill(2) for name, shift in schedule.items()}
-    return codes.get(batch_name, "00")
-
-
 def parse_iso_datetime(value):
     if not value:
         return timezone.now()
@@ -55,19 +28,6 @@ def parse_iso_datetime(value):
     if timezone.is_naive(dt):
         return timezone.make_aware(dt, dt_timezone.utc)
     return dt.astimezone(dt_timezone.utc)
-
-
-def generate_ticket_id(issued_at, batch_name):
-    local_dt = issued_at + timedelta(hours=8)
-    date_code = local_dt.strftime('%Y%m%d')
-    prefix = f'{date_code}{get_batch_code(batch_name)}'
-    last_ticket = Ticket.objects.filter(id__startswith=prefix).order_by('-id').first()
-    if last_ticket:
-        last_seq = int(last_ticket.id[-4:]) if last_ticket.id[-4:].isdigit() else 0
-        next_seq = str(last_seq + 1).zfill(4)
-    else:
-        next_seq = '0001'
-    return f'{prefix}{next_seq}'
 
 
 def filter_collected(start_date=None, end_date=None):
@@ -83,6 +43,46 @@ def filter_collected(start_date=None, end_date=None):
         except ValueError:
             pass
     return qs
+
+
+def expire_stale_queue_tickets(actor=None):
+    """Auto-cancel ISSUED tickets left over from a previous day and free their vehicle.
+
+    A vehicle checked into the queue but never dispatched before the terminal closes
+    otherwise stays stuck as QUEUED forever, blocking its route's queue position. This
+    is called lazily from the queue-facing list endpoints so the first request after
+    PH midnight self-heals it — no scheduler needed.
+    """
+    now_ph = timezone.now() + timedelta(hours=8)
+    today_start = parse_date_start(now_ph.strftime('%Y-%m-%d'))
+
+    with transaction.atomic():
+        stale = list(
+            Ticket.objects.select_for_update()
+            .filter(status='ISSUED', issued_at__lt=today_start)
+        )
+        if not stale:
+            return
+
+        vehicle_ids = set()
+        reason = 'Auto-cancelled: vehicle was not dispatched before end of day.'
+        for ticket in stale:
+            ticket.status = 'CANCELLED'
+            ticket.reason = reason
+            ticket.save(update_fields=['status', 'reason', 'updated_at'])
+            vehicle_ids.add(ticket.vehicle_id)
+            record_audit_log(
+                user=actor,
+                action='UPDATE',
+                model_name='Ticket',
+                object_id=ticket.id,
+                object_repr=str(ticket),
+                changes={'status': 'CANCELLED', 'reason': reason, 'auto_expired': True},
+            )
+
+        Vehicle.objects.filter(id__in=vehicle_ids, status='QUEUED').update(
+            status='AVAILABLE', updated_at=timezone.now()
+        )
 
 
 def record_audit_log(user, action, model_name, object_id='', object_repr='', changes=None):

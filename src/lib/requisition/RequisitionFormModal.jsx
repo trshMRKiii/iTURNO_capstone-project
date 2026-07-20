@@ -91,36 +91,22 @@ const RequisitionFormModal = ({
                 )}
               </div>
 
-              <div className="req-grid-3">
-                <div className="req-field">
-                  <label className="req-label">Ticket Form</label>
-                  <select
-                    className="req-input"
-                    value={item.ticket_form}
-                    onChange={(e) =>
-                      updateSeriesItem(i, "ticket_form", e.target.value)
-                    }
-                  >
-                    <option value="">— Select —</option>
-                    {ticketForms.map((tf) => (
-                      <option key={tf.id} value={tf.id}>
-                        {tf.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* quantity */}
-                <div className="req-field">
-                  <label className="req-label">QTY</label>
-                  <input
-                    className="req-input"
-                    type="number"
-                    value={item.qty}
-                    onChange={(e) =>
-                      updateSeriesItem(i, "qty", e.target.value)
-                    }
-                  />
-                </div>
+              <div className="req-field">
+                <label className="req-label">Ticket Form</label>
+                <select
+                  className="req-input"
+                  value={item.ticket_form}
+                  onChange={(e) =>
+                    updateSeriesItem(i, "ticket_form", e.target.value)
+                  }
+                >
+                  <option value="">— Select —</option>
+                  {ticketForms.map((tf) => (
+                    <option key={tf.id} value={tf.id}>
+                      {tf.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="req-grid-2">
@@ -140,8 +126,10 @@ const RequisitionFormModal = ({
                   <input
                     className="req-input"
                     value={item.end_no}
-                    readOnly
-                    placeholder="Auto-calculated"
+                    onChange={(e) =>
+                      updateSeriesItem(i, "end_no", e.target.value)
+                    }
+                    placeholder="e.g. 18981999"
                   />
                 </div>
               </div>
@@ -155,7 +143,9 @@ const RequisitionFormModal = ({
                     type="number"
                     step="0.01"
                     value={item.total_value}
-                    readOnly
+                    onChange={(e) =>
+                      updateSeriesItem(i, "total_value", e.target.value)
+                    }
                   />
                 </div>
               </div>

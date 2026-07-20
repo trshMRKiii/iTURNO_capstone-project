@@ -5,18 +5,6 @@ import { format } from "date-fns";
  * Decouples domain logic from React components (SRP).
  */
 export const OperationsService = {
-  getShiftBatchName(dateInput, shifts) {
-    const date = new Date(dateInput);
-    const hour = date.getHours();
-
-    for (const shift of Object.values(shifts || {})) {
-      if (hour >= shift.startHour && hour < shift.endHour) {
-        return shift.name;
-      }
-    }
-    return "Other";
-  },
-
   //filter para ticketing
   isDriverBusy(driverId, tickets, vehicles) {
     const hasActiveTicket = tickets.some(
@@ -34,58 +22,14 @@ export const OperationsService = {
     );
   },
 
-  // Returns the effective batch name for a ticket, respecting late issuances.
-  // A late ticket (is_late=true) belongs to its intended_batch, not its actual issue time.
-  // Prefers the batch key stored on the ticket (set once at creation) so that
-  // editing the batch schedule later doesn't reshuffle already-issued tickets.
-  getEffectiveBatchName(ticket, shifts) {
-    if (ticket.is_late && ticket.intended_batch) {
-      return shifts?.[ticket.intended_batch]?.name || ticket.intended_batch;
-    }
-    if (ticket.batch) {
-      return shifts?.[ticket.batch]?.name || ticket.batch;
-    }
-    return this.getShiftBatchName(ticket.issued_at, shifts);
-  },
-
-  calculateBatchStats(tickets, shifts) {
-    const activeTickets = tickets.filter((t) => t.status !== "CANCELLED");
-    const stats = {};
-
-    Object.entries(shifts || {}).forEach(([key, shift]) => {
-      const batchTickets = activeTickets.filter(
-        (t) => this.getEffectiveBatchName(t, shifts) === shift.name,
-      );
-      stats[key] = {
-        total: batchTickets.reduce(
-          (sum, t) => sum + Number(t.collection_amount || 0),
-          0,
-        ),
-        count: batchTickets.filter((t) => t.status !== "COLLECTED").length,
-        pending: batchTickets.filter((t) => !t.is_verified).length,
-      };
-    });
-
-    stats.totalVerified = activeTickets
-      .filter((t) => t.is_verified)
-      .reduce((sum, t) => sum + Number(t.collection_amount || 0), 0);
-
-    return stats;
-  },
-
   /**
    * Groups tickets by route and calculates financial summaries for reporting.
    */
-  getRouteTallyReport(tickets, vehicles, dateFilter, batchFilter, shifts) {
+  getRouteTallyReport(tickets, vehicles, dateFilter) {
     const filtered = tickets.filter((t) => {
       if (t.status === "CANCELLED") return false;
       const ticketDateStr = t.issued_at.split("T")[0];
-      if (ticketDateStr !== dateFilter) return false;
-
-      if (batchFilter !== "ALL") {
-        return this.getEffectiveBatchName(t, shifts) === batchFilter;
-      }
-      return true;
+      return ticketDateStr === dateFilter;
     });
 
     const matrix = {};
