@@ -12,6 +12,11 @@ export const statusColor = {
 };
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
+// QUEUE-mode tickets get a route-acronym + daily bay number (e.g. "SJ-1"),
+// assigned by the backend and reset every midnight; other tickets keep their id.
+export const getTicketDisplayId = (ticket) =>
+  ticket?.queue_code || String(ticket?.id || "").replace(/^TICKET-/i, "");
+
 export const formatTime = (dateString) => {
   try {
     return new Date(dateString).toLocaleTimeString("en-US", {
@@ -350,7 +355,7 @@ export function useTicket(userRole = "") {
     return ticketSeries
       .map((s) => ({
         ...s,
-        pcs: (parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0) + 1,
+        pcs: s.remaining ?? 0,
       }))
       .filter((s) => s.pcs > 0)
       .sort((a, b) => (parseInt(a.start_no) || 0) - (parseInt(b.start_no) || 0));

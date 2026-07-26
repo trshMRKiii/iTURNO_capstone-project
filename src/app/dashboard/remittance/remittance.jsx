@@ -22,7 +22,8 @@ export default function Remittance() {
     loading,
     error,
     handleSaveBatch,
-    handleDeleteBatch,
+    handleArchiveBatch,
+    handleRestoreBatch,
   } = useRemittance();
 
   const showToast = useToast();
@@ -33,6 +34,7 @@ export default function Remittance() {
   const [eodDate, setEodDate] = useState(today);
   const [eod, setEod] = useState(null);
   const [eodLoading, setEodLoading] = useState(false);
+  const [batchTab, setBatchTab] = useState("active");
 
   const fetchEod = useCallback(async () => {
     setEodLoading(true);
@@ -50,20 +52,33 @@ export default function Remittance() {
     fetchEod();
   }, [fetchEod]);
 
-  const handleDeleteClick = async (batch) => {
+  const handleArchiveClick = async (batch) => {
     const ok = await showConfirm(
-      `Delete remittance batch #${batch.id}? This action cannot be undone.`
+      `Archive remittance batch #${batch.id}? It will move out of the active list.`
     );
     if (!ok) return;
     try {
-      await handleDeleteBatch(batch.id);
-      showToast("Remittance batch deleted", "success");
+      await handleArchiveBatch(batch.id);
+      showToast("Remittance batch archived", "success");
     } catch {
-      showToast("Failed to delete remittance batch", "info");
+      showToast("Failed to archive remittance batch", "info");
     }
   };
 
-  const filteredBatches = batches.filter((b) => {
+  const handleRestoreClick = async (batch) => {
+    try {
+      await handleRestoreBatch(batch.id);
+      showToast("Remittance batch restored", "success");
+    } catch {
+      showToast("Failed to restore remittance batch", "info");
+    }
+  };
+
+  const activeBatches = batches.filter((b) => !b.is_archived);
+  const archivedBatches = batches.filter((b) => b.is_archived);
+  const tabBatches = batchTab === "active" ? activeBatches : archivedBatches;
+
+  const filteredBatches = tabBatches.filter((b) => {
     const q = searchTerm.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -128,6 +143,29 @@ export default function Remittance() {
 
       {/* Table card */}
       <div className="rem-card">
+        {/* Tab bar */}
+        <div className="rem-tabs">
+          <button
+            type="button"
+            className={`rem-tab ${batchTab === "active" ? "rem-tab--active" : ""}`}
+            onClick={() => setBatchTab("active")}
+          >
+            Active
+            {activeBatches.length > 0 && (
+              <span className="rem-tab-count">{activeBatches.length}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`rem-tab ${batchTab === "archived" ? "rem-tab--active" : ""}`}
+            onClick={() => setBatchTab("archived")}
+          >
+            Archived
+            {archivedBatches.length > 0 && (
+              <span className="rem-tab-count">{archivedBatches.length}</span>
+            )}
+          </button>
+        </div>
         <div className="rem-table-wrap">
           <table className="rem-table">
             <thead>
@@ -156,8 +194,10 @@ export default function Remittance() {
                       <polyline points="14 2 14 8 20 8" />
                     </svg>
                     <span>
-                      {batches.length === 0
-                        ? "No remittance batches found"
+                      {tabBatches.length === 0
+                        ? batchTab === "archived"
+                          ? "No archived remittance batches"
+                          : "No remittance batches found"
                         : `No results for "${searchTerm}"`}
                     </span>
                   </td>
@@ -193,13 +233,24 @@ export default function Remittance() {
                           </svg>
                           View
                         </button>
-                        <button className="rem-btn rem-btn--delete" onClick={() => handleDeleteClick(b)}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                          Delete
-                        </button>
+                        {batchTab === "archived" ? (
+                          <button className="rem-btn rem-btn--restore" onClick={() => handleRestoreClick(b)}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <path d="M3 12a9 9 0 1 0 3-6.7" />
+                              <path d="M3 4v5h5" />
+                            </svg>
+                            Restore
+                          </button>
+                        ) : (
+                          <button className="rem-btn rem-btn--delete" onClick={() => handleArchiveClick(b)}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <path d="M21 8v13H3V8" />
+                              <path d="M1 3h22v5H1z" />
+                              <path d="M10 12h4" />
+                            </svg>
+                            Archive
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

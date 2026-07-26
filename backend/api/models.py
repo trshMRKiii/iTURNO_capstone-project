@@ -78,6 +78,15 @@ class Route(models.Model):
     def full_name(self):
         return f"{self.origin} - {self.DESTINATION}"
 
+    @property
+    def acronym(self):
+        words = [w for w in self.origin.split() if w]
+        if len(words) >= 2:
+            return "".join(w[0] for w in words[:3]).upper()
+        if words:
+            return words[0][:2].upper()
+        return "RT"
+
     def __str__(self):
         return self.full_name
 
@@ -134,6 +143,7 @@ class Ticket(models.Model):
     reason = models.TextField(blank=True)
 
     issuance_group = models.CharField(max_length=40, blank=True, db_index=True)
+    queue_code = models.CharField(max_length=20, blank=True, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -166,6 +176,7 @@ class Requisition(models.Model):
     approved_by_name = models.CharField(max_length=150, blank=True, default="")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     total_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_archived = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -241,6 +252,7 @@ class RemittanceBatch(models.Model):
     issued_at = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, default="OPEN")
+    is_archived = models.BooleanField(default=False, db_index=True)
 
 class Deposit(models.Model):
     batch = models.ForeignKey(RemittanceBatch, related_name="deposits", on_delete=models.CASCADE)

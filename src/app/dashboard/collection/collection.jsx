@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import {
   useCollection,
   formatTime,
-  formatCurrency,
 } from "../../../lib/collection/useCollection";
+import { getTicketDisplayId } from "../../../lib/useTicket";
 import "../../../styles/Collection.css";
 
 function Collection({ userRole }) {
@@ -14,20 +14,12 @@ function Collection({ userRole }) {
     loading,
     error,
     todayStats,
-    verifyingAll,
-    verifyingTicketId,
-    verifyingOverride,
-    unverifiedTickets,
     successMessage,
     setSearchTerm,
-    handleVerifyAllPending,
-    handleVerifyTicket,
-    handleVerifyAllOverride,
   } = useCollection(userRole);
 
   const [activeTab, setActiveTab] = useState("collection");
   const [currentPage, setCurrentPage] = useState(1);
-  const [showOverrideModal, setShowOverrideModal] = useState(false);
 
   const [roamingPage, setRoamingPage] = useState(1);
   const [roamingSearch, setRoamingSearch] = useState("");
@@ -69,13 +61,6 @@ function Collection({ userRole }) {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          className="col-override-btn"
-          onClick={() => setShowOverrideModal(true)}
-        >
-          ⚠ Override Verify
-        </button>
       </div>
 
       {error && (
@@ -110,45 +95,6 @@ function Collection({ userRole }) {
             <polyline points="22 4 12 14.01 9 11.01" />
           </svg>
           {successMessage}
-        </div>
-      )}
-
-      {todayStats && (
-        <div className="col-card" style={{ marginBottom: 16 }}>
-          <div className="col-card-header col-card-header--color">
-            <div>
-              <span className="col-card-title">Today's Collection</span>
-              <p className="col-card-desc">Revenue and verification status for today</p>
-            </div>
-          </div>
-          <div className="bc-body">
-            <div className="bc-rows">
-              {[
-                { label: "Revenue", value: formatCurrency(todayStats.total) },
-                { label: "Active Dispatches", value: todayStats.count },
-                {
-                  label: "Pending Verification",
-                  value: todayStats.pending,
-                  warn: todayStats.pending > 0,
-                },
-              ].map(({ label: l, value, warn }) => (
-                <div key={l} className="bc-row">
-                  <span className="bc-row-label">{l}</span>
-                  <span className={`bc-row-value ${warn ? "bc-row-value--warn" : ""}`}>
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="bc-verify-btn"
-              onClick={handleVerifyAllPending}
-              disabled={verifyingAll || todayStats.pending === 0 || userRole === "MANAGER"}
-            >
-              {verifyingAll ? "Verifying…" : "Verify All Pending"}
-            </button>
-          </div>
         </div>
       )}
 
@@ -268,7 +214,7 @@ function Collection({ userRole }) {
                       currentTickets.map((ticket) => (
                         <tr key={ticket.id} className="col-table-row">
                             <td>
-                              <span className="col-id-badge">{ticket.id.replace(/^TICKET-/i, '')}</span>
+                              <span className="col-id-badge">{getTicketDisplayId(ticket)}</span>
                             </td>
                             <td className="col-td-time">
                               {formatTime(ticket.issued_at)}
@@ -297,16 +243,12 @@ function Collection({ userRole }) {
                                 className={`col-verified ${
                                   ticket.status === "CANCELLED"
                                     ? "col-verified--cancelled"
-                                    : ticket.is_verified
-                                      ? "col-verified--yes"
-                                      : "col-verified--pending"
+                                    : "col-verified--yes"
                                 }`}
                               >
                                 {ticket.status === "CANCELLED"
                                   ? "✗ Cancelled"
-                                  : ticket.is_verified
-                                    ? "✓ Verified"
-                                    : "○ Pending"}
+                                  : "✓ Collected"}
                               </span>
                             </td>
                           </tr>
@@ -411,7 +353,7 @@ function Collection({ userRole }) {
                         currentRoaming.map((ticket) => (
                           <tr key={ticket.id} className="col-table-row">
                             <td>
-                              <span className="col-id-badge">{ticket.id.replace(/^TICKET-/i, '')}</span>
+                              <span className="col-id-badge">{getTicketDisplayId(ticket)}</span>
                             </td>
                             <td className="col-td-time">
                               {formatTime(ticket.issued_at)}
@@ -440,16 +382,12 @@ function Collection({ userRole }) {
                                 className={`col-verified ${
                                   ticket.status === "CANCELLED"
                                     ? "col-verified--cancelled"
-                                    : ticket.is_verified
-                                      ? "col-verified--yes"
-                                      : "col-verified--pending"
+                                    : "col-verified--yes"
                                 }`}
                               >
                                 {ticket.status === "CANCELLED"
                                   ? "✗ Cancelled"
-                                  : ticket.is_verified
-                                    ? "✓ Verified"
-                                    : "○ Pending"}
+                                  : "✓ Collected"}
                               </span>
                             </td>
                           </tr>
@@ -479,115 +417,6 @@ function Collection({ userRole }) {
           })()}
         </div>
 
-      {showOverrideModal && (
-        <div className="col-overlay" onClick={() => setShowOverrideModal(false)}>
-          <div className="col-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="col-modal-header">
-              <div>
-                <h2 className="col-modal-title">Manual Verification Override</h2>
-                <p className="col-modal-subtitle">
-                  Force-verify tickets that failed to verify automatically, from any
-                  date and regardless of role. Use only to recover from system errors.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="col-modal-close"
-                onClick={() => setShowOverrideModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="col-modal-body">
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  marginBottom: 12,
-                }}
-              >
-                <button
-                  type="button"
-                  className="col-action-btn"
-                  onClick={handleVerifyAllOverride}
-                  disabled={verifyingOverride || unverifiedTickets.length === 0}
-                >
-                  {verifyingOverride
-                    ? "Verifying…"
-                    : `Verify All (${unverifiedTickets.length})`}
-                </button>
-              </div>
-
-              <div className="col-table-wrap">
-                <table className="col-table">
-                  <thead>
-                    <tr>
-                      {["Ticket ID", "Time", "Vehicle", "Driver", "Issued By", ""].map(
-                        (h) => (
-                          <th key={h}>{h}</th>
-                        ),
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {unverifiedTickets.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="col-table-state">
-                          <span>No unverified tickets — everything is caught up.</span>
-                        </td>
-                      </tr>
-                    ) : (
-                      unverifiedTickets.map((ticket) => (
-                        <tr key={ticket.id} className="col-table-row">
-                          <td>
-                            <span className="col-id-badge">
-                              {ticket.id.replace(/^TICKET-/i, "")}
-                            </span>
-                          </td>
-                          <td className="col-td-time">
-                            {formatTime(ticket.issued_at)}
-                          </td>
-                          <td>
-                            {ticket.vehicle?.plate_number ? (
-                              <span className="col-plate">
-                                {ticket.vehicle.plate_number}
-                              </span>
-                            ) : (
-                              <span className="col-na">N/A</span>
-                            )}
-                          </td>
-                          <td className="col-td-name">
-                            {ticket.driver?.name || (
-                              <span className="col-na">N/A</span>
-                            )}
-                          </td>
-                          <td className="col-td-name">
-                            {ticket.active_user_name || (
-                              <span className="col-na">N/A</span>
-                            )}
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="col-action-btn"
-                              onClick={() => handleVerifyTicket(ticket.id)}
-                              disabled={verifyingTicketId === ticket.id}
-                            >
-                              {verifyingTicketId === ticket.id
-                                ? "Verifying…"
-                                : "Verify"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

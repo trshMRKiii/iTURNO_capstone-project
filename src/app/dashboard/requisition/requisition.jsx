@@ -9,7 +9,6 @@ function formatCurrency(val) {
 
 function Requisition() {
   const {
-    requisitions,
     ticketForms,
     loading,
     error,
@@ -24,13 +23,20 @@ function Requisition() {
     handleSave,
     allSeries,
     inventory,
-    handleDelete,
+    handleArchive,
+    handleRestore,
     approvedBy,
     setApprovedBy,
+    activeRequisitions,
+    archivedRequisitions,
   } = useRequisition();
 
   const [expandedId, setExpandedId] = useState(null);
   const [expandedDenom, setExpandedDenom] = useState(null);
+  const [receiptsTab, setReceiptsTab] = useState("active");
+
+  const displayedRequisitions =
+    receiptsTab === "active" ? activeRequisitions : archivedRequisitions;
 
   const toggleExpand = (id) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -137,7 +143,7 @@ function Requisition() {
                 <>
                   <span className="req-inv-card-value">{displayInventory.activeSeries.series_no}</span>
                   <span className="req-inv-card-sub">
-                    {displayInventory.activeSeries.ticket_form_label || "—"} · {displayInventory.activeSeries.pcs.toLocaleString()} pcs
+                    {displayInventory.activeSeries.ticket_form_label || "—"} · {displayInventory.activeSeries.remaining.toLocaleString()} pcs
                   </span>
                 </>
               ) : (
@@ -261,13 +267,38 @@ function Requisition() {
           </div>
 
           {/* Stocking Receipts */}
-          {requisitions.length > 0 && (
+          {(activeRequisitions.length > 0 || archivedRequisitions.length > 0) && (
             <div className="req-table-wrap" style={{ marginTop: 20 }}>
               <h3 className="req-section-heading">Stocking Receipts</h3>
+
+              {/* Tab bar */}
+              <div className="req-tabs">
+                <button
+                  type="button"
+                  className={`req-tab ${receiptsTab === "active" ? "req-tab--active" : ""}`}
+                  onClick={() => setReceiptsTab("active")}
+                >
+                  Active
+                  {activeRequisitions.length > 0 && (
+                    <span className="req-tab-count">{activeRequisitions.length}</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`req-tab ${receiptsTab === "archived" ? "req-tab--active" : ""}`}
+                  onClick={() => setReceiptsTab("archived")}
+                >
+                  Archived
+                  {archivedRequisitions.length > 0 && (
+                    <span className="req-tab-count">{archivedRequisitions.length}</span>
+                  )}
+                </button>
+              </div>
+
               <table className="req-table">
                 <thead>
                   <tr>
-                    
+
                     <th>Date</th>
                     <th>Requested By</th>
                     <th>Approved By</th>
@@ -276,7 +307,14 @@ function Requisition() {
                   </tr>
                 </thead>
                 <tbody>
-                  {requisitions.map((req) => (
+                  {displayedRequisitions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "30px 16px" }}>
+                        {receiptsTab === "archived" ? "No archived requisitions" : "No active requisitions"}
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedRequisitions.map((req) => (
                     <React.Fragment key={req.id}>
                       <tr
                         onClick={() => toggleExpand(req.id)}
@@ -296,16 +334,29 @@ function Requisition() {
                           {formatCurrency(req.total_value)}
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="req-delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(req.id);
-                            }}
-                          >
-                            Delete
-                          </button>
+                          {receiptsTab === "archived" ? (
+                            <button
+                              type="button"
+                              className="req-restore-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRestore(req.id);
+                              }}
+                            >
+                              Restore
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="req-delete-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchive(req.id);
+                              }}
+                            >
+                              Archive
+                            </button>
+                          )}
                         </td>
                       </tr>
 
@@ -319,7 +370,7 @@ function Requisition() {
                                   <tr>
                                     <th>Series No.</th>
                                     <th>Ticket Form</th>
-                                    
+
                                     <th>QTY</th>
                                     <th>Total Amount</th>
                                   </tr>
@@ -329,7 +380,7 @@ function Requisition() {
                                     <tr key={ts.id}>
                                       <td>{ts.series_no}</td>
                                       <td>{ts.ticket_form_label || "—"}</td>
-                                      
+
                                       <td>{(ts.pcs ?? (Math.max((parseInt(ts.end_no) || 0) - (parseInt(ts.start_no) || 0) + 1, 0))).toLocaleString()}</td>
                                       <td>{formatCurrency(ts.total_value)}</td>
                                     </tr>
@@ -340,7 +391,8 @@ function Requisition() {
                           </tr>
                         )}
                     </React.Fragment>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

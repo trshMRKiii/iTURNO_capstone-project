@@ -280,6 +280,65 @@
   background: rgba(220,38,38,0.18);
 }
 
+.rem-btn--restore {
+  background: rgba(21,128,61,0.1);
+  color: #15803d;
+  box-shadow: none;
+}
+
+.rem-btn--restore:hover {
+  background: rgba(21,128,61,0.18);
+}
+
+/* ── Tabs (Active / Archived) ── */
+.rem-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+}
+
+.rem-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.rem-tab:hover {
+  color: var(--text-primary);
+}
+
+.rem-tab--active {
+  color: var(--navy);
+  border-bottom-color: var(--navy);
+}
+
+.rem-tab-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-secondary, #f0f0f0);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.rem-tab--active .rem-tab-count {
+  background: var(--navy);
+  color: #fff;
+}
+
 /* ── Loading dots ── */
 .rem-loading-dots {
   display: flex;

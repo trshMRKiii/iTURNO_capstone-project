@@ -36,14 +36,26 @@ export function useRemittance() {
     }
   };
 
-  // Delete a batch
-  const handleDeleteBatch = async (id) => {
+  // Archive a batch (soft delete)
+  const handleArchiveBatch = async (id) => {
     try {
-      await apiService.deleteRemittanceBatch(id);
-      setBatches((prev) => prev.filter((b) => b.id !== id));
+      const updated = await apiService.patch(`/remittance/${id}/`, { is_archived: true });
+      setBatches((prev) => prev.map((b) => (b.id === id ? { ...b, ...updated } : b)));
     } catch (err) {
-      console.error("Failed to delete batch", err);
-      setError("Failed to delete remittance batch");
+      console.error("Failed to archive batch", err);
+      setError("Failed to archive remittance batch");
+      throw err;
+    }
+  };
+
+  // Restore an archived batch
+  const handleRestoreBatch = async (id) => {
+    try {
+      const updated = await apiService.patch(`/remittance/${id}/`, { is_archived: false });
+      setBatches((prev) => prev.map((b) => (b.id === id ? { ...b, ...updated } : b)));
+    } catch (err) {
+      console.error("Failed to restore batch", err);
+      setError("Failed to restore remittance batch");
       throw err;
     }
   };
@@ -55,6 +67,7 @@ export function useRemittance() {
     loading,
     error,
     handleSaveBatch,
-    handleDeleteBatch,
+    handleArchiveBatch,
+    handleRestoreBatch,
   };
 }

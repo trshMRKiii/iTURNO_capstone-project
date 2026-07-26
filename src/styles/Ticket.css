@@ -340,7 +340,6 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
   box-shadow: var(--shadow-sm);
   transition:
     background 0.25s,
@@ -430,6 +429,109 @@
   outline: none;
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.12);
+}
+
+/* ── Issuance type radio toggle ── */
+.ticket-type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ticket-type-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-page);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.ticket-type-option:hover {
+  border-color: rgba(201, 168, 76, 0.5);
+}
+
+.ticket-type-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+
+.ticket-type-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--bg-secondary, #f0f0f0);
+  color: var(--text-secondary);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.ticket-type-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ticket-type-option-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.ticket-type-option-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticket-type-option--active {
+  border-color: var(--navy);
+  background: linear-gradient(
+    135deg,
+    rgba(26, 39, 68, 0.06) 0%,
+    rgba(26, 39, 68, 0.02) 100%
+  );
+  box-shadow: 0 0 0 3px rgba(26, 39, 68, 0.08);
+}
+
+.ticket-type-option--active .ticket-type-option-icon {
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  color: var(--gold);
+}
+
+.dark .ticket-type-option--active {
+  border-color: var(--gold);
+  background: linear-gradient(
+    135deg,
+    rgba(201, 168, 76, 0.1) 0%,
+    rgba(201, 168, 76, 0.03) 100%
+  );
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.12);
+}
+
+@media (max-width: 480px) {
+  .ticket-type-toggle {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ticket-field-hint {

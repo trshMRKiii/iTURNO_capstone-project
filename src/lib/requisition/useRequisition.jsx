@@ -51,9 +51,18 @@ export function useRequisition() {
     fetchTicketForms();
   }, [fetchRequisitions, fetchTicketForms]);
 
+  const activeRequisitions = useMemo(
+    () => requisitions.filter((r) => !r.is_archived),
+    [requisitions]
+  );
+  const archivedRequisitions = useMemo(
+    () => requisitions.filter((r) => r.is_archived),
+    [requisitions]
+  );
+
   const allSeries = useMemo(() => {
     const series = [];
-    for (const req of requisitions) {
+    for (const req of activeRequisitions) {
       if (req.ticket_series) {
         for (const ts of req.ticket_series) {
           series.push({ ...ts, requisition_id: req.id, requisition_status: req.status });
@@ -62,7 +71,7 @@ export function useRequisition() {
     }
     series.sort((a, b) => a.requisition_id - b.requisition_id || a.id - b.id);
     return series;
-  }, [requisitions]);
+  }, [activeRequisitions]);
 
   const inventory = useMemo(() => {
     const getPcs = (s) => {
@@ -197,15 +206,27 @@ export function useRequisition() {
     }
   };
 
-  const handleDelete = async (id) => {
-    const confirmed = await showConfirm("Are you sure you want to delete this requisition?");
+  const handleArchive = async (id) => {
+    const confirmed = await showConfirm("Archive this requisition? It will move out of the active stock ledger.");
     if (!confirmed) return;
     try {
-      await apiService.delete(`/requisitions/${id}/`);
+      await apiService.patch(`/requisitions/${id}/`, { is_archived: true });
       await fetchRequisitions();
-      showToast("Requisition deleted successfully");
+      showToast("Requisition archived");
     } catch (err) {
-      const message = err.message || "Failed to delete requisition";
+      const message = err.message || "Failed to archive requisition";
+      setError(message);
+      showToast(message, "info");
+    }
+  };
+
+  const handleRestore = async (id) => {
+    try {
+      await apiService.patch(`/requisitions/${id}/`, { is_archived: false });
+      await fetchRequisitions();
+      showToast("Requisition restored");
+    } catch (err) {
+      const message = err.message || "Failed to restore requisition";
       setError(message);
       showToast(message, "info");
     }
@@ -229,9 +250,12 @@ export function useRequisition() {
     handleSave,
     handleApprove,
     handleIssue,
-    handleDelete,
+    handleArchive,
+    handleRestore,
     refresh: fetchRequisitions,
     allSeries,
     inventory,
+    activeRequisitions,
+    archivedRequisitions,
   };
 }

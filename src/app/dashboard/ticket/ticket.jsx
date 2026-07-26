@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useTicket, formatTime } from "../../../lib/useTicket";
+import { useTicket, formatTime, getTicketDisplayId } from "../../../lib/useTicket";
 import "../../../styles/Ticket.css";
 import {
   HistoryIcon,
@@ -87,13 +87,21 @@ function Ticket({ userRole }) {
   const cancelledTickets = filteredTickets.filter((t) => t.status === "CANCELLED");
   const activeTickets = filteredTickets.filter((t) => t.status !== "CANCELLED");
   const roamingTickets = activeTickets.filter((t) => t.mode === "UNLOAD");
+  const queuingTickets = activeTickets.filter(
+    (t) => t.mode === "QUEUE" && t.status === "ISSUED",
+  );
+  const ticketsTab = activeTickets.filter(
+    (t) => !(t.mode === "QUEUE" && t.status === "ISSUED"),
+  );
 
   const displayTickets =
     activeTab === "tickets"
-      ? activeTickets
-      : activeTab === "roaming"
-        ? roamingTickets
-        : cancelledTickets;
+      ? ticketsTab
+      : activeTab === "queuing"
+        ? queuingTickets
+        : activeTab === "roaming"
+          ? roamingTickets
+          : cancelledTickets;
 
   return (
     <div className="ticket-page">
@@ -128,17 +136,50 @@ function Ticket({ userRole }) {
           </div>
 
           <div className="ticket-card-body">
-            {/* Issuance type select */}
+            {/* Issuance type radio group */}
             <div className="ticket-field">
               <label className="ticket-label">Issuance Type</label>
-              <select
-                className="ticket-select"
-                value={issuanceType}
-                onChange={(e) => setIssuanceType(e.target.value)}
-              >
-                <option value="QUEUE">Queue</option>
-                <option value="ROAM">Roaming</option>
-              </select>
+              <div className="ticket-type-toggle" role="radiogroup" aria-label="Issuance Type">
+                <label
+                  className={`ticket-type-option ${issuanceType === "QUEUE" ? "ticket-type-option--active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="issuanceType"
+                    value="QUEUE"
+                    checked={issuanceType === "QUEUE"}
+                    onChange={(e) => setIssuanceType(e.target.value)}
+                  />
+                  <span className="ticket-type-option-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </span>
+                  <span className="ticket-type-option-text">
+                    <span className="ticket-type-option-title">Queue</span>
+                    <span className="ticket-type-option-desc">Check in vehicle</span>
+                  </span>
+                </label>
+                <label
+                  className={`ticket-type-option ${issuanceType === "ROAM" ? "ticket-type-option--active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="issuanceType"
+                    value="ROAM"
+                    checked={issuanceType === "ROAM"}
+                    onChange={(e) => setIssuanceType(e.target.value)}
+                  />
+                  <span className="ticket-type-option-icon">
+                    <RouteIcon />
+                  </span>
+                  <span className="ticket-type-option-text">
+                    <span className="ticket-type-option-title">Roaming</span>
+                    <span className="ticket-type-option-desc">Issue ticket now</span>
+                  </span>
+                </label>
+              </div>
             </div>
 
             {/* Route select */}
@@ -406,8 +447,21 @@ function Ticket({ userRole }) {
                 <polyline points="14 2 14 8 20 8" />
               </svg>
               Tickets
-              {activeTickets.length > 0 && (
-                <span className="ticket-tab-count">{activeTickets.length}</span>
+              {ticketsTab.length > 0 && (
+                <span className="ticket-tab-count">{ticketsTab.length}</span>
+              )}
+            </button>
+            <button
+              className={`ticket-tab ${activeTab === "queuing" ? "ticket-tab--active" : ""}`}
+              onClick={() => setActiveTab("queuing")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              Queuing
+              {queuingTickets.length > 0 && (
+                <span className="ticket-tab-count">{queuingTickets.length}</span>
               )}
             </button>
             <button
@@ -436,8 +490,8 @@ function Ticket({ userRole }) {
             </button>
           </div>
 
-          {/* Tickets / Roaming / Cancelled tab content */}
-          {(activeTab === "tickets" || activeTab === "roaming" || activeTab === "cancelled") && (
+          {/* Tickets / Queuing / Roaming / Cancelled tab content */}
+          {(activeTab === "tickets" || activeTab === "queuing" || activeTab === "roaming" || activeTab === "cancelled") && (
             <>
               <div className="ticket-table-wrap">
                 <table className="ticket-table">
@@ -479,7 +533,9 @@ function Ticket({ userRole }) {
                               ? "No cancelled tickets"
                               : activeTab === "roaming"
                                 ? "No roaming tickets"
-                                : "No tickets found"}
+                                : activeTab === "queuing"
+                                  ? "No vehicles currently queuing"
+                                  : "No tickets found"}
                           </span>
                         </td>
                       </tr>
@@ -487,7 +543,7 @@ function Ticket({ userRole }) {
                       displayTickets.map((t) => (
                         <tr key={t.id} className="ticket-table-row">
                           <td>
-                            <span className="ticket-id-badge">{t.id.replace(/^TICKET-/i, '')}</span>
+                            <span className="ticket-id-badge">{getTicketDisplayId(t)}</span>
                           </td>
                           <td>
                             {t.vehicle?.plate_number ? (

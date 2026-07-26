@@ -700,6 +700,70 @@
   background: #c0392b;
 }
 
+.req-restore-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #15803d;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.req-restore-btn:hover {
+  background: #0f6631;
+}
+
+/* ── Tabs (Active / Archived) ── */
+.req-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+}
+
+.req-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.req-tab:hover {
+  color: var(--text-primary);
+}
+
+.req-tab--active {
+  color: var(--navy);
+  border-bottom-color: var(--navy);
+}
+
+.req-tab-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-secondary, #f0f0f0);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.req-tab--active .req-tab-count {
+  background: var(--navy);
+  color: #fff;
+}
+
 /* ── Mobile ── */
 @media (max-width: 768px) {
   .req-page {

@@ -184,6 +184,16 @@ class TicketSerializer(serializers.ModelSerializer):
                 # so the ticket is born already dispatched with no queue step.
                 validated_data['status'] = 'DISPATCHED'
                 validated_data['dispatched_at'] = timezone.now()
+            elif not is_continuation:
+                # Queue check-ins get a route-acronym + daily bay number
+                # (e.g. "SJ-1"), counted per route and reset every midnight.
+                route = vehicle.route
+                if route:
+                    today = timezone.localtime().date()
+                    count_today = Ticket.objects.filter(
+                        mode='QUEUE', route=route, issued_at__date=today,
+                    ).count()
+                    validated_data['queue_code'] = f"{route.acronym}-{count_today + 1}"
 
             ticket = Ticket.objects.create(vehicle=vehicle, driver=driver, series=series, **validated_data)
 
@@ -330,7 +340,7 @@ class RequisitionSerializer(serializers.ModelSerializer):
         model = Requisition
         fields = [
             'id', 'date_requested', 'requested_by', 'requested_by_name',
-            'approved_by_name', 'status', 'total_value',
+            'approved_by_name', 'status', 'total_value', 'is_archived',
             'ticket_series', 'created_at', 'updated_at',
         ]
 

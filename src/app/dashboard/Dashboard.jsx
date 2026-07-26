@@ -178,6 +178,17 @@ export default function Dashboard() {
               />
             </label>
           </div>
+          <button
+            className="ticket-mobile-scan-btn"
+            onClick={() => window.open("/public-view", "_blank", "noopener,noreferrer")}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Public View
+          </button>
           <button className="ticket-mobile-scan-btn" onClick={() => navigate("/mobile-scan")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M3 7V5a2 2 0 0 1 2-2h2" />
@@ -275,17 +286,17 @@ export default function Dashboard() {
                       >
                         <CartesianGrid
                           strokeDasharray="3 3"
-                          stroke="rgba(201,168,76,0.15)"
+                          stroke="rgba(26,39,68,0.15)"
                           vertical={false}
                         />
                         <XAxis
                           dataKey="date"
-                          tick={{ fontSize: 11, fill: "#c9a84c" }}
+                          tick={{ fontSize: 11, fill: "#1a2744" }}
                           axisLine={false}
                           tickLine={false}
                         />
                         <YAxis
-                          tick={{ fontSize: 11, fill: "#c9a84c" }}
+                          tick={{ fontSize: 11, fill: "#1a2744" }}
                           axisLine={false}
                           tickLine={false}
                           tickFormatter={yTickFormatter}
@@ -293,7 +304,7 @@ export default function Dashboard() {
                         />
                         <Tooltip
                           content={<CustomTooltip />}
-                          cursor={{ fill: "rgba(201,168,76,0.07)" }}
+                          cursor={{ fill: "rgba(26,39,68,0.07)" }}
                         />
                         <Legend
                           wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
@@ -302,7 +313,7 @@ export default function Dashboard() {
                           <Bar
                             dataKey="total"
                             name="Amount (₱)"
-                            fill="#c9a84c"
+                            fill="#1a2744"
                             radius={[4, 4, 0, 0]}
                             maxBarSize={32}
                           />
@@ -310,7 +321,7 @@ export default function Dashboard() {
                           <Bar
                             dataKey="count"
                             name="Tickets"
-                            fill="#c9a84c"
+                            fill="#1a2744"
                             radius={[4, 4, 0, 0]}
                             maxBarSize={32}
                           />

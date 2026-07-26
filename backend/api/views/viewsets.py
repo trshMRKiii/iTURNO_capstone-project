@@ -99,14 +99,21 @@ def _consume_series_fifo(ticket_form_id, quantity):
     """Assign `quantity` physical ticket numbers to a denomination, drawing from the
     oldest ticket series first and spilling into the next-oldest one as each depletes.
 
-    Returns a list of (series, ticket_id) pairs of length `quantity` and advances each
-    series' start_no as it's consumed. Raises ValidationError if stock runs out.
+    Remaining stock per series is derived from how many Ticket rows already
+    reference it (start_no/end_no are the original allotted range and must stay
+    fixed, or the "remaining" count computed elsewhere would double-subtract).
+
+    Returns a list of (series, ticket_id) pairs of length `quantity`.
+    Raises ValidationError if stock runs out.
     """
     series_list = list(
         TicketSeries.objects.filter(ticket_form_id=ticket_form_id).order_by('requisition_id', 'id')
     )
+    already_issued = {
+        s.id: s.tickets.count() for s in series_list
+    }
     total_available = sum(
-        max(int(s.end_no) - int(s.start_no) + 1, 0) for s in series_list
+        max(int(s.end_no) - int(s.start_no) + 1 - already_issued[s.id], 0) for s in series_list
     )
     if quantity > total_available:
         raise ValidationError({
@@ -118,15 +125,12 @@ def _consume_series_fifo(ticket_form_id, quantity):
     for series in series_list:
         if remaining <= 0:
             break
-        start = int(series.start_no)
+        start = int(series.start_no) + already_issued[series.id]
         end = int(series.end_no)
         while remaining > 0 and start <= end:
             units.append((series, str(start)))
             start += 1
             remaining -= 1
-        if str(start) != series.start_no:
-            series.start_no = str(start)
-            series.save(update_fields=['start_no', 'updated_at'])
 
     return units
 
@@ -206,7 +210,8 @@ class TicketViewSet(viewsets.ModelViewSet):
                     route=route,
                     mode=mode,
                     series=series,
-                    status='DISPATCHED',
+                    status='COLLECTED',
+                    is_verified=True,
                     collection_amount=price,
                     dispatched_at=dispatched_at,
                     issuance_group=issuance_group,

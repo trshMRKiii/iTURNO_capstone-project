@@ -73,7 +73,8 @@ function Dispatch() {
         .reduce((sum, s) => {
           const start = parseInt(s.start_no) || 0;
           const end = parseInt(s.end_no) || 0;
-          return sum + Math.max(end - start + 1, 0);
+          const total = Math.max(end - start + 1, 0);
+          return sum + (s.remaining ?? total);
         }, 0);
       return { ...form, remaining };
     })
