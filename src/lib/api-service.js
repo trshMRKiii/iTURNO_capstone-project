@@ -160,8 +160,9 @@ export const apiService = {
   },
 
   // Specific endpoints for this app
-  getTickets() {
-    return this.get("/tickets/");
+  getTickets(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.get(`/tickets/${qs ? `?${qs}` : ""}`);
   },
 
   getServerTime() {
@@ -188,8 +189,9 @@ export const apiService = {
     });
   },
 
-  getVehicles() {
-    return this.get("/vehicles/");
+  getVehicles(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.get(`/vehicles/${qs ? `?${qs}` : ""}`);
   },
 
   createVehicle(data) {
@@ -212,8 +214,9 @@ export const apiService = {
     return this.delete(`/vehicles/${id}/`);
   },
 
-  getDrivers() {
-    return this.get("/drivers/");
+  getDrivers(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.get(`/drivers/${qs ? `?${qs}` : ""}`);
   },
 
   createDriver(data) {
@@ -272,6 +275,11 @@ export const apiService = {
 
   getReportChart() {
     return this.get("/report/chart/");
+  },
+
+  getAuditLogs(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.get(`/audit-logs/${qs ? `?${qs}` : ""}`);
   },
 
   //puvtype

@@ -1,7 +1,9 @@
 import uuid
+from datetime import date
 
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -71,6 +73,13 @@ class DriverViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status__in=[s.strip() for s in status_param.split(',') if s.strip()])
+        return qs
+
 
 class RouteViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Route.objects.all()
@@ -78,8 +87,19 @@ class RouteViewSet(AuditLogMixin, viewsets.ModelViewSet):
 
 
 class VehicleViewSet(AuditLogMixin, viewsets.ModelViewSet):
-    queryset = Vehicle.objects.all()
+    queryset = Vehicle.objects.select_related('route', 'active_driver', 'transportation_id').all()
     serializer_class = VehicleSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        status_param = params.get('status')
+        if status_param:
+            qs = qs.filter(status__in=[s.strip() for s in status_param.split(',') if s.strip()])
+        is_archived = params.get('is_archived')
+        if is_archived is not None:
+            qs = qs.filter(is_archived=is_archived.lower() in ('1', 'true', 'yes'))
+        return qs
 
     def list(self, request, *args, **kwargs):
         expire_stale_queue_tickets(actor=request.user if request.user.is_authenticated else None)
@@ -136,8 +156,18 @@ def _consume_series_fifo(ticket_form_id, quantity):
 
 
 class TicketViewSet(viewsets.ModelViewSet):
-    queryset = Ticket.objects.all()
+    queryset = Ticket.objects.select_related(
+        'vehicle', 'vehicle__route', 'vehicle__active_driver', 'vehicle__transportation_id',
+        'driver', 'series', 'series__ticket_form',
+    )
     serializer_class = TicketSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status__in=[s.strip() for s in status_param.split(',') if s.strip()])
+        return qs
 
     def perform_create(self, serializer):
         if self.request.user and self.request.user.is_authenticated:
@@ -316,8 +346,15 @@ class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
 
 
 class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
-    queryset = TicketSeries.objects.all()
+    queryset = TicketSeries.objects.all()  # kept for router basename inference
     serializer_class = TicketSeriesSerializer
+
+    def get_queryset(self):
+        today = date.today()
+        return TicketSeries.objects.select_related('ticket_form', 'issued_to').annotate(
+            _total_issued=Count('tickets'),
+            _issued_before_today=Count('tickets', filter=Q(tickets__issued_at__date__lt=today)),
+        )
 
 
 class RoamingLogViewSet(viewsets.ModelViewSet):

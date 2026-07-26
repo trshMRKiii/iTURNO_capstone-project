@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
@@ -220,15 +221,16 @@ class PUVTypeSerializer(serializers.ModelSerializer):
 class RouteSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     checked_in_today = serializers.SerializerMethodField()
+    revenue_in_range = serializers.SerializerMethodField()
 
     class Meta:
         model = Route
-        fields = ['id', 'origin', 'is_active', 'created_at', 'updated_at', 'full_name', 'checked_in_today']
+        fields = ['id', 'origin', 'is_active', 'created_at', 'updated_at', 'full_name', 'checked_in_today', 'revenue_in_range']
 
     def get_full_name(self, obj):
         return f"{obj.origin} - San Fernando"
 
-    def get_checked_in_today(self, obj):
+    def _get_range(self):
         now_ph = timezone.now() + timedelta(hours=8)
         today_str = now_ph.strftime('%Y-%m-%d')
 
@@ -252,11 +254,21 @@ class RouteSerializer(serializers.ModelSerializer):
         range_end = timezone.make_aware(
             datetime(end_d.year, end_d.month, end_d.day, 23, 59, 59) - timedelta(hours=8)
         )
+        return range_start, range_end
 
+    def get_checked_in_today(self, obj):
+        range_start, range_end = self._get_range()
         return Ticket.objects.filter(
             route=obj, issued_at__gte=range_start, issued_at__lte=range_end
         ).values('vehicle_id').distinct().count()
-    
+
+    def get_revenue_in_range(self, obj):
+        range_start, range_end = self._get_range()
+        total = Ticket.objects.filter(
+            route=obj, dispatched_at__isnull=False, dispatched_at__gte=range_start, dispatched_at__lte=range_end
+        ).aggregate(s=Sum('collection_amount'))['s']
+        return round(float(total or 0), 2)
+
 class TicketFormSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketForm
@@ -297,20 +309,19 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
 
     def get_beginning(self, obj):
         from datetime import date
-        today = date.today()
-        if obj.beginning_balance is not None and obj.beginning_balance_date == today:
-            return obj.beginning_balance
         original = self._get_original_pcs(obj)
-        tickets_before_today = self._get_tickets_issued(obj, before_date=today)
-        beginning = max(original - tickets_before_today, 0)
-        obj.beginning_balance = beginning
-        obj.beginning_balance_date = today
-        obj.save(update_fields=['beginning_balance', 'beginning_balance_date'])
-        return beginning
+        if hasattr(obj, '_issued_before_today'):
+            tickets_before_today = obj._issued_before_today
+        else:
+            tickets_before_today = self._get_tickets_issued(obj, before_date=date.today())
+        return max(original - tickets_before_today, 0)
 
     def get_remaining(self, obj):
         original = self._get_original_pcs(obj)
-        total_issued = self._get_tickets_issued(obj)
+        if hasattr(obj, '_total_issued'):
+            total_issued = obj._total_issued
+        else:
+            total_issued = self._get_tickets_issued(obj)
         return max(original - total_issued, 0)
 
     class Meta:

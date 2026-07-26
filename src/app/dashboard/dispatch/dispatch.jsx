@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { apiService } from "../../../lib/api-service";
 import "../../../styles/Dispatch.css";
 
@@ -46,9 +46,9 @@ function Dispatch() {
     setLoading(true);
     try {
       const [vehicleData, ticketData, driverData, ticketFormData, ticketSeriesData] = await Promise.all([
-        apiService.getVehicles(),
-        apiService.getTickets(),
-        apiService.getDrivers(),
+        apiService.getVehicles({ status: "QUEUED", is_archived: "false" }),
+        apiService.getTickets({ status: "ISSUED,DISPATCHED" }),
+        apiService.getDrivers({ status: "ACTIVE" }),
         apiService.getTicketForms(),
         apiService.request("/ticket-series/"),
       ]);
@@ -66,70 +66,85 @@ function Dispatch() {
 
   // Remaining stock per denomination (ticket form), FIFO-oldest-first is a backend
   // concern — here we only need the total so the dropdown can show/allow what's left.
-  const denominationOptions = ticketForms
-    .map((form) => {
-      const remaining = ticketSeries
-        .filter((s) => String(s.ticket_form) === String(form.id))
-        .reduce((sum, s) => {
-          const start = parseInt(s.start_no) || 0;
-          const end = parseInt(s.end_no) || 0;
-          const total = Math.max(end - start + 1, 0);
-          return sum + (s.remaining ?? total);
-        }, 0);
-      return { ...form, remaining };
-    })
-    .filter((form) => form.remaining > 0);
+  const denominationOptions = useMemo(
+    () =>
+      ticketForms
+        .map((form) => {
+          const remaining = ticketSeries
+            .filter((s) => String(s.ticket_form) === String(form.id))
+            .reduce((sum, s) => {
+              const start = parseInt(s.start_no) || 0;
+              const end = parseInt(s.end_no) || 0;
+              const total = Math.max(end - start + 1, 0);
+              return sum + (s.remaining ?? total);
+            }, 0);
+          return { ...form, remaining };
+        })
+        .filter((form) => form.remaining > 0),
+    [ticketForms, ticketSeries],
+  );
 
-  const queue = vehicles.filter(
-    (v) =>
-      v.status === "QUEUED" &&
-      !v.is_archived &&
-      tickets.some(
-        (t) => t.vehicle?.id === v.id && t.status === "ISSUED",
+  // Server already scopes vehicles (status=QUEUED, is_archived=false) and tickets
+  // (status=ISSUED,DISPATCHED) — see fetchData(). These Maps index the small
+  // remaining `tickets` array by vehicle so queue/render logic doesn't rescan
+  // it per row on every render (e.g. every keystroke in the Cancel/Swap modals).
+  const openTicketByVehicleId = useMemo(() => {
+    const map = new Map();
+    for (const t of tickets) {
+      if (t.status === "ISSUED" && t.vehicle?.id != null && !map.has(t.vehicle.id)) {
+        map.set(t.vehicle.id, t);
+      }
+    }
+    return map;
+  }, [tickets]);
+
+  const dispatchedTicketByVehicleId = useMemo(() => {
+    const map = new Map();
+    for (const t of tickets) {
+      if (t.status === "DISPATCHED" && t.vehicle?.id != null && !map.has(t.vehicle.id)) {
+        map.set(t.vehicle.id, t);
+      }
+    }
+    return map;
+  }, [tickets]);
+
+  const queue = useMemo(
+    () =>
+      vehicles.filter(
+        (v) => v.status === "QUEUED" && !v.is_archived && openTicketByVehicleId.has(v.id),
       ),
+    [vehicles, openTicketByVehicleId],
   );
 
   const getQueuedAt = (vehicle) => {
-    const ticket = tickets.find(
-      (t) =>
-        t.vehicle?.id === vehicle.id && t.status === "ISSUED",
-    );
+    const ticket = openTicketByVehicleId.get(vehicle.id);
     return ticket?.issued_at
       ? new Date(ticket.issued_at).getTime()
       : Number.POSITIVE_INFINITY;
   };
 
-  const groupedByRoute = queue.reduce((acc, vehicle) => {
-    const routeName = vehicle.route_detail?.full_name || "No Route Assigned";
-    if (!acc[routeName]) acc[routeName] = [];
-    acc[routeName].push(vehicle);
-    return acc;
-  }, {});
+  const groupedByRoute = useMemo(() => {
+    const groups = queue.reduce((acc, vehicle) => {
+      const routeName = vehicle.route_detail?.full_name || "No Route Assigned";
+      if (!acc[routeName]) acc[routeName] = [];
+      acc[routeName].push(vehicle);
+      return acc;
+    }, {});
 
-  Object.keys(groupedByRoute).forEach((routeName) => {
-    groupedByRoute[routeName].sort(
-      (a, b) => getQueuedAt(a) - getQueuedAt(b),
-    );
-  });
+    Object.keys(groups).forEach((routeName) => {
+      groups[routeName].sort((a, b) => getQueuedAt(a) - getQueuedAt(b));
+    });
 
-  const sortedRoutes = Object.keys(groupedByRoute).sort();
+    return groups;
+  }, [queue, openTicketByVehicleId]);
+
+  const sortedRoutes = useMemo(() => Object.keys(groupedByRoute).sort(), [groupedByRoute]);
 
   const getDriverName = (vehicle) => {
     if (vehicle.active_driver_name) return vehicle.active_driver_name;
-    const ticket = tickets.find(
-      (t) =>
-        t.vehicle && t.vehicle.id === vehicle.id && t.status === "DISPATCHED",
-    );
+    const ticket = dispatchedTicketByVehicleId.get(vehicle.id);
     return ticket?.driver?.name || "—";
   };
-
-  const isInActiveQueue = (vehicle) =>
-    vehicle.status === "QUEUED" &&
-    !vehicle.is_archived &&
-    tickets.some(
-      (t) =>
-        t.vehicle?.id === vehicle.id && t.status === "ISSUED",
-    );
 
   const handleDispatch = async (vehicle) => {
     if (!dispatchTicketFormId) {
@@ -152,7 +167,8 @@ function Dispatch() {
     }
   };
 
-  const activeDrivers = drivers.filter((d) => d.status === "ACTIVE");
+  // Server already filters to status=ACTIVE — see fetchData().
+  const activeDrivers = drivers;
 
   const openSwapModal = (vehicle) => {
     setSwapTarget(vehicle);
@@ -175,9 +191,7 @@ function Dispatch() {
     setSwapping(true);
     setSwapError("");
     try {
-      const openTicket = tickets.find(
-        (t) => t.vehicle?.id === swapTarget.id && t.status === "ISSUED",
-      );
+      const openTicket = openTicketByVehicleId.get(swapTarget.id);
       if (!openTicket) {
         throw new Error("No open ticket found for this vehicle.");
       }

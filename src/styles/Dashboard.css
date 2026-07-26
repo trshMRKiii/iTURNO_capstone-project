@@ -159,6 +159,17 @@
 .dark .stat-card::before {
   background: var(--gold);
 }
+
+/* Reserved for genuine alerts (e.g. low ticket stock) — mirrors the red
+   left-bar + red value treatment already used on the Requisition page. */
+.stat-card--alert::before {
+  background: #ef4444;
+}
+
+.stat-card--alert .stat-card-value {
+  color: #ef4444;
+}
+
 .stat-card-top {
   display: flex;
   justify-content: space-between;
@@ -486,8 +497,15 @@
   text-overflow: ellipsis;
 }
 
-.dashboard-route-item-count {
+.dashboard-route-item-stats {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.dashboard-route-item-count {
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
@@ -502,8 +520,202 @@
   color: var(--gold);
 }
 
+.dashboard-route-item-revenue {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Ticket-status / fleet-status breakdown cards ── */
+.dashboard-insights-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.breakdown-bar-track {
+  display: flex;
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--border-soft);
+  gap: 2px;
+}
+
+.breakdown-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.breakdown-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.breakdown-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.breakdown-legend-label {
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+}
+
+.breakdown-legend-count {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.breakdown-legend-pct {
+  color: var(--text-label);
+  font-size: 11px;
+  min-width: 32px;
+  text-align: right;
+}
+
+.breakdown-empty {
+  font-size: 12px;
+  color: var(--text-label);
+  text-align: center;
+  padding: 6px 0 2px;
+}
+
+/* ── Recent Activity feed ── */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.12s;
+}
+.activity-row:last-child { border-bottom: none; }
+.activity-row:hover { background: var(--bg-hover); }
+
+.activity-pill {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+.activity-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.activity-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-meta {
+  flex-shrink: 0;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.activity-user {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.activity-time {
+  font-size: 10.5px;
+  color: var(--text-label);
+}
+
+.activity-empty {
+  padding: 32px 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ── Pagination (matches Collection.css's .col-pagination) ── */
+.dashboard-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 20px;
+  border-top: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dashboard-pagination-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.dashboard-pagination-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.dashboard-page-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.dashboard-page-btn:hover:not(:disabled) {
+  background: var(--gold-dim);
+  border-color: rgba(201, 168, 76, 0.3);
+  color: var(--gold);
+}
+
+.dashboard-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .dashboard-chart-layout { flex-direction: column; }
   .dashboard-chart-panel { flex: none; width: 100%; }
   .dashboard-routes-sidebar { flex: none; width: 100%; }
+  .dashboard-insights-row { grid-template-columns: 1fr; }
 }

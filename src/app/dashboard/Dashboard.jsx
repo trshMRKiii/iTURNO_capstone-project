@@ -26,6 +26,36 @@ const peso = (n) => {
   );
 };
 
+// Ticket lifecycle + live fleet status colors reuse the app's existing status
+// vocabulary (Dispatch.css badge dots, AuditTrail.jsx action pills) rather than
+// introducing a new palette: green=good, amber=pending, blue=active, red=critical,
+// slate=neutral. Every dot is always paired with a text label, never color alone.
+const TICKET_STATUS_META = {
+  ISSUED: { label: "Issued", color: "#f59e0b" },
+  DISPATCHED: { label: "Dispatched", color: "#3b82f6" },
+  COLLECTED: { label: "Collected", color: "#22c55e" },
+  CANCELLED: { label: "Cancelled", color: "#ef4444" },
+  RETURNED: { label: "Returned", color: "#94a3b8" },
+};
+const TICKET_STATUS_ORDER = ["ISSUED", "DISPATCHED", "COLLECTED", "CANCELLED", "RETURNED"];
+
+const FLEET_STATUS_META = {
+  QUEUED: { label: "Queued", color: "#f59e0b" },
+  DISPATCHED: { label: "Dispatched", color: "#3b82f6" },
+  AVAILABLE: { label: "Available", color: "#22c55e" },
+  MAINTENANCE: { label: "Maintenance", color: "#ef4444" },
+};
+const FLEET_STATUS_ORDER = ["QUEUED", "DISPATCHED", "AVAILABLE", "MAINTENANCE"];
+
+// Matches AuditTrail.jsx's ACTION_COLORS exactly so audit entries look the same everywhere.
+const ACTION_COLORS = { CREATE: "#22c55e", UPDATE: "#3b82f6", DELETE: "#ef4444" };
+
+// Same stock thresholds already used on the Requisition page's inventory cards.
+const STOCK_LOW_THRESHOLD = 5000;
+const STOCK_HIGH_THRESHOLD = 10000;
+
+const ACTIVITY_PAGE_SIZE = 8;
+
 // ─── Custom Tooltip ──────────────────────────────────────────────────────────
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload || !payload.length) return null;
@@ -51,15 +81,90 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, icon }) {
+function StatCard({ label, value, sub, icon, alert }) {
   return (
-    <div className="stat-card">
+    <div className={`stat-card${alert ? " stat-card--alert" : ""}`}>
       <div className="stat-card-top">
         <div className="stat-card-label">{label}</div>
         <div className="stat-card-icon">{icon}</div>
       </div>
       <div className="stat-card-value">{value}</div>
       {sub && <div className="stat-card-sub">{sub}</div>}
+    </div>
+  );
+}
+
+// ─── Status Breakdown (stacked bar + legend) ────────────────────────────────
+function BreakdownCard({ title, badge, data, order, meta }) {
+  const entries = order.map((key) => ({ key, count: data?.[key] ?? 0, ...meta[key] }));
+  const total = entries.reduce((sum, e) => sum + e.count, 0);
+
+  return (
+    <div className="chart-card">
+      <div className="chart-card-header">
+        <span className="chart-card-title">{title}</span>
+        <span className="chart-card-badge">{badge}</span>
+      </div>
+      <div className="chart-card-body">
+        {total === 0 ? (
+          <div className="breakdown-empty">No activity yet</div>
+        ) : (
+          <div className="breakdown-bar-track">
+            {entries
+              .filter((e) => e.count > 0)
+              .map((e) => (
+                <div
+                  key={e.key}
+                  style={{ width: `${(e.count / total) * 100}%`, background: e.color }}
+                />
+              ))}
+          </div>
+        )}
+        <div className="breakdown-legend">
+          {entries.map((e) => (
+            <div className="breakdown-legend-row" key={e.key}>
+              <span className="breakdown-legend-dot" style={{ background: e.color }} />
+              <span className="breakdown-legend-label">{e.label}</span>
+              <span className="breakdown-legend-count">{e.count}</span>
+              {total > 0 && (
+                <span className="breakdown-legend-pct">
+                  {Math.round((e.count / total) * 100)}%
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Recent Activity row ─────────────────────────────────────────────────────
+function ActivityRow({ log }) {
+  const color = ACTION_COLORS[log.action] || "#64748b";
+  const when = log.created_at
+    ? new Date(log.created_at).toLocaleString("en-PH", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+  return (
+    <div className="activity-row">
+      <span className="activity-pill" style={{ background: `${color}22`, color }}>
+        {log.action_display || log.action}
+      </span>
+      <div className="activity-main">
+        <span className="activity-title">
+          {log.model_name} #{log.object_id}
+        </span>
+        {log.object_repr && <span className="activity-sub">{log.object_repr}</span>}
+      </div>
+      <div className="activity-meta">
+        <span className="activity-user">{log.user_name || "System"}</span>
+        <span className="activity-time">{when}</span>
+      </div>
     </div>
   );
 }
@@ -79,6 +184,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [routes, setRoutes] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [activityPage, setActivityPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   // "tickets" | "revenue"
@@ -106,21 +213,19 @@ export default function Dashboard() {
       setError("");
       try {
         const range = { start_date: fromDate, end_date: toDate };
-        const [statsData, chartJson] = await Promise.all([
-          apiService.getDashboardStats(range),
-          apiService.getReportChart(),
-        ]);
+        const statsData = await apiService.getDashboardStats(range);
         setStats(statsData);
-        const data = (chartJson.chart_data || []).slice(-14);
-        setChartData(data);
-        // Routes fetched separately so a failure doesn't kill the dashboard
-        try {
-          const routeData = await apiService.getRoutes(range);
-          setRoutes(Array.isArray(routeData) ? routeData : []);
-        } catch {
-          setRoutes([]);
-        }
-      } catch (e) {
+        setChartData((statsData.chart_data || []).slice(-31));
+
+        // Routes and activity are secondary — a failure in either shouldn't kill the dashboard.
+        const [routeData, logsData] = await Promise.all([
+          apiService.getRoutes(range).catch(() => []),
+          apiService.getAuditLogs({ ...range, all: true }).catch(() => ({ logs: [] })),
+        ]);
+        setRoutes(Array.isArray(routeData) ? routeData : []);
+        setActivity(Array.isArray(logsData.logs) ? logsData.logs : []);
+        setActivityPage(0);
+      } catch {
         setError("Failed to load dashboard data.");
       } finally {
         setLoading(false);
@@ -143,6 +248,21 @@ export default function Dashboard() {
     : isSingleDay
       ? fromDate
       : `${fromDate} – ${toDate}`;
+  // The chart alone widens to a 7-day trend when the filter is on today only —
+  // its badge should say so instead of echoing the (still today-only) rangeLabel.
+  const chartRangeLabel = isTodayOnly ? "Last 7 days" : rangeLabel;
+
+  const fleetStatus = stats?.fleet_status || {};
+  const queuedCount = fleetStatus.QUEUED ?? 0;
+  const ticketStock = stats?.ticket_stock_remaining ?? 0;
+  const stockIsLow = ticketStock < STOCK_LOW_THRESHOLD;
+  const stockSub = stockIsLow
+    ? ticketStock === 0
+      ? "Out of stock"
+      : "Low stock — reorder soon"
+    : ticketStock >= STOCK_HIGH_THRESHOLD
+      ? "Stock healthy"
+      : "Stock normal";
 
   return (
     <div className="dashboard-page">
@@ -243,6 +363,25 @@ export default function Dashboard() {
               />
             </div>
           </div>
+          {/* ─── Live Status ────────────────────────────────────────────────── */}
+          <div className="dashboard-section">
+            <div className="dashboard-section-label">
+              Live Status <span className="dashboard-section-range">(current)</span>
+            </div>
+            <div className="stat-cards-row">
+              <StatCard
+                label="Currently Queued"
+                value={queuedCount}
+                sub="Awaiting dispatch"
+              />
+              <StatCard
+                label="Ticket Stock"
+                value={`${ticketStock.toLocaleString()} pcs`}
+                sub={stockSub}
+                alert={stockIsLow}
+              />
+            </div>
+          </div>
           {/* ─── Bar Chart + Routes Sidebar ─────────────────────────────────── */}
           <div className="dashboard-chart-layout">
             {/* 70% — chart panel */}
@@ -267,7 +406,7 @@ export default function Dashboard() {
                         Revenue
                       </button>
                     </div>
-                    <span className="chart-card-badge">Last 14 days</span>
+                    <span className="chart-card-badge">{chartRangeLabel}</span>
                   </div>
                 </div>
 
@@ -374,11 +513,19 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
-                      <div
-                        className="dashboard-route-item-count"
-                        title={`Checked in (${rangeLabel})`}
-                      >
-                        {route.checked_in_today ?? 0}
+                      <div className="dashboard-route-item-stats">
+                        <div
+                          className="dashboard-route-item-count"
+                          title={`Checked in (${rangeLabel})`}
+                        >
+                          {route.checked_in_today ?? 0}
+                        </div>
+                        <div
+                          className="dashboard-route-item-revenue"
+                          title={`Revenue (${rangeLabel})`}
+                        >
+                          {peso(route.revenue_in_range ?? 0)}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -388,6 +535,64 @@ export default function Dashboard() {
             {/* closes dashboard-routes-sidebar */}
           </div>{" "}
           {/* closes dashboard-chart-layout */}
+          {/* ─── Ticket & Fleet Breakdown ───────────────────────────────────── */}
+          <div className="dashboard-insights-row">
+            <BreakdownCard
+              title="Ticket Status Breakdown"
+              badge={rangeLabel}
+              data={stats?.ticket_status_breakdown}
+              order={TICKET_STATUS_ORDER}
+              meta={TICKET_STATUS_META}
+            />
+            <BreakdownCard
+              title="Fleet Status"
+              badge="Live"
+              data={fleetStatus}
+              order={FLEET_STATUS_ORDER}
+              meta={FLEET_STATUS_META}
+            />
+          </div>
+          {/* ─── Recent Activity ────────────────────────────────────────────── */}
+          <div className="chart-card dashboard-section">
+            <div className="chart-card-header">
+              <span className="chart-card-title">Recent Activity</span>
+              <span className="chart-card-badge">{rangeLabel}</span>
+            </div>
+            {activity.length === 0 ? (
+              <div className="activity-empty">No activity recorded for this range.</div>
+            ) : (
+              <>
+                <div className="activity-list">
+                  {activity
+                    .slice(activityPage * ACTIVITY_PAGE_SIZE, (activityPage + 1) * ACTIVITY_PAGE_SIZE)
+                    .map((log, idx) => (
+                      <ActivityRow key={`${log.id}-${idx}`} log={log} />
+                    ))}
+                </div>
+                <div className="dashboard-pagination">
+                  <span className="dashboard-pagination-info">
+                    Page {activityPage + 1} of {Math.ceil(activity.length / ACTIVITY_PAGE_SIZE)}
+                  </span>
+                  <div className="dashboard-pagination-btns">
+                    <button
+                      className="dashboard-page-btn"
+                      disabled={activityPage === 0}
+                      onClick={() => setActivityPage((p) => p - 1)}
+                    >
+                      ← Prev
+                    </button>
+                    <button
+                      className="dashboard-page-btn"
+                      disabled={(activityPage + 1) * ACTIVITY_PAGE_SIZE >= activity.length}
+                      onClick={() => setActivityPage((p) => p + 1)}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </>
       )}
     </div>
