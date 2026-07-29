@@ -404,6 +404,35 @@
   white-space: nowrap;
 }
 
+/* ── Pager ── */
+.rpt-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+
+.rpt-pager-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.rpt-pager-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rpt-pager-page {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 /* ── Totals row ── */
 .rpt-totals-row {
   display: flex;

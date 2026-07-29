@@ -45,4 +45,5 @@ from .system import (
 from .auth import (
     forgot_password,
     reset_password,
+    change_password,
 )

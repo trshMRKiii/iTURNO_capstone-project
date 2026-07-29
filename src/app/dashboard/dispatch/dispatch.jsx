@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { apiService } from "../../../lib/api-service";
+import { useQueueSocket } from "../../../lib/useQueueSocket";
 import "../../../styles/Dispatch.css";
 
 const LAST_TICKET_FORM_KEY = "dispatch:lastTicketFormId";
@@ -42,8 +43,8 @@ function Dispatch() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [vehicleData, ticketData, driverData, ticketFormData, ticketSeriesData] = await Promise.all([
         apiService.getVehicles({ status: "QUEUED", is_archived: "false" }),
@@ -60,9 +61,14 @@ function Dispatch() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  // Backend pushes a "queue_updated" ping whenever a vehicle/ticket change
+  // affects the board (e.g. a Check In from Ticket), so we refetch right away
+  // instead of waiting for someone to leave and revisit this tab.
+  useQueueSocket(() => fetchData(true));
 
   // Remaining stock per denomination (ticket form), FIFO-oldest-first is a backend
   // concern — here we only need the total so the dropdown can show/allow what's left.

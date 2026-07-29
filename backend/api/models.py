@@ -21,6 +21,7 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
+    must_reset_password = models.BooleanField(default=False)
     
     class Meta:
         ordering = ['-created_at']

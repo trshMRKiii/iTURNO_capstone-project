@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import UserViewSet, DriverViewSet, VehicleViewSet, RouteViewSet, TicketViewSet, CurrentUserView, TicketPriceViewSet, PUVTypeViewSet, RemittanceBatchViewSet, TicketFormViewSet, RequisitionViewSet, TicketSeriesViewSet, RoamingLogViewSet
-from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, transaction_logs, audit_logs, dashboard_stats, public_queue,vehicle_records,driver_records, server_time, export_collections_csv, remittance_batches, terminal_price_config, system_backups, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password
+from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, transaction_logs, audit_logs, dashboard_stats, public_queue,vehicle_records,driver_records, server_time, export_collections_csv, remittance_batches, terminal_price_config, system_backups, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password, change_password
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -43,4 +43,5 @@ urlpatterns = [
     path("system/backups/restore-upload/", system_backup_restore_upload, name="system_backup_restore_upload"),
     path("auth/forgot-password/", forgot_password, name="forgot_password"),
     path("auth/reset-password/", reset_password, name="reset_password"),
+    path("auth/change-password/", change_password, name="change_password"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

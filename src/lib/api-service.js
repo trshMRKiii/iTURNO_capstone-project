@@ -65,6 +65,14 @@ export const apiService = {
             `Bearer ${sessionStorage.getItem("accessToken")}`;
           response = await fetch(url, fetchOptions);
         }
+
+        // Refresh failed, or the retried request is still unauthorized
+        // (e.g. token rejected for another reason) — stop here and
+        // force a logout instead of surfacing a generic error.
+        if (response.status === 401) {
+          this.logout();
+          return;
+        }
       }
 
       // Try to parse response
@@ -386,6 +394,10 @@ export const apiService = {
       token,
       new_password: newPassword,
     });
+  },
+
+  changePassword(newPassword) {
+    return this.post("/auth/change-password/", { new_password: newPassword });
   },
 
 };

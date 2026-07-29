@@ -96,6 +96,27 @@ def record_audit_log(user, action, model_name, object_id='', object_repr='', cha
     )
 
 
+def paginate_request(request, queryset, default_page_size=25, max_page_size=200):
+    """Opt-in pagination: returns None when the caller didn't ask for a page (so
+    existing callers that expect the full queryset are unaffected), otherwise
+    returns (page_num, page_size, total, sliced_queryset) for the requested page.
+    """
+    page_param = request.query_params.get('page')
+    if page_param is None:
+        return None
+    try:
+        page_num = max(int(page_param), 1)
+    except ValueError:
+        page_num = 1
+    try:
+        page_size = min(max(int(request.query_params.get('page_size', default_page_size)), 1), max_page_size)
+    except ValueError:
+        page_size = default_page_size
+    total = queryset.count()
+    start = (page_num - 1) * page_size
+    return page_num, page_size, total, queryset[start:start + page_size]
+
+
 def summarize(ticket_list, fallback_amount=0.0):
     count = len(ticket_list)
     total = round(sum(

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { DataTable } from "../../../components/ui/dataTable";
+import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
-import { exportCSV } from "../reportHook";
-import { exportTablePDF } from "../exportPDF";
+import { formatChanges } from "../reportHook";
 
 const AUDIT_COLUMNS = ["Timestamp", "Action", "Item", "Details", "User"];
 
@@ -12,17 +12,13 @@ const ACTION_COLORS = {
   DELETE: "#ef4444",
 };
 
-const formatChanges = (changes) => {
-  if (!changes || typeof changes !== "object") return "—";
-  const entries = Object.entries(changes);
-  if (entries.length === 0) return "—";
-  return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
-};
-
-export default function AuditTrail({ filteredAuditLogs }) {
+export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onExportCSV, onExportPDF, pageSize }) {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState("");
+  const [modalPage, setModalPage] = useState(1);
+  const [modalData, setModalData] = useState([]);
+  const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
 
   const matches = (log, query) => {
     if (!query) return true;
@@ -31,23 +27,29 @@ export default function AuditTrail({ filteredAuditLogs }) {
       .some((v) => v && String(v).toLowerCase().includes(q));
   };
 
-  const searched = filteredAuditLogs.filter((l) => matches(l, search));
-  const preview = searched.slice(0, 5);
-  const modalData = searched.filter((l) => matches(l, modalSearch));
+  const searched = auditData.filter((l) => matches(l, search));
+  const modalSearched = modalData.filter((l) => matches(l, modalSearch));
 
-  const buildExportRow = (l) => ({
-    Timestamp: l.created_at ? new Date(l.created_at).toLocaleString() : "—",
-    Action: l.action_display || l.action,
-    Item: `${l.model_name} #${l.object_id}`,
-    Details: formatChanges(l.changes),
-    User: l.user_name || "System",
-  });
+  const openModal = async () => {
+    setShowModal(true);
+    setModalSearch("");
+    const page = await onAuditFetchPage(1);
+    setModalPage(page.page);
+    setModalData(page.results);
+    setModalMeta({ count: page.count, totalPages: page.totalPages });
+  };
 
-  const handleExportCSV = () =>
-    exportCSV(searched.map(buildExportRow), `audit_trail_${Date.now()}.csv`);
+  const closeModal = () => {
+    setShowModal(false);
+    setModalSearch("");
+  };
 
-  const handleExportPDF = () =>
-    exportTablePDF(searched.map(buildExportRow), "Audit Trail");
+  const changeModalPage = async (page) => {
+    const result = await onAuditFetchPage(page);
+    setModalPage(result.page);
+    setModalData(result.results);
+    setModalMeta({ count: result.count, totalPages: result.totalPages });
+  };
 
   const renderRow = (l, idx, { rowClass, cellClass }) => (
     <tr key={l.id + idx} className={rowClass}>
@@ -79,7 +81,7 @@ export default function AuditTrail({ filteredAuditLogs }) {
             <button className="rpt-tab rpt-tab--active">Audit Trail</button>
           </div>
           <span className="rpt-record-count">
-            {preview.length} of {searched.length} records
+            {searched.length} of {auditMeta.count} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
@@ -90,12 +92,12 @@ export default function AuditTrail({ filteredAuditLogs }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {searched.length > 5 && (
-            <button className="rpt-btn rpt-btn--secondary" onClick={() => setShowModal(true)}>
+          {auditMeta.count > pageSize && (
+            <button className="rpt-btn rpt-btn--secondary" onClick={openModal}>
               View All
             </button>
           )}
-          <button className="rpt-btn-export rpt-btn-export--green" onClick={handleExportCSV}>
+          <button className="rpt-btn-export rpt-btn-export--green" onClick={onExportCSV}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
@@ -103,7 +105,7 @@ export default function AuditTrail({ filteredAuditLogs }) {
             </svg>
             Export CSV
           </button>
-          <button className="rpt-btn-export rpt-btn-export--red" onClick={handleExportPDF}>
+          <button className="rpt-btn-export rpt-btn-export--red" onClick={onExportPDF}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
@@ -113,19 +115,26 @@ export default function AuditTrail({ filteredAuditLogs }) {
         </div>
       </div>
 
-      <DataTable columns={AUDIT_COLUMNS} data={preview} rowRenderer={renderRow} />
+      <DataTable columns={AUDIT_COLUMNS} data={searched} rowRenderer={renderRow} />
 
       {showModal && (
         <ReportTableModal
           title="Audit Trail"
           subtitle="Full history of who created, changed, or deleted records"
-          count={modalData.length}
-          onClose={() => { setShowModal(false); setModalSearch(""); }}
+          count={modalMeta.count}
+          onClose={closeModal}
           searchValue={modalSearch}
           onSearchChange={setModalSearch}
           searchPlaceholder="Search audit trail…"
         >
-          <DataTable columns={AUDIT_COLUMNS} data={modalData} rowRenderer={renderRow} />
+          <DataTable columns={AUDIT_COLUMNS} data={modalSearched} rowRenderer={renderRow} />
+          <Pager
+            page={modalPage}
+            totalPages={modalMeta.totalPages}
+            count={modalMeta.count}
+            pageSize={pageSize}
+            onPageChange={changeModalPage}
+          />
         </ReportTableModal>
       )}
     </div>

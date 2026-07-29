@@ -20,6 +20,29 @@ export const STATUS_COLORS = {
 
 export const today = new Date().toISOString().split("T")[0];
 
+// Default report window: Jan 1 of the current year through today. Keeps the
+// initial load bounded to the current year's data instead of the whole table
+// — older years are only pulled in when the user explicitly picks a wider range.
+export const yearStart = `${new Date().getFullYear()}-01-01`;
+
+export const formatTime = (dateString) => {
+  try {
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "N/A";
+  }
+};
+
+export const formatChanges = (changes) => {
+  if (!changes || typeof changes !== "object") return "—";
+  const entries = Object.entries(changes);
+  if (entries.length === 0) return "—";
+  return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
+};
+
 export function exportCSV(data, filename = "report.csv") {
   if (!data.length) return;
   const headers = Object.keys(data[0]);

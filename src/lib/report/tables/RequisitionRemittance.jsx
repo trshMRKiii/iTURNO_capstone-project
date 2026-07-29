@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { DataTable } from "../../../components/ui/dataTable";
-import { peso, STATUS_COLORS } from "../reportHook";
+import { peso } from "../reportHook";
+import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
 import ViewRemittance from "../../remittance/viewRemittance";
 
@@ -8,23 +9,33 @@ const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Approved By", "T
 const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Issued By", "Total Amount", "Actions"];
 
 export default function RequisitionRemittance({
-  requisitions,
-  requisitionsTotal,
-  handleExportRequisitionsCSV,
-  handleExportRequisitionsPDF,
-  remittance,
-  remittanceTotal,
-  handleExportRemittanceCSV,
-  handleExportRemittancePDF,
+  requisitionData,
+  requisitionMeta,
+  onRequisitionFetchPage,
+  onExportRequisitionsCSV,
+  onExportRequisitionsPDF,
+  remittanceData,
+  remittanceMeta,
+  onRemittanceFetchPage,
+  onExportRemittanceCSV,
+  onExportRemittancePDF,
+  pageSize,
 }) {
   const [activeTab, setActiveTab] = useState("remittance");
   const [search, setSearch] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [modalSearch, setModalSearch] = useState("");
   const [viewBatch, setViewBatch] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
+  const [showModal, setShowModal] = useState(false);
+  const [modalSearch, setModalSearch] = useState("");
+  const [modalPage, setModalPage] = useState(1);
+  const [modalData, setModalData] = useState([]);
+  const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
+
   const isRequisition = activeTab === "requisition";
+  const data = isRequisition ? requisitionData : remittanceData;
+  const meta = isRequisition ? requisitionMeta : remittanceMeta;
+  const fetchPage = isRequisition ? onRequisitionFetchPage : onRemittanceFetchPage;
 
   const toggleExpand = (id) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -45,21 +56,35 @@ export default function RequisitionRemittance({
     );
   };
 
-  const searchedRequisitions = requisitions.filter((r) => matchesRequisition(r, search));
-  const searchedRemittance = remittance.filter((b) => matchesRemittance(b, search));
-
-  const searched = isRequisition ? searchedRequisitions : searchedRemittance;
-  const preview = searched.slice(0, 5);
-
-  const modalSearchedRequisitions = searchedRequisitions.filter((r) => matchesRequisition(r, modalSearch));
-  const modalSearchedRemittance = searchedRemittance.filter((b) => matchesRemittance(b, modalSearch));
-  const modalData = isRequisition ? modalSearchedRequisitions : modalSearchedRemittance;
+  const matches = isRequisition ? matchesRequisition : matchesRemittance;
+  const searched = data.filter((row) => matches(row, search));
+  const modalSearched = modalData.filter((row) => matches(row, modalSearch));
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearch("");
-    setModalSearch("");
     setShowModal(false);
+  };
+
+  const openModal = async () => {
+    setShowModal(true);
+    setModalSearch("");
+    const page = await fetchPage(1);
+    setModalPage(page.page);
+    setModalData(page.results);
+    setModalMeta({ count: page.count, totalPages: page.totalPages });
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setModalSearch("");
+  };
+
+  const changeModalPage = async (page) => {
+    const result = await fetchPage(page);
+    setModalPage(result.page);
+    setModalData(result.results);
+    setModalMeta({ count: result.count, totalPages: result.totalPages });
   };
 
   const renderRequisitionRow = (r, idx, { rowClass, cellClass }) => {
@@ -127,6 +152,9 @@ export default function RequisitionRemittance({
     </tr>
   );
 
+  const columns = isRequisition ? REQUISITION_COLUMNS : REMITTANCE_COLUMNS;
+  const rowRenderer = isRequisition ? renderRequisitionRow : renderRemittanceRow;
+
   return (
     <div className="rpt-card rpt-section">
       <div className="rpt-card-header">
@@ -146,7 +174,7 @@ export default function RequisitionRemittance({
             </button>
           </div>
           <span className="rpt-record-count">
-            {preview.length} of {searched.length} records
+            {searched.length} of {meta.count} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
@@ -157,14 +185,14 @@ export default function RequisitionRemittance({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {searched.length > 5 && (
-            <button className="rpt-btn rpt-btn--secondary" onClick={() => setShowModal(true)}>
+          {meta.count > pageSize && (
+            <button className="rpt-btn rpt-btn--secondary" onClick={openModal}>
               View All
             </button>
           )}
           <button
             className="rpt-btn-export rpt-btn-export--green"
-            onClick={isRequisition ? handleExportRequisitionsCSV : handleExportRemittanceCSV}
+            onClick={isRequisition ? onExportRequisitionsCSV : onExportRemittanceCSV}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -174,7 +202,7 @@ export default function RequisitionRemittance({
           </button>
           <button
             className="rpt-btn-export rpt-btn-export--red"
-            onClick={isRequisition ? handleExportRequisitionsPDF : handleExportRemittancePDF}
+            onClick={isRequisition ? onExportRequisitionsPDF : onExportRemittancePDF}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -185,27 +213,26 @@ export default function RequisitionRemittance({
         </div>
       </div>
 
-      {isRequisition ? (
-        <DataTable columns={REQUISITION_COLUMNS} data={preview} rowRenderer={renderRequisitionRow} />
-      ) : (
-        <DataTable columns={REMITTANCE_COLUMNS} data={preview} rowRenderer={renderRemittanceRow} />
-      )}
+      <DataTable columns={columns} data={searched} rowRenderer={rowRenderer} />
 
       {showModal && (
         <ReportTableModal
           title={isRequisition ? "Requisition" : "Remittance"}
           subtitle={isRequisition ? "Complete history of ticket series requisitions" : "Complete history of remittance batches"}
-          count={modalData.length}
-          onClose={() => { setShowModal(false); setModalSearch(""); }}
+          count={modalMeta.count}
+          onClose={closeModal}
           searchValue={modalSearch}
           onSearchChange={setModalSearch}
           searchPlaceholder={isRequisition ? "Search requisitions…" : "Search remittance…"}
         >
-          {isRequisition ? (
-            <DataTable columns={REQUISITION_COLUMNS} data={modalData} rowRenderer={renderRequisitionRow} />
-          ) : (
-            <DataTable columns={REMITTANCE_COLUMNS} data={modalData} rowRenderer={renderRemittanceRow} />
-          )}
+          <DataTable columns={columns} data={modalSearched} rowRenderer={rowRenderer} />
+          <Pager
+            page={modalPage}
+            totalPages={modalMeta.totalPages}
+            count={modalMeta.count}
+            pageSize={pageSize}
+            onPageChange={changeModalPage}
+          />
         </ReportTableModal>
       )}
 

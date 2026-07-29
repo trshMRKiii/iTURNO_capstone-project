@@ -8,7 +8,6 @@ const EMPTY_FORM = {
   first_name: "",
   middle_name: "",
   last_name: "",
-  password: "",
   role: "PERSONNEL",
   is_active: true,
 };
@@ -117,8 +116,6 @@ function User() {
         role: form.role || "PERSONNEL",
         is_active: isActive,
       };
-      if (form.password && form.password.trim() !== "")
-        payload.password = form.password;
       const userData = editing
         ? await apiService.updateUser(editing.id, payload)
         : await apiService.createUser(payload);
@@ -137,7 +134,6 @@ function User() {
       first_name: user.first_name,
       middle_name: user.middle_name || "",
       last_name: user.last_name,
-      password: "",
       role: user.role,
       is_active: user.is_active,
     });
@@ -505,21 +501,12 @@ function User() {
                     required
                   />
                 </Field>
-
-                <Field
-                  label={editing ? "Password (leave blank to keep)" : "Password"}
-                >
-                  <input
-                    type="password"
-                    className={inputCls}
-                    placeholder="Password"
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
-                    }
-                    required={!editing}
-                  />
-                </Field>
+                {!editing && (
+                  <p className="usr-field-hint">
+                    A temporary password will be generated and emailed to this address. The
+                    new account will be required to set their own password on first sign-in.
+                  </p>
+                )}
               </div>
 
               {/* Role & Status */}

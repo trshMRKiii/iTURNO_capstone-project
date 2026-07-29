@@ -1,9 +1,12 @@
 import uuid
 from datetime import date
 
+from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
+from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.db.models import Count, Q
+from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -14,7 +17,7 @@ from rest_framework.views import APIView
 
 from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, RoamingLog, TerminalPrice
 from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
-from .helpers import record_audit_log, expire_stale_queue_tickets
+from .helpers import record_audit_log, expire_stale_queue_tickets, parse_date_start, parse_date_end, paginate_request
 
 
 class AuditLogMixin:
@@ -67,6 +70,39 @@ class CurrentUserView(APIView):
 class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+    def perform_create(self, serializer):
+        instance = super().perform_create(serializer)
+        raw_password = getattr(instance, '_generated_password', None)
+        if raw_password:
+            self._send_new_account_email(instance, raw_password)
+        return instance
+
+    def _send_new_account_email(self, user, raw_password):
+        user_name = user.first_name or user.username
+        login_link = settings.FRONTEND_URL
+        text_body = (
+            f"Hi {user_name},\n\n"
+            "An account was created for you on the iTURNO terminal management system.\n\n"
+            f"Email: {user.username}\n"
+            f"Temporary password: {raw_password}\n\n"
+            "Sign in and you'll be asked to choose your own password right away.\n"
+            f"{login_link}"
+        )
+        html_body = render_to_string('emails/new_account.html', {
+            'user_name': user_name,
+            'username': user.username,
+            'temp_password': raw_password,
+            'login_link': login_link,
+        })
+        email = EmailMultiAlternatives(
+            subject='Your iTURNO account has been created',
+            body=text_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.username],
+        )
+        email.attach_alternative(html_body, 'text/html')
+        email.send(fail_silently=False)
 
 
 class DriverViewSet(AuditLogMixin, viewsets.ModelViewSet):
@@ -167,6 +203,21 @@ class TicketViewSet(viewsets.ModelViewSet):
         status_param = self.request.query_params.get('status')
         if status_param:
             qs = qs.filter(status__in=[s.strip() for s in status_param.split(',') if s.strip()])
+        mode_param = self.request.query_params.get('mode')
+        if mode_param:
+            qs = qs.filter(mode__in=[m.strip() for m in mode_param.split(',') if m.strip()])
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date:
+            try:
+                qs = qs.filter(created_at__gte=parse_date_start(start_date))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                qs = qs.filter(created_at__lte=parse_date_end(end_date))
+            except ValueError:
+                pass
         return qs
 
     def perform_create(self, serializer):
@@ -177,6 +228,19 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         expire_stale_queue_tickets(actor=request.user if request.user.is_authenticated else None)
+
+        paged = paginate_request(request, self.get_queryset().order_by('-created_at'))
+        if paged is not None:
+            page_num, page_size, total, sliced = paged
+            serializer = self.get_serializer(sliced, many=True)
+            return Response({
+                'results': serializer.data,
+                'count': total,
+                'page': page_num,
+                'page_size': page_size,
+                'total_pages': max((total + page_size - 1) // page_size, 1),
+            })
+
         return super().list(request, *args, **kwargs)
 
     @action(detail=False, methods=['post'], url_path='dispatch')
@@ -339,6 +403,36 @@ class TicketFormViewSet(AuditLogMixin, viewsets.ModelViewSet):
 class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Requisition.objects.all()
     serializer_class = RequisitionSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date:
+            try:
+                qs = qs.filter(date_requested__gte=parse_date_start(start_date))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                qs = qs.filter(date_requested__lte=parse_date_end(end_date))
+            except ValueError:
+                pass
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        paged = paginate_request(request, self.get_queryset().order_by('-date_requested'))
+        if paged is not None:
+            page_num, page_size, total, sliced = paged
+            serializer = self.get_serializer(sliced, many=True)
+            return Response({
+                'results': serializer.data,
+                'count': total,
+                'page': page_num,
+                'page_size': page_size,
+                'total_pages': max((total + page_size - 1) // page_size, 1),
+            })
+        return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         requisition = serializer.save(requested_by=self.request.user)

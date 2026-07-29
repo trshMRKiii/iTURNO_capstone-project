@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from ..models import Ticket, TicketPrice, Vehicle, Driver, Route, RemittanceBatch, Collection, Deposit, AuditLog, TerminalPrice, TicketSeries
 from ..serializers import TicketSerializer, RemittanceBatchSerializer, AuditLogSerializer, TerminalPriceSerializer
-from .helpers import summarize, parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_queue_tickets
+from .helpers import summarize, parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_queue_tickets, paginate_request
 
 
 @api_view(['GET'])
@@ -57,11 +57,20 @@ def audit_logs(request):
         except ValueError:
             pass
 
-    data = AuditLogSerializer(logs, many=True).data
-    total = len(data)
-    if not show_all:
-        data = data[:10]
+    paged = paginate_request(request, logs)
+    if paged is not None:
+        page_num, page_size, total, sliced = paged
+        data = AuditLogSerializer(sliced, many=True).data
+        return Response({
+            'logs': data,
+            'total': total,
+            'page': page_num,
+            'page_size': page_size,
+            'total_pages': max((total + page_size - 1) // page_size, 1),
+        })
 
+    total = logs.count()
+    data = AuditLogSerializer(logs if show_all else logs[:10], many=True).data
     return Response({'logs': data, 'total': total})
 
 
@@ -281,6 +290,32 @@ def remittance_batches(request):
         return Response({'id': batch.id, 'status': 'created'}, status=201)
 
     batches = RemittanceBatch.objects.select_related('issued_by').order_by('-issued_at')
+
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    if start_date:
+        try:
+            batches = batches.filter(issued_at__gte=parse_date_start(start_date))
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            batches = batches.filter(issued_at__lte=parse_date_end(end_date))
+        except ValueError:
+            pass
+
+    paged = paginate_request(request, batches)
+    if paged is not None:
+        page_num, page_size, total, sliced = paged
+        serializer = RemittanceBatchSerializer(sliced, many=True)
+        return Response({
+            'results': serializer.data,
+            'count': total,
+            'page': page_num,
+            'page_size': page_size,
+            'total_pages': max((total + page_size - 1) // page_size, 1),
+        })
+
     serializer = RemittanceBatchSerializer(batches, many=True)
     return Response({
         'results': serializer.data,

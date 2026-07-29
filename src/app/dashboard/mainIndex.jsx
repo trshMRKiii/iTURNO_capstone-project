@@ -24,6 +24,7 @@ import {
 } from "../../components/ui/NavIcon";
 import { apiService } from "../../lib/api-service";
 import { useToast, useConfirm } from "../../components/ui/ToastConfirmContext";
+import ForcePasswordChange from "../../components/auth/ForcePasswordChange";
 import "./../../styles/mainIndex.css";
 import sfcLogo from "../../pictures/sfc-nobg-logo.png";
 
@@ -82,6 +83,7 @@ const ROLE_NAV = {
 
 function mainIndex() {
   const [currentUser, setCurrentUser] = useState({});
+  const [userLoaded, setUserLoaded] = useState(false);
   const [dark, setDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
@@ -116,6 +118,9 @@ function mainIndex() {
       })
       .catch((error) => {
         console.error("Failed to load current user:", error);
+      })
+      .finally(() => {
+        if (isMounted) setUserLoaded(true);
       });
 
     return () => {
@@ -137,6 +142,20 @@ function mainIndex() {
       .slice(0, 2)
       .join("")
       .toUpperCase() || "US";
+
+  if (!userLoaded) {
+    return null;
+  }
+
+  if (currentUser.must_reset_password) {
+    return (
+      <ForcePasswordChange
+        onChanged={() =>
+          setCurrentUser((prev) => ({ ...prev, must_reset_password: false }))
+        }
+      />
+    );
+  }
 
   return (
     <div className="shell">

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, AuditLog, BackupRecord, TerminalPrice
@@ -18,14 +19,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'first_name', 'middle_name', 'last_name',
-            'role', 'is_active', 'password',
+            'role', 'is_active', 'must_reset_password',
         ]
         extra_kwargs = {
-            'password': {'write_only': True, 'required': False},
+            'must_reset_password': {'read_only': True},
         }
 
     def create(self, validated_data):
-        password = validated_data.pop('password', None)
         user = User(
             username=validated_data['username'],
             first_name=validated_data.get('first_name', ''),
@@ -33,20 +33,14 @@ class UserSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', ''),
             role=validated_data.get('role', 'PERSONNEL'),
             is_active=validated_data.get('is_active', True),
+            must_reset_password=True,
         )
-        if password:
-            user.set_password(password)
+        raw_password = get_random_string(12)
+        user.set_password(raw_password)
         user.save()
+        # Transient attribute, not persisted — read by the view to send the welcome email.
+        user._generated_password = raw_password
         return user
-
-    def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        if password:
-            instance.set_password(password)
-        instance.save()
-        return instance
 
 
 class DriverSerializer(serializers.ModelSerializer):

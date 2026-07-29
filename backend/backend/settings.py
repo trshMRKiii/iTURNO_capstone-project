@@ -10,11 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -161,16 +165,17 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # Email (Google SMTP)
-# Fill in EMAIL_HOST_USER / EMAIL_HOST_PASSWORD yourself.
-# Use a Gmail "App Password" (not your normal Google account password) —
-# https://myaccount.google.com/apppasswords
+# EMAIL_HOST_USER / EMAIL_HOST_PASSWORD / DEFAULT_FROM_EMAIL come from backend/.env
+# (see backend/.env.example). Use a Gmail "App Password" (not your normal Google
+# account password) — https://myaccount.google.com/apppasswords
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'fckyouhackers@gmail.com'
-EMAIL_HOST_PASSWORD = 'ofiv jzdo moiz xmwh'
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # Base URL of the frontend app, used to build the password-reset link sent by email
 FRONTEND_URL = 'http://localhost:5173'

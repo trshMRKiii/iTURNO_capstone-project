@@ -1,128 +1,83 @@
-import { DataTable } from "../../../components/ui/dataTable";
 import { useState } from "react";
+import { DataTable } from "../../../components/ui/dataTable";
+import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
-import { exportCSV } from "../reportHook";
-import { exportTablePDF } from "../exportPDF";
+import { formatTime } from "../reportHook";
 
 const LOG_COLUMNS = ["Timestamp", "Ticket ID", "Action", "Driver", "Vehicle", "Route", "User"];
 const ROAMING_COLUMNS = ["Ticket ID", "Time", "Vehicle", "Driver", "Issued By", "Verified"];
 
-const formatTime = (dateString) => {
-  try {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "N/A";
-  }
-};
-
 export default function TransactionLogs({
-  filteredLogs,
+  logsData,
+  logsMeta,
+  onLogsFetchPage,
+  onExportLogsCSV,
+  onExportLogsPDF,
+  roamingData,
+  roamingMeta,
+  onRoamingFetchPage,
+  onExportRoamingCSV,
+  onExportRoamingPDF,
   STATUS_COLORS,
-  roaming = [],
+  pageSize,
 }) {
   const [activeTab, setActiveTab] = useState("logs");
   const [search, setSearch] = useState("");
+
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState("");
-
-  const searchedLogs = filteredLogs.filter((l) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return [l.timestamp, l.ticket_id, l.action, l.driver, l.vehicle, l.route, l.user]
-      .some((v) => v && String(v).toLowerCase().includes(q));
-  });
-
-  const searchedRoaming = roaming.filter((t) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return [t.id, t.vehicle?.plate_number, t.driver?.name, t.active_user_name]
-      .some((v) => v && String(v).toLowerCase().includes(q));
-  });
+  const [modalPage, setModalPage] = useState(1);
+  const [modalData, setModalData] = useState([]);
+  const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
 
   const isLogs = activeTab === "logs";
-  const searched = isLogs ? searchedLogs : searchedRoaming;
-  const preview = searched.slice(0, 5);
+  const data = isLogs ? logsData : roamingData;
+  const meta = isLogs ? logsMeta : roamingMeta;
+  const fetchPage = isLogs ? onLogsFetchPage : onRoamingFetchPage;
 
-  const handleExportLogsCSV = () =>
-    exportCSV(
-      searchedLogs.map((l) => ({
-        Timestamp: l.timestamp,
-        "Ticket ID": l.ticket_id,
-        Action: l.action,
-        Driver: l.driver,
-        Vehicle: l.vehicle,
-        Route: l.route,
-        "Amount (PHP)": l.amount,
-        User: l.user,
-      })),
-      `transaction_logs_${Date.now()}.csv`,
-    );
-
-  const handleExportRoamingCSV = () =>
-    exportCSV(
-      searchedRoaming.map((t) => ({
-        "Ticket ID": t.id,
-        Time: formatTime(t.issued_at),
-        Vehicle: t.vehicle?.plate_number || "",
-        Driver: t.driver?.name || "",
-        "Issued By": t.active_user_name || "",
-        Verified: t.status === "CANCELLED" ? "Cancelled" : t.is_verified ? "Verified" : "Pending",
-      })),
-      `roaming_logs_${Date.now()}.csv`,
-    );
-
-  const handleExportLogsPDF = () =>
-    exportTablePDF(
-      searchedLogs.map((l) => ({
-        Timestamp: l.timestamp,
-        "Ticket ID": l.ticket_id,
-        Action: l.action,
-        Driver: l.driver,
-        Vehicle: l.vehicle,
-        Route: l.route,
-        "Amount (PHP)": l.amount,
-        User: l.user,
-      })),
-      "Transaction Logs",
-    );
-
-  const handleExportRoamingPDF = () =>
-    exportTablePDF(
-      searchedRoaming.map((t) => ({
-        "Ticket ID": t.id,
-        Time: formatTime(t.issued_at),
-        Vehicle: t.vehicle?.plate_number || "",
-        Driver: t.driver?.name || "",
-        "Issued By": t.active_user_name || "",
-        Verified: t.status === "CANCELLED" ? "Cancelled" : t.is_verified ? "Verified" : "Pending",
-      })),
-      "Roaming Logs",
-    );
-
-  const modalSearchedLogs = searchedLogs.filter((l) => {
-    if (!modalSearch) return true;
-    const q = modalSearch.toLowerCase();
+  const matchesLog = (l, query) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
     return [l.timestamp, l.ticket_id, l.action, l.driver, l.vehicle, l.route, l.user]
       .some((v) => v && String(v).toLowerCase().includes(q));
-  });
+  };
 
-  const modalSearchedRoaming = searchedRoaming.filter((t) => {
-    if (!modalSearch) return true;
-    const q = modalSearch.toLowerCase();
+  const matchesRoaming = (t, query) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
     return [t.id, t.vehicle?.plate_number, t.driver?.name, t.active_user_name]
       .some((v) => v && String(v).toLowerCase().includes(q));
-  });
+  };
 
-  const modalData = isLogs ? modalSearchedLogs : modalSearchedRoaming;
+  const matches = isLogs ? matchesLog : matchesRoaming;
+  const searched = data.filter((row) => matches(row, search));
+  const modalSearched = modalData.filter((row) => matches(row, modalSearch));
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearch("");
-    setModalSearch("");
     setShowModal(false);
+  };
+
+  const openModal = async () => {
+    setShowModal(true);
+    setModalSearch("");
+    const page = await fetchPage(1);
+    setModalPage(page.page);
+    setModalData(page.results);
+    setModalMeta({ count: page.count, totalPages: page.totalPages });
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setModalSearch("");
+  };
+
+  const changeModalPage = async (page) => {
+    const result = await fetchPage(page);
+    setModalPage(result.page);
+    setModalData(result.results);
+    setModalMeta({ count: result.count, totalPages: result.totalPages });
   };
 
   const renderLogRow = (l, idx, { rowClass, cellClass }) => (
@@ -174,6 +129,9 @@ export default function TransactionLogs({
     </tr>
   );
 
+  const columns = isLogs ? LOG_COLUMNS : ROAMING_COLUMNS;
+  const rowRenderer = isLogs ? renderLogRow : renderRoamingRow;
+
   return (
     <div className="rpt-card rpt-section">
       <div className="rpt-card-header">
@@ -193,28 +151,25 @@ export default function TransactionLogs({
             </button>
           </div>
           <span className="rpt-record-count">
-            {preview.length} of {searched.length} records
+            {searched.length} of {meta.count} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
           <input
             type="text"
             className="rpt-search-input"
-            placeholder={isLogs ? "Search logs…" : "Search roaming…"}
+            placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {searched.length > 5 && (
-            <button
-              className="rpt-btn rpt-btn--secondary"
-              onClick={() => setShowModal(true)}
-            >
+          {meta.count > pageSize && (
+            <button className="rpt-btn rpt-btn--secondary" onClick={openModal}>
               View All
             </button>
           )}
           <button
             className="rpt-btn-export rpt-btn-export--green"
-            onClick={isLogs ? handleExportLogsCSV : handleExportRoamingCSV}
+            onClick={isLogs ? onExportLogsCSV : onExportRoamingCSV}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -225,7 +180,7 @@ export default function TransactionLogs({
           </button>
           <button
             className="rpt-btn-export rpt-btn-export--red"
-            onClick={isLogs ? handleExportLogsPDF : handleExportRoamingPDF}
+            onClick={isLogs ? onExportLogsPDF : onExportRoamingPDF}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -236,27 +191,26 @@ export default function TransactionLogs({
         </div>
       </div>
 
-      {isLogs ? (
-        <DataTable columns={LOG_COLUMNS} data={preview} rowRenderer={renderLogRow} />
-      ) : (
-        <DataTable columns={ROAMING_COLUMNS} data={preview} rowRenderer={renderRoamingRow} />
-      )}
+      <DataTable columns={columns} data={searched} rowRenderer={rowRenderer} />
 
       {showModal && (
         <ReportTableModal
           title={isLogs ? "Transaction Logs" : "Roaming Logs"}
           subtitle={isLogs ? "Full ticket activity history" : "Full roaming vehicle activity history"}
-          count={modalData.length}
-          onClose={() => { setShowModal(false); setModalSearch(""); }}
+          count={modalMeta.count}
+          onClose={closeModal}
           searchValue={modalSearch}
           onSearchChange={setModalSearch}
           searchPlaceholder={isLogs ? "Search logs…" : "Search roaming…"}
         >
-          {isLogs ? (
-            <DataTable columns={LOG_COLUMNS} data={modalData} rowRenderer={renderLogRow} />
-          ) : (
-            <DataTable columns={ROAMING_COLUMNS} data={modalData} rowRenderer={renderRoamingRow} />
-          )}
+          <DataTable columns={columns} data={modalSearched} rowRenderer={rowRenderer} />
+          <Pager
+            page={modalPage}
+            totalPages={modalMeta.totalPages}
+            count={modalMeta.count}
+            pageSize={pageSize}
+            onPageChange={changeModalPage}
+          />
         </ReportTableModal>
       )}
     </div>
