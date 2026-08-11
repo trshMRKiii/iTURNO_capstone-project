@@ -10,10 +10,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
+        migrations.AddIndex(
             model_name='vehicle',
-            new_name='api_vehicle_route_i_33d88b_idx',
-            old_name='api_vehicle_route_21f689_idx',
+            index=models.Index(fields=['route', 'is_archived'], name='api_vehicle_route_i_33d88b_idx'),
         ),
         migrations.AddField(
             model_name='ticket',
