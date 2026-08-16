@@ -5,6 +5,7 @@ import PublicView from "./pages/PublicView";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import MobileScan from "./app/mobile/MobileScan";
+import RemoteDashboard from "./pages/RemoteDashboard";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard/*" element={<MainIndex />} />
         <Route path="/mobile-scan" element={<MobileScan />} />
+        <Route path="/remote-dashboard" element={<RemoteDashboard />} />
       </Routes>
     </Router>
 

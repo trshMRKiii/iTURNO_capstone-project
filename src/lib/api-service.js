@@ -2,8 +2,16 @@
  * API Service - Centralized API request handling with error logging
  */
 
-const API_BASE_URL =
-  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+// Set VITE_API_MODE=remote in the Vercel project's env vars. Locally/on the
+// LAN this is unset, so nothing here changes from before — this only
+// affects the deployed Vercel build, which can't reach the LAN Django
+// backend and instead talks to the /api/remote/* serverless functions
+// (same origin, no CORS needed) — see api/remote/ and api/_lib/.
+export const IS_REMOTE = import.meta.env.VITE_API_MODE === "remote";
+
+const API_BASE_URL = IS_REMOTE
+  ? "/api/remote"
+  : window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000/api"
     : `http://${window.location.hostname}:8000/api`;
 // Backend stays HTTP — only frontend needs HTTPS for camera access
@@ -120,7 +128,8 @@ export const apiService = {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/token/refresh/`, {
+      const refreshUrl = IS_REMOTE ? `${API_BASE_URL}/token-refresh` : `${API_BASE_URL}/token/refresh/`;
+      const response = await fetch(refreshUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh }),
@@ -441,7 +450,10 @@ export const handleLogin = async (
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/token/`, {
+    const tokenUrl = IS_REMOTE ? `${API_BASE_URL}/token` : `${API_BASE_URL}/token/`;
+    const currentUserUrl = IS_REMOTE ? `${API_BASE_URL}/current-user` : `${API_BASE_URL}/current-user/`;
+
+    const response = await fetch(tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -457,7 +469,7 @@ export const handleLogin = async (
 
     // Fetch current user to personalise welcome toast
     try {
-      const userRes = await fetch(`${API_BASE_URL}/current-user/`, {
+      const userRes = await fetch(currentUserUrl, {
         headers: { Authorization: `Bearer ${data.access}` },
       });
       if (userRes.ok) {
@@ -473,8 +485,10 @@ export const handleLogin = async (
       if (showToast) showToast("Welcome back!", "success");
     }
 
-    // ✅ Redirect to dashboard after successful login
-    navigate("/dashboard");
+    // Remote (Vercel) only has the lightweight remote dashboard wired up so
+    // far — the full LAN dashboard expects endpoints that only exist on the
+    // Django API. See RemoteDashboard.jsx.
+    navigate(IS_REMOTE ? "/remote-dashboard" : "/dashboard");
   } catch (err) {
     setError(err.message);
   }
