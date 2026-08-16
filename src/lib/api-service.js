@@ -22,26 +22,32 @@ export const API_BASE_URL = IS_REMOTE
 // hooks (queue, dispatch, vehicle, driver, remittance, requisition, etc.)
 // needed to change to work remotely. Order matters: prefix matches (ending
 // in "*") are checked after exact matches.
+// Remote endpoints are grouped into 5 functions, not 1-per-resource — a
+// deployment on Vercel's Hobby plan is capped at 12 Serverless Functions
+// total, so api/remote/{auth,resource,reports,settings,registry} each use
+// a Vercel dynamic-route file ([x].js) internally dispatching by URL
+// segment instead of being separate files. See api/remote/auth/[action].js
+// for the full explanation.
 const REMOTE_GET_MAP = {
   "/vehicles/": "/resource/vehicles",
   "/drivers/": "/resource/drivers",
   "/tickets/": "/resource/tickets",
-  "/routes/": "/routes",
-  "/users/": "/users",
-  "/puvtypes/": "/puv-types",
-  "/ticket-forms/": "/ticket-forms",
+  "/routes/": "/settings/routes",
+  "/users/": "/settings/users",
+  "/puvtypes/": "/settings/puv-types",
+  "/ticket-forms/": "/settings/ticket-forms",
   "/roaming-logs/": "/resource/roaming-logs",
   "/audit-logs/": "/resource/audit-logs",
   "/requisitions/": "/resource/requisitions",
   "/ticket-series/": "/resource/ticket-series",
-  "/settings/terminal-price/": "/terminal-price",
+  "/settings/terminal-price/": "/settings/terminal-price",
   "/report/remittance/": "/resource/remittance-batches",
-  "/report/summary/": "/report-summary",
-  "/report/collections/": "/report-collections",
-  "/report/chart/": "/report-chart",
-  "/report/eod-reconciliation/": "/eod-reconciliation",
-  "/dashboard/stats/": "/dashboard-stats",
-  "/current-user/": "/current-user",
+  "/report/summary/": "/reports/summary",
+  "/report/collections/": "/reports/collections",
+  "/report/chart/": "/reports/chart",
+  "/report/eod-reconciliation/": "/reports/eod-reconciliation",
+  "/dashboard/stats/": "/reports/dashboard-stats",
+  "/current-user/": "/auth/current-user",
 };
 
 // Everything writable remotely, and which HTTP methods are actually
@@ -49,15 +55,15 @@ const REMOTE_GET_MAP = {
 // CAN_EDIT_SETTINGS in api/_lib/auth.js), this table just avoids even
 // attempting a call that's guaranteed to be rejected (e.g. createVehicle,
 // which isn't allowed remotely — only editing an existing vehicle's
-// registry fields is; see api/remote/vehicles.js).
+// registry fields is; see api/remote/registry/[resource].js).
 const REMOTE_WRITABLE = [
-  { prefix: "/routes/", remote: "/routes", methods: ["POST", "PATCH", "PUT", "DELETE"] },
-  { prefix: "/users/", remote: "/users", methods: ["POST", "PATCH", "PUT", "DELETE"] },
-  { prefix: "/puvtypes/", remote: "/puv-types", methods: ["POST", "PATCH", "PUT", "DELETE"] },
-  { prefix: "/ticket-forms/", remote: "/ticket-forms", methods: ["POST", "PATCH", "PUT", "DELETE"] },
-  { prefix: "/settings/terminal-price/", remote: "/terminal-price", methods: ["PATCH", "PUT"], singleton: true },
-  { prefix: "/vehicles/", remote: "/vehicles", methods: ["PATCH", "PUT"] },
-  { prefix: "/drivers/", remote: "/drivers", methods: ["PATCH", "PUT"] },
+  { prefix: "/routes/", remote: "/settings/routes", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/users/", remote: "/settings/users", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/puvtypes/", remote: "/settings/puv-types", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/ticket-forms/", remote: "/settings/ticket-forms", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/settings/terminal-price/", remote: "/settings/terminal-price", methods: ["PATCH", "PUT"], singleton: true },
+  { prefix: "/vehicles/", remote: "/registry/vehicles", methods: ["PATCH", "PUT"] },
+  { prefix: "/drivers/", remote: "/registry/drivers", methods: ["PATCH", "PUT"] },
 ];
 
 // Exported for the few places that build fetch() URLs directly instead of
@@ -207,7 +213,7 @@ export const apiService = {
     }
 
     try {
-      const refreshUrl = IS_REMOTE ? `${API_BASE_URL}/token-refresh` : `${API_BASE_URL}/token/refresh/`;
+      const refreshUrl = IS_REMOTE ? `${API_BASE_URL}/auth/token-refresh` : `${API_BASE_URL}/token/refresh/`;
       const response = await fetch(refreshUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -529,8 +535,8 @@ export const handleLogin = async (
   }
 
   try {
-    const tokenUrl = IS_REMOTE ? `${API_BASE_URL}/token` : `${API_BASE_URL}/token/`;
-    const currentUserUrl = IS_REMOTE ? `${API_BASE_URL}/current-user` : `${API_BASE_URL}/current-user/`;
+    const tokenUrl = IS_REMOTE ? `${API_BASE_URL}/auth/token` : `${API_BASE_URL}/token/`;
+    const currentUserUrl = IS_REMOTE ? `${API_BASE_URL}/auth/current-user` : `${API_BASE_URL}/current-user/`;
 
     const response = await fetch(tokenUrl, {
       method: "POST",
