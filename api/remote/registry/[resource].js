@@ -51,19 +51,21 @@ export default async function handler(req, res) {
     return;
   }
 
-  const requested = Object.keys(req.body || {});
-  const disallowed = requested.filter((f) => !resource.editableFields.includes(f));
-  if (disallowed.length) {
-    res.status(403).json({
-      detail: `These fields can't be edited remotely (LAN-only, live operational state): ${disallowed.join(", ")}`,
-    });
+  // The LAN edit forms always submit the whole record (status, is_archived,
+  // etc. included) even when only e.g. contact changed — rejecting the
+  // request outright just because a LAN-only field is *present* would block
+  // every remote edit through this form, not just attempts to actually
+  // change status/active_driver. So: silently keep only the allowed fields
+  // rather than erroring on the disallowed ones being present.
+  const updates = {};
+  for (const f of resource.editableFields) if (f in (req.body || {})) updates[f] = req.body[f];
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ detail: "No editable fields were submitted" });
     return;
   }
 
   try {
-    const updates = {};
-    for (const f of resource.editableFields) if (f in (req.body || {})) updates[f] = req.body[f];
-
     const { data, error } = await supabaseAdmin().from(resource.table).update(updates).eq("id", id).select().single();
     if (error) throw error;
     res.status(200).json(data);
