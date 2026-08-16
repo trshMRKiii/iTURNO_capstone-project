@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { useRequisition } from "../../../lib/requisition/useRequisition";
-import RequisitionFormModal from "../../../lib/requisition/RequisitionFormModal";
+import { useRequisition } from "./useRequisition";
+import RequisitionFormModal from "./RequisitionFormModal";
 import "../../../styles/requisition.css";
 
 function formatCurrency(val) {

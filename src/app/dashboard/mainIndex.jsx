@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useLocation } from "react-router-dom";
 import Dashboard from "./Dashboard";
 import Dispatch from "./dispatch/dispatch";
 import Requisition from "./requisition/requisition"
-import Ticket from "./ticket/ticket";
+import Queue from "./queue/queue";
 import Collections from "./collection/collection";
 import Remittance from "./remittance/remittance"
 import Registry from "./registry/registry";
@@ -18,7 +18,7 @@ import {
   ReportIcon,
   RequisitionIcon,
   SettingsIcon,
-  TicketIcon,
+  QueueIcon,
   UserIcon,
   VehicleIcon,
 } from "../../components/ui/NavIcon";
@@ -31,7 +31,7 @@ import sfcLogo from "../../pictures/sfc-nobg-logo.png";
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", Icon: DashboardIcon },
   { to: "/dashboard/Requisition", label: "Ticket Requisition", Icon: RequisitionIcon },
-  { to: "/dashboard/Ticket", label: "Ticket Issuance", Icon: TicketIcon },
+  { to: "/dashboard/Queue", label: "Queue Management", Icon: QueueIcon },
   { to: "/dashboard/Dispatch", label: "Dispatch", Icon: DispatchIcon },
   { to: "/dashboard/Collections", label: "Transaction", Icon: CollectionsIcon },
   { to: "/dashboard/Remittance", label: "Remittance", Icon: RemittanceIcon },
@@ -41,11 +41,18 @@ const NAV_ITEMS = [
   { to: "/dashboard/Settings", label: "Settings", Icon: SettingsIcon },
 ];
 
+const ROLE_LABELS = {
+  SUPERADMIN: "Admin",
+  MANAGER: "Manager",
+  SUPERVISOR: "Supervisor",
+  PERSONNEL: "Personnel",
+};
+
 const ROLE_NAV = {
   SUPERADMIN: [
     "/dashboard",
     "/dashboard/Requisition",
-    "/dashboard/Ticket",
+    "/dashboard/Queue",
     "/dashboard/Dispatch",
     "/dashboard/Collections",
     "/dashboard/Remittance",
@@ -65,17 +72,18 @@ const ROLE_NAV = {
   SUPERVISOR: [
     "/dashboard",
     "/dashboard/Requisition",
-    "/dashboard/Ticket",
+    "/dashboard/Queue",
     "/dashboard/Dispatch",
     "/dashboard/Collections",
     "/dashboard/Remittance",
     "/dashboard/Registry",
+    "/dashboard/StaffRegistry",
     "/dashboard/Reports",
     "/dashboard/Settings",
   ],
   PERSONNEL: [
     "/dashboard",
-    "/dashboard/Ticket",
+    "/dashboard/Queue",
     "/dashboard/Dispatch",
     "/dashboard/Reports",
   ],
@@ -134,6 +142,7 @@ function mainIndex() {
       : currentUser.username || "Unknown User";
 
   const userRole = currentUser.role || "Unknown Role";
+  const userRoleLabel = ROLE_LABELS[userRole] || userRole;
   const userInitials =
     userName
       .split(" ")
@@ -246,7 +255,7 @@ function mainIndex() {
           <div className="sidebar-avatar">{userInitials}</div>
           <div className="sidebar-user-info">
             <div className="sidebar-user-name">{userName}</div>
-            <div className="sidebar-user-role">{userRole}</div>
+            <div className="sidebar-user-role">{userRoleLabel}</div>
           </div>
 
           {/* Theme toggle */}
@@ -324,7 +333,7 @@ function mainIndex() {
           <Route index element={<Dashboard />} />
           <Route path="Dashboard" element={<Dashboard />} />
           <Route path="Requisition" element={<Requisition />} />
-          <Route path="Ticket" element={<Ticket userRole={userRole} />} />
+          <Route path="Queue" element={<Queue userRole={userRole} />} />
           <Route path="Dispatch" element={<Dispatch />} />
           <Route
             path="Collections"
@@ -335,7 +344,10 @@ function mainIndex() {
             element={<Remittance />}
           />
           <Route path="Registry" element={<Registry />} />
-          <Route path="StaffRegistry" element={<StaffRegistry />} />
+          <Route
+            path="StaffRegistry"
+            element={<StaffRegistry userRole={userRole} />}
+          />
           <Route path="Reports" element={<Reports />} />
           <Route path="Settings" element={<Settings />} />
         </Routes>

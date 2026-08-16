@@ -45,7 +45,7 @@ export function DispatchIcon({ className }) {
   );
 }
 
-export function TicketIcon({ className }) {
+export function QueueIcon({ className }) {
   return (
     <>
       <svg
@@ -58,12 +58,14 @@ export function TicketIcon({ className }) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="lucide lucide-ticket mr-3 h-5 w-5 flex-shrink-0 text-muted-foreground group-hover:text-foreground"
+        className="lucide lucide-list-ordered mr-3 h-5 w-5 flex-shrink-0 text-muted-foreground group-hover:text-foreground"
       >
-        <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
-        <path d="M13 5v2"></path>
-        <path d="M13 17v2"></path>
-        <path d="M13 11v2"></path>
+        <line x1="10" x2="21" y1="6" y2="6"></line>
+        <line x1="10" x2="21" y1="12" y2="12"></line>
+        <line x1="10" x2="21" y1="18" y2="18"></line>
+        <path d="M4 6h1v4"></path>
+        <path d="M4 10h2"></path>
+        <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
       </svg>
     </>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { apiService } from "../api-service";
+import { apiService } from "../../../lib/api-service";
 
 const MAX_RECORDS = 20;
 

@@ -86,8 +86,16 @@ export const apiService = {
 
       if (!response.ok) {
         console.error(`[API] Error Response:`, data);
+        // DRF field-validation errors come back as { field: ["message"] } rather
+        // than { detail: "message" } — surface the first field message as plain
+        // text instead of dumping raw JSON in front of the user.
+        let message = data?.detail;
+        if (!message && data && typeof data === "object") {
+          const firstValue = Object.values(data)[0];
+          message = Array.isArray(firstValue) ? firstValue[0] : firstValue;
+        }
         const error = new Error(
-          data.detail ||
+          message ||
             JSON.stringify(data) ||
             `HTTP ${response.status}: ${response.statusText}`,
         );
@@ -414,7 +422,7 @@ const roleLabel = (role) => {
     case "PERSONNEL":
       return "Personnel";
     default:
-      return "Super Admin";
+      return "Admin";
   }
 };
 

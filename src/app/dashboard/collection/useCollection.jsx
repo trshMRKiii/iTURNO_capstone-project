@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { apiService } from "../api-service";
+import { apiService } from "../../../lib/api-service";
 
 export function useCollection(userRole) {
   const [tickets, setTickets] = useState([]);

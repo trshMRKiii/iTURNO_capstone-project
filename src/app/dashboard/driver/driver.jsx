@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { useDriver } from "../../../lib/useDriver";
-import { usePhilippineAddress } from "../../../lib/address/usePhilippineAddress";
-import { getDriverCode, getDriverDisplayName } from "../../../lib/driver-utils";
+import { useDriver } from "./useDriver";
+import { usePhilippineAddress } from "./usePhilippineAddress";
+import { getDriverCode, getDriverDisplayName } from "./driver-utils";
 import { useToast } from "../../../components/ui/ToastConfirmContext";
 import "../../../styles/Driver.css";
 

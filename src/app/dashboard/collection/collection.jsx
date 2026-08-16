@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import {
   useCollection,
   formatTime,
-} from "../../../lib/collection/useCollection";
-import { getTicketDisplayId } from "../../../lib/useTicket";
+} from "./useCollection";
+import { getTicketDisplayId } from "../queue/useQueue";
 import "../../../styles/Collection.css";
 
 function Collection({ userRole }) {

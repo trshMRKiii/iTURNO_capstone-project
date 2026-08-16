@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
-import CreateBatchForm from "../../../lib/remittance/createRemittance";
-import ViewRemittance from "../../../lib/remittance/viewRemittance";
-import { useRemittance } from "../../../lib/remittance/useRemittance";
+import CreateBatchForm from "./createRemittance";
+import ViewRemittance from "./viewRemittance";
+import { useRemittance } from "./useRemittance";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { apiService } from "../../../lib/api-service";
-import { today } from "../../../lib/report/reportHook";
-import EodReconciliation from "../../../lib/report/tables/EodReconciliation";
+import { today } from "../report/reportHook";
+import EodReconciliation from "../report/tables/EodReconciliation";
 import "../../../styles/Remittance.css";
 import "../../../styles/Report.css";
 

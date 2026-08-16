@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -59,6 +59,15 @@ class AuditLogMixin:
         instance.delete()
 
 
+class IsSuperAdminOrReadOnly(BasePermission):
+    """Any authenticated user may view the staff registry; only Admins may create/update/delete accounts."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'SUPERADMIN')
+
+
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -70,6 +79,7 @@ class CurrentUserView(APIView):
 class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsSuperAdminOrReadOnly]
 
     def perform_create(self, serializer):
         instance = super().perform_create(serializer)
@@ -159,11 +169,18 @@ def _consume_series_fifo(ticket_form_id, quantity):
     reference it (start_no/end_no are the original allotted range and must stay
     fixed, or the "remaining" count computed elsewhere would double-subtract).
 
+    Locks the TicketSeries rows for this denomination (must be called inside
+    transaction.atomic()) so two concurrent dispatches drawing from the same
+    denomination — even for different vehicles/routes — serialize instead of
+    both reading the same "remaining" count and handing out the same physical
+    ticket number twice.
+
     Returns a list of (series, ticket_id) pairs of length `quantity`.
     Raises ValidationError if stock runs out.
     """
     series_list = list(
-        TicketSeries.objects.filter(ticket_form_id=ticket_form_id).order_by('requisition_id', 'id')
+        TicketSeries.objects.select_for_update()
+        .filter(ticket_form_id=ticket_form_id).order_by('requisition_id', 'id')
     )
     already_issued = {
         s.id: s.tickets.count() for s in series_list

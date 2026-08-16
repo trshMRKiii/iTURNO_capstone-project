@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DataTable } from "../../../components/ui/dataTable";
+import { DataTable } from "../../../../components/ui/dataTable";
 import { peso } from "../reportHook";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";

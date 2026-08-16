@@ -7,7 +7,7 @@ import {
   DispatchIcon,
   DriverIcon,
   ReportIcon,
-  TicketIcon,
+  QueueIcon,
   UserIcon,
   VehicleIcon,
 } from "./NavIcon";
@@ -25,9 +25,9 @@ function Navbar() {
         Dispatch
       </Link>
 
-      <Link to="/Ticket" className={navLinkActive}>
-        <TicketIcon className={`${iconBase} text-white`} />
-        Tickets
+      <Link to="/Queue" className={navLinkActive}>
+        <QueueIcon className={`${iconBase} text-white`} />
+        Queue
       </Link>
 
       <Link to="/Collections" className={navLinkActive}>

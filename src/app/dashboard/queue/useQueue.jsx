@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
-import { apiService } from "./api-service";
-import { useTerminalPrice } from "./useTerminalPrice";
+import { apiService } from "../../../lib/api-service";
+import { useTerminalPrice } from "../../../lib/useTerminalPrice";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 export const statusColor = {
-  ISSUED: "ticket-status--issued",
-  DISPATCHED: "ticket-status--dispatched",
-  COLLECTED: "ticket-status--collected",
-  CANCELLED: "ticket-status--cancelled",
-  RETURNED: "ticket-status--returned",
+  ISSUED: "queue-status--issued",
+  DISPATCHED: "queue-status--dispatched",
+  COLLECTED: "queue-status--collected",
+  CANCELLED: "queue-status--cancelled",
+  RETURNED: "queue-status--returned",
 };
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ export const formatTime = (dateString) => {
 };
 
 // ─── Custom Hook ──────────────────────────────────────────────────────────────
-export function useTicket(userRole = "") {
+export function useQueue(userRole = "") {
   const [tickets, setTickets] = useState([]);
   const [filteredTickets, setFilteredTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");

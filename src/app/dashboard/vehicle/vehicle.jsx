@@ -7,8 +7,8 @@ import {
   DESTINATION,
   formatPlateNumber,
   buildDriverAddress,
-} from "../../../lib/vehicle/vehicleHook";
-import VehicleModal from "../../../lib/vehicle/vehicleModal";
+} from "./vehicleHook";
+import VehicleModal from "./vehicleModal";
 
 import React, { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";

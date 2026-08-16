@@ -1,4 +1,4 @@
-import { DataTable } from "../../../components/ui/dataTable";
+import { DataTable } from "../../../../components/ui/dataTable";
 import { useState } from "react";
 
 export default function RoamingRecords({

@@ -15,7 +15,7 @@ class User(AbstractUser):
         verbose_name='email address',
     )
 
-    ROLE_CHOICES = [('PERSONNEL', 'Personnel'), ('SUPERVISOR', 'Supervisor'), ('MANAGER', 'Manager'), ('SUPERADMIN', 'Super Admin')]
+    ROLE_CHOICES = [('PERSONNEL', 'Personnel'), ('SUPERVISOR', 'Supervisor'), ('MANAGER', 'Manager'), ('SUPERADMIN', 'Admin')]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='PERSONNEL')
     middle_name = models.CharField(max_length=100, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)

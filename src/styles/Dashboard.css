@@ -115,6 +115,35 @@
   padding: 6px 8px;
 }
 
+.dashboard-scan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+
+.dashboard-scan-btn:hover {
+  background: var(--navy-hover, #1a2744);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.dark .dashboard-scan-btn {
+  background: var(--gold);
+  color: #1a1a2e;
+}
+
+.dark .dashboard-scan-btn:hover {
+  background: var(--gold-hover, #d4af37);
+}
+
 .dashboard-date-filter input[type="date"]:focus {
   outline: none;
   border-color: var(--gold);

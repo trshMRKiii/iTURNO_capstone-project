@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { useTicket, formatTime, getTicketDisplayId } from "../../../lib/useTicket";
-import "../../../styles/Ticket.css";
+import { useQueue, formatTime, getTicketDisplayId } from "./useQueue";
+import "../../../styles/Queue.css";
 import {
   HistoryIcon,
   RouteIcon,
   IssueTicketIcon,
   SearchIcon,
   EmptyStateIcon,
-} from "../../../lib/ticket/ticketIcon";
+} from "./queueIcon";
 
-function Ticket({ userRole }) {
+function Queue({ userRole }) {
   const {
     filteredTickets,
     searchTerm,
@@ -43,7 +43,7 @@ function Ticket({ userRole }) {
     selectVehicleById,
     handleDriverChange,
     handleIssueTicket,
-  } = useTicket(userRole);
+  } = useQueue(userRole);
 
   const [activeTab, setActiveTab] = useState("tickets");
   const [vehicleSearch, setVehicleSearch] = useState("");
@@ -104,30 +104,30 @@ function Ticket({ userRole }) {
           : cancelledTickets;
 
   return (
-    <div className="ticket-page">
+    <div className="queue-page">
       {/* ── Page Header ── */}
-      <div className="ticket-header">
-        <div className="ticket-header-left">
-          <div className="ticket-header-accent" />
+      <div className="queue-header">
+        <div className="queue-header-left">
+          <div className="queue-header-accent" />
           <div>
-            <h1 className="ticket-title">Ticket Issuance</h1>
-            <p className="ticket-subtitle">
-              Issue and monitor trip dispatch tickets
+            <h1 className="queue-title">Queue Management</h1>
+            <p className="queue-subtitle">
+              Check vehicles into the queue and issue roaming tickets
             </p>
           </div>
         </div>
       </div>
 
       {/* ── Single Column Layout ── */}
-      <div className="ticket-single-col">
+      <div className="queue-single-col">
         {/* Issue New Ticket Card */}
-        <div className="ticket-card">
-          <div className="ticket-card-header ticket-card-header--color">
+        <div className="queue-card">
+          <div className="queue-card-header queue-card-header--color">
             <div>
-              <span className="ticket-card-title">
+              <span className="queue-card-title">
                 {issuanceType === "ROAM" ? "Issue New Ticket" : "Check In Vehicle"}
               </span>
-              <p className="ticket-card-desc">
+              <p className="queue-card-desc">
                 {issuanceType === "ROAM"
                   ? "Only available vehicles and active drivers may be selected."
                   : "Only available vehicles and active drivers may be selected. Denomination and quantity are chosen at Dispatch."}
@@ -135,13 +135,13 @@ function Ticket({ userRole }) {
             </div>
           </div>
 
-          <div className="ticket-card-body">
+          <div className="queue-card-body">
             {/* Issuance type radio group */}
-            <div className="ticket-field">
-              <label className="ticket-label">Issuance Type</label>
-              <div className="ticket-type-toggle" role="radiogroup" aria-label="Issuance Type">
+            <div className="queue-field">
+              <label className="queue-label">Issuance Type</label>
+              <div className="queue-type-toggle" role="radiogroup" aria-label="Issuance Type">
                 <label
-                  className={`ticket-type-option ${issuanceType === "QUEUE" ? "ticket-type-option--active" : ""}`}
+                  className={`queue-type-option ${issuanceType === "QUEUE" ? "queue-type-option--active" : ""}`}
                 >
                   <input
                     type="radio"
@@ -150,19 +150,19 @@ function Ticket({ userRole }) {
                     checked={issuanceType === "QUEUE"}
                     onChange={(e) => setIssuanceType(e.target.value)}
                   />
-                  <span className="ticket-type-option-icon">
+                  <span className="queue-type-option-icon">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
                     </svg>
                   </span>
-                  <span className="ticket-type-option-text">
-                    <span className="ticket-type-option-title">Queue</span>
-                    <span className="ticket-type-option-desc">Check in vehicle</span>
+                  <span className="queue-type-option-text">
+                    <span className="queue-type-option-title">Queue</span>
+                    <span className="queue-type-option-desc">Check in vehicle</span>
                   </span>
                 </label>
                 <label
-                  className={`ticket-type-option ${issuanceType === "ROAM" ? "ticket-type-option--active" : ""}`}
+                  className={`queue-type-option ${issuanceType === "ROAM" ? "queue-type-option--active" : ""}`}
                 >
                   <input
                     type="radio"
@@ -171,22 +171,22 @@ function Ticket({ userRole }) {
                     checked={issuanceType === "ROAM"}
                     onChange={(e) => setIssuanceType(e.target.value)}
                   />
-                  <span className="ticket-type-option-icon">
+                  <span className="queue-type-option-icon">
                     <RouteIcon />
                   </span>
-                  <span className="ticket-type-option-text">
-                    <span className="ticket-type-option-title">Roaming</span>
-                    <span className="ticket-type-option-desc">Issue ticket now</span>
+                  <span className="queue-type-option-text">
+                    <span className="queue-type-option-title">Roaming</span>
+                    <span className="queue-type-option-desc">Issue ticket now</span>
                   </span>
                 </label>
               </div>
             </div>
 
             {/* Route select */}
-            <div className="ticket-field">
-              <label className="ticket-label">Route</label>
+            <div className="queue-field">
+              <label className="queue-label">Route</label>
               <select
-                className="ticket-select"
+                className="queue-select"
                 value={selectedRouteId}
                 onChange={(e) => {
                   handleRouteChange(e);
@@ -203,12 +203,12 @@ function Ticket({ userRole }) {
             </div>
 
             {/* Vehicle search / select */}
-            <div className="ticket-field ticket-vehicle-combobox">
-              <label className="ticket-label">Vehicle (Plate Number)</label>
-              <div className="ticket-search-wrap">
-                <SearchIcon className="ticket-search-icon" />
+            <div className="queue-field queue-vehicle-combobox">
+              <label className="queue-label">Vehicle (Plate Number)</label>
+              <div className="queue-search-wrap">
+                <SearchIcon className="queue-search-icon" />
                 <input
-                  className="ticket-select ticket-vehicle-search-input"
+                  className="queue-select queue-vehicle-search-input"
                   placeholder="Search by plate number or route…"
                   value={vehicleSearch}
                   onChange={handleVehicleSearchChange}
@@ -219,21 +219,21 @@ function Ticket({ userRole }) {
                 />
               </div>
               {showVehicleDropdown && (
-                <div className="ticket-vehicle-dropdown">
+                <div className="queue-vehicle-dropdown">
                   {vehicleSearchResults.length === 0 ? (
-                    <div className="ticket-vehicle-dropdown-empty">
+                    <div className="queue-vehicle-dropdown-empty">
                       No matching vehicles
                     </div>
                   ) : (
                     vehicleSearchResults.map((v) => (
                       <div
                         key={v.id}
-                        className="ticket-vehicle-dropdown-item"
+                        className="queue-vehicle-dropdown-item"
                         onMouseDown={() => handleSelectVehicle(v)}
                       >
-                        <span className="ticket-plate">{v.plate_number}</span>
+                        <span className="queue-plate">{v.plate_number}</span>
                         {v.route_detail && (
-                          <span className="ticket-vehicle-dropdown-route">
+                          <span className="queue-vehicle-dropdown-route">
                             {v.route_detail.full_name}
                           </span>
                         )}
@@ -243,7 +243,7 @@ function Ticket({ userRole }) {
                 </div>
               )}
               {vehicles.length > availableVehicles.length && (
-                <p className="ticket-field-hint">
+                <p className="queue-field-hint">
                   {vehicles.length - availableVehicles.length} vehicle(s)
                   excluded (Maintenance / Has Active Ticket).
                 </p>
@@ -255,10 +255,10 @@ function Ticket({ userRole }) {
             {/* the denomination later, at Dispatch. */}
             {issuanceType === "ROAM" && (
               <>
-                <div className="ticket-field">
-                  <label className="ticket-label">Ticket Form / Series</label>
+                <div className="queue-field">
+                  <label className="queue-label">Ticket Form / Series</label>
                   <select
-                    className="ticket-select"
+                    className="queue-select"
                     value={selectedSeriesId}
                     onChange={(e) => setSelectedSeriesId(e.target.value)}
                   >
@@ -270,18 +270,18 @@ function Ticket({ userRole }) {
                     ))}
                   </select>
                   {availableSeries.length === 0 && (
-                    <p className="ticket-field-hint">
+                    <p className="queue-field-hint">
                       No ticket series with stock available. Create a new requisition first.
                     </p>
                   )}
                 </div>
 
                 {/* Quantity */}
-                <div className="ticket-field">
-                  <label className="ticket-label">Quantity</label>
+                <div className="queue-field">
+                  <label className="queue-label">Quantity</label>
                   <input
                     type="number"
-                    className="ticket-select"
+                    className="queue-select"
                     min={1}
                     value={ticketQuantity}
                     onChange={(e) => {
@@ -295,12 +295,12 @@ function Ticket({ userRole }) {
 
             {/* Driver panel */}
             {selectedVehicle && (
-              <div className="ticket-driver-panel">
-                <div className="ticket-driver-panel-top">
-                  <span className="ticket-label">Assigned Driver</span>
+              <div className="queue-driver-panel">
+                <div className="queue-driver-panel-top">
+                  <span className="queue-label">Assigned Driver</span>
                   <button
                     type="button"
-                    className="ticket-change-btn"
+                    className="queue-change-btn"
                     onClick={() => {
                       setShowDriverModal(!showDriverModal);
                       setDriverSearch("");
@@ -311,42 +311,42 @@ function Ticket({ userRole }) {
                 </div>
 
                 {selectedDriver ? (
-                  <div className="ticket-driver-info">
-                    <div className="ticket-driver-avatar">
+                  <div className="queue-driver-info">
+                    <div className="queue-driver-avatar">
                       {selectedDriver.name.charAt(0)}
                     </div>
-                    <div className="ticket-driver-meta">
-                      <span className="ticket-driver-name">
+                    <div className="queue-driver-meta">
+                      <span className="queue-driver-name">
                         {selectedDriver.name}
                       </span>
-                      <span className="ticket-driver-id">
+                      <span className="queue-driver-id">
                         ID: {selectedDriver.id}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <p className="ticket-driver-empty">
+                  <p className="queue-driver-empty">
                     No driver assigned to this vehicle
                   </p>
                 )}
 
                 {selectedDriver && (
-                  <div className="ticket-route-pill">
+                  <div className="queue-route-pill">
                     <RouteIcon />
                     {selectedVehicle.route_detail?.full_name || "N/A"}
                   </div>
                 )}
 
                 {showDriverModal && (
-                  <div className="ticket-driver-modal">
-                    <label className="ticket-label">
+                  <div className="queue-driver-modal">
+                    <label className="queue-label">
                       Select Active Driver
                     </label>
-                    <div className="ticket-vehicle-combobox">
-                    <div className="ticket-search-wrap">
-                      <SearchIcon className="ticket-search-icon" />
+                    <div className="queue-vehicle-combobox">
+                    <div className="queue-search-wrap">
+                      <SearchIcon className="queue-search-icon" />
                       <input
-                        className="ticket-select ticket-vehicle-search-input"
+                        className="queue-select queue-vehicle-search-input"
                         placeholder="Search by driver name…"
                         value={driverSearch}
                         onChange={(e) => {
@@ -360,19 +360,19 @@ function Ticket({ userRole }) {
                       />
                     </div>
                     {showDriverDropdown && (
-                      <div className="ticket-vehicle-dropdown">
+                      <div className="queue-vehicle-dropdown">
                         {driverSearchResults.length === 0 ? (
-                          <div className="ticket-vehicle-dropdown-empty">
+                          <div className="queue-vehicle-dropdown-empty">
                             No matching drivers
                           </div>
                         ) : (
                           driverSearchResults.map((d) => (
                             <div
                               key={d.id}
-                              className="ticket-vehicle-dropdown-item"
+                              className="queue-vehicle-dropdown-item"
                               onMouseDown={() => handleSelectDriver(d)}
                             >
-                              <span className="ticket-plate">{d.name}</span>
+                              <span className="queue-plate">{d.name}</span>
                             </div>
                           ))
                         )}
@@ -385,19 +385,19 @@ function Ticket({ userRole }) {
             )}
 
             {successMessage && (
-              <div className="ticket-alert ticket-alert--success">
+              <div className="queue-alert queue-alert--success">
                 {successMessage}
               </div>
             )}
             {issueError && (
-              <div className="ticket-alert ticket-alert--error">
+              <div className="queue-alert queue-alert--error">
                 {issueError}
               </div>
             )}
 
             <button
               type="button"
-              className="ticket-issue-btn"
+              className="queue-issue-btn"
               onClick={handleIssueTicket}
               disabled={
                 issuingTicket ||
@@ -419,16 +419,16 @@ function Ticket({ userRole }) {
         </div>
 
         {/* ── Recent Tickets with Tabs ── */}
-        <div className="ticket-card">
-          <div className="ticket-card-header ticket-card-header--color">
+        <div className="queue-card">
+          <div className="queue-card-header queue-card-header--color">
             <div>
-              <span className="ticket-card-title">Recent Tickets</span>
-              <p className="ticket-card-desc">Last 10 issued tickets</p>
+              <span className="queue-card-title">Recent Tickets</span>
+              <p className="queue-card-desc">Last 10 issued tickets</p>
             </div>
-            <div className="ticket-search-wrap">
-              <SearchIcon className="ticket-search-icon" />
+            <div className="queue-search-wrap">
+              <SearchIcon className="queue-search-icon" />
               <input
-                className="ticket-search"
+                className="queue-search"
                 placeholder="Search tickets…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -437,9 +437,9 @@ function Ticket({ userRole }) {
           </div>
 
           {/* Tab bar */}
-          <div className="ticket-tabs">
+          <div className="queue-tabs">
             <button
-              className={`ticket-tab ${activeTab === "tickets" ? "ticket-tab--active" : ""}`}
+              className={`queue-tab ${activeTab === "tickets" ? "queue-tab--active" : ""}`}
               onClick={() => setActiveTab("tickets")}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -448,11 +448,11 @@ function Ticket({ userRole }) {
               </svg>
               Tickets
               {ticketsTab.length > 0 && (
-                <span className="ticket-tab-count">{ticketsTab.length}</span>
+                <span className="queue-tab-count">{ticketsTab.length}</span>
               )}
             </button>
             <button
-              className={`ticket-tab ${activeTab === "queuing" ? "ticket-tab--active" : ""}`}
+              className={`queue-tab ${activeTab === "queuing" ? "queue-tab--active" : ""}`}
               onClick={() => setActiveTab("queuing")}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -461,21 +461,21 @@ function Ticket({ userRole }) {
               </svg>
               Queuing
               {queuingTickets.length > 0 && (
-                <span className="ticket-tab-count">{queuingTickets.length}</span>
+                <span className="queue-tab-count">{queuingTickets.length}</span>
               )}
             </button>
             <button
-              className={`ticket-tab ${activeTab === "roaming" ? "ticket-tab--active" : ""}`}
+              className={`queue-tab ${activeTab === "roaming" ? "queue-tab--active" : ""}`}
               onClick={() => setActiveTab("roaming")}
             >
               <RouteIcon />
               Roaming
               {roamingTickets.length > 0 && (
-                <span className="ticket-tab-count">{roamingTickets.length}</span>
+                <span className="queue-tab-count">{roamingTickets.length}</span>
               )}
             </button>
             <button
-              className={`ticket-tab ${activeTab === "cancelled" ? "ticket-tab--active" : ""}`}
+              className={`queue-tab ${activeTab === "cancelled" ? "queue-tab--active" : ""}`}
               onClick={() => setActiveTab("cancelled")}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -485,7 +485,7 @@ function Ticket({ userRole }) {
               </svg>
               Cancelled
               {cancelledTickets.length > 0 && (
-                <span className="ticket-tab-count">{cancelledTickets.length}</span>
+                <span className="queue-tab-count">{cancelledTickets.length}</span>
               )}
             </button>
           </div>
@@ -493,8 +493,8 @@ function Ticket({ userRole }) {
           {/* Tickets / Queuing / Roaming / Cancelled tab content */}
           {(activeTab === "tickets" || activeTab === "queuing" || activeTab === "roaming" || activeTab === "cancelled") && (
             <>
-              <div className="ticket-table-wrap">
-                <table className="ticket-table">
+              <div className="queue-table-wrap">
+                <table className="queue-table">
                   <thead>
                     <tr>
                       {["Ticket ID", "Plate Number", "Driver", "Issued By", "Time", ...(activeTab === "cancelled" ? ["Reason"] : [])].map(
@@ -507,8 +507,8 @@ function Ticket({ userRole }) {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={activeTab === "cancelled" ? 6 : 5} className="ticket-table-state">
-                          <div className="ticket-loading-dots">
+                        <td colSpan={activeTab === "cancelled" ? 6 : 5} className="queue-table-state">
+                          <div className="queue-loading-dots">
                             <div />
                             <div />
                             <div />
@@ -519,15 +519,15 @@ function Ticket({ userRole }) {
                       <tr>
                         <td
                           colSpan={activeTab === "cancelled" ? 6 : 5}
-                          className="ticket-table-state ticket-table-state--error"
+                          className="queue-table-state queue-table-state--error"
                         >
                           Error: {error}
                         </td>
                       </tr>
                     ) : displayTickets.length === 0 ? (
                       <tr>
-                        <td colSpan={activeTab === "cancelled" ? 6 : 5} className="ticket-table-state">
-                          <EmptyStateIcon className="ticket-empty-icon" />
+                        <td colSpan={activeTab === "cancelled" ? 6 : 5} className="queue-table-state">
+                          <EmptyStateIcon className="queue-empty-icon" />
                           <span>
                             {activeTab === "cancelled"
                               ? "No cancelled tickets"
@@ -541,35 +541,35 @@ function Ticket({ userRole }) {
                       </tr>
                     ) : (
                       displayTickets.map((t) => (
-                        <tr key={t.id} className="ticket-table-row">
+                        <tr key={t.id} className="queue-table-row">
                           <td>
-                            <span className="ticket-id-badge">{getTicketDisplayId(t)}</span>
+                            <span className="queue-id-badge">{getTicketDisplayId(t)}</span>
                           </td>
                           <td>
                             {t.vehicle?.plate_number ? (
-                              <span className="ticket-plate">
+                              <span className="queue-plate">
                                 {t.vehicle.plate_number}
                               </span>
                             ) : (
-                              <span className="ticket-na">N/A</span>
+                              <span className="queue-na">N/A</span>
                             )}
                           </td>
-                          <td className="ticket-td-name">
+                          <td className="queue-td-name">
                             {t.driver?.name || (
-                              <span className="ticket-na">N/A</span>
+                              <span className="queue-na">N/A</span>
                             )}
                           </td>
-                          <td className="ticket-td-name">
+                          <td className="queue-td-name">
                             {t.active_user_name || (
-                              <span className="ticket-na">N/A</span>
+                              <span className="queue-na">N/A</span>
                             )}
                           </td>
-                          <td className="ticket-td-time">
+                          <td className="queue-td-time">
                             {formatTime(t.issued_at)}
                           </td>
                           {activeTab === "cancelled" && (
                             <td>
-                              {t.reason || <span className="ticket-na">N/A</span>}
+                              {t.reason || <span className="queue-na">N/A</span>}
                             </td>
                           )}
                         </tr>
@@ -579,8 +579,8 @@ function Ticket({ userRole }) {
                 </table>
               </div>
 
-              <div className="ticket-card-footer">
-                <a href="/dashboard/Reports" className="ticket-history-link">
+              <div className="queue-card-footer">
+                <a href="/dashboard/Reports" className="queue-history-link">
                   <HistoryIcon />
                   View Full History
                 </a>
@@ -595,4 +595,4 @@ function Ticket({ userRole }) {
   );
 }
 
-export default Ticket;
+export default Queue;

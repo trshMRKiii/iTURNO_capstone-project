@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { apiService } from "../api-service";
+import { apiService } from "../../../lib/api-service";
 import { v4 as uuidv4 } from "uuid";
 
 function formatCurrency(val) {

@@ -18,14 +18,14 @@ import {
   formatChanges,
   exportCSV,
   SummaryCard,
-} from "../../../lib/report/reportHook";
-import { exportTablePDF } from "../../../lib/report/exportPDF";
+} from "./reportHook";
+import { exportTablePDF } from "./exportPDF";
 
-import TransactionLogs from "../../../lib/report/tables/TransactionLogs";
-import AuditTrail from "../../../lib/report/tables/AuditTrail";
-import FleetRecords from "../../../lib/report/tables/FleetRecords";
-import RequisitionRemittance from "../../../lib/report/tables/RequisitionRemittance";
-import { getDriverCode } from "../../../lib/driver-utils";
+import TransactionLogs from "./tables/TransactionLogs";
+import AuditTrail from "./tables/AuditTrail";
+import FleetRecords from "./tables/FleetRecords";
+import RequisitionRemittance from "./tables/RequisitionRemittance";
+import { getDriverCode } from "../driver/driver-utils";
 import "../../../styles/Report.css";
 
 const API_BASE =

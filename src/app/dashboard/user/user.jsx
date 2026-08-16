@@ -38,7 +38,9 @@ const Field = ({ label, children }) => (
 
 const inputCls = "usr-input";
 
-function User() {
+function User({ userRole }) {
+  const canManageStaff = userRole === "SUPERADMIN";
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -198,20 +200,22 @@ function User() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button className="usr-add-btn" onClick={handleAdd}>
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
-              <path d="M5 12h14" />
-              <path d="M12 5v14" />
-            </svg>
-            Add Staff Account
-          </button>
+          {canManageStaff && (
+            <button className="usr-add-btn" onClick={handleAdd}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+              >
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+              </svg>
+              Add Staff Account
+            </button>
+          )}
         </div>
       </div>
 
@@ -527,7 +531,7 @@ function User() {
                       <option value="PERSONNEL">Personnel</option>
                       <option value="SUPERVISOR">Supervisor</option>
                       <option value="MANAGER">Manager</option>
-                      <option value="SUPERADMIN">Super Admin</option>
+                      <option value="SUPERADMIN">Admin</option>
                     </select>
                   </Field>
                   <Field label="Status">
