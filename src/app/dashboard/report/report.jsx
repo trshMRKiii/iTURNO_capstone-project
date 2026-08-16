@@ -26,13 +26,14 @@ import AuditTrail from "./tables/AuditTrail";
 import FleetRecords from "./tables/FleetRecords";
 import RequisitionRemittance from "./tables/RequisitionRemittance";
 import { getDriverCode } from "../driver/driver-utils";
+import { API_BASE_URL, IS_REMOTE, remotePath } from "../../../lib/api-service";
 import "../../../styles/Report.css";
 
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:8000/api"
-    : `http://${window.location.hostname}:8000/api`);
+const API_BASE = API_BASE_URL;
+// Bypasses apiService's fetch wrapper (needs several requests in parallel
+// with its own response handling), so it has to do its own LAN->remote path
+// translation — same mapping apiService.request() uses, via remotePath().
+const path = (endpoint) => (IS_REMOTE ? remotePath(endpoint) ?? endpoint : endpoint);
 
 const PAGE_SIZE = 30;
 const EMPTY_PAGE_META = { count: 0, totalPages: 1 };
@@ -100,9 +101,9 @@ export default function Report() {
       const qs = buildParams();
       const q = qs ? `?${qs}` : "";
       const [sumRes, colRes, chartRes] = await Promise.all([
-        fetch(`${API_BASE}/report/summary/${q}`),
-        fetch(`${API_BASE}/report/collections/${q}`),
-        fetch(`${API_BASE}/report/chart/${q}`),
+        fetch(`${API_BASE}${path(`/report/summary/${q}`)}`),
+        fetch(`${API_BASE}${path(`/report/collections/${q}`)}`),
+        fetch(`${API_BASE}${path(`/report/chart/${q}`)}`),
       ]);
       setSummary(await sumRes.json());
       setCollections((await colRes.json()).results || []);
@@ -120,13 +121,13 @@ export default function Report() {
   const fetchTransactionRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
     const res = await fetch(
-      `${API_BASE}/tickets/?mode=QUEUE&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `${API_BASE}${path(`/tickets/?mode=QUEUE&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
     );
     const data = await res.json();
     return {
       results: (data.results || []).map(mapTicketToLogRow),
       count: data.count || 0,
-      totalPages: data.total_pages || 1,
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
       page: data.page || page,
     };
   }, [buildParams]);
@@ -134,13 +135,13 @@ export default function Report() {
   const fetchRoamingRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
     const res = await fetch(
-      `${API_BASE}/tickets/?mode=UNLOAD&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `${API_BASE}${path(`/tickets/?mode=UNLOAD&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
     );
     const data = await res.json();
     return {
       results: data.results || [],
       count: data.count || 0,
-      totalPages: data.total_pages || 1,
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
       page: data.page || page,
     };
   }, [buildParams]);
@@ -148,13 +149,17 @@ export default function Report() {
   const fetchAuditRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
     const res = await fetch(
-      `${API_BASE}/audit-logs/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `${API_BASE}${path(`/audit-logs/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
     );
     const data = await res.json();
+    // Remote /resource/audit-logs returns {results,count} (shared shape
+    // across all remote resources); LAN's /audit-logs/ returns {logs,total}.
+    const results = IS_REMOTE ? data.results || [] : data.logs || [];
+    const count = IS_REMOTE ? data.count || 0 : data.total || 0;
     return {
-      results: data.logs || [],
-      count: data.total || 0,
-      totalPages: data.total_pages || 1,
+      results,
+      count,
+      totalPages: data.total_pages || Math.max(Math.ceil(count / PAGE_SIZE), 1),
       page: data.page || page,
     };
   }, [buildParams]);
@@ -191,7 +196,7 @@ export default function Report() {
 
   const fetchVehicles = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/vehicles/`);
+      const res = await fetch(`${API_BASE}${path("/vehicles/")}`);
       const data = await res.json();
       setVehicles(Array.isArray(data) ? data : data.vehicles || []);
       setVehiclesTotal(Array.isArray(data) ? data.length : data.total || 0);
@@ -202,7 +207,7 @@ export default function Report() {
 
   const fetchDrivers = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/drivers/`);
+      const res = await fetch(`${API_BASE}${path("/drivers/")}`);
       const data = await res.json();
       setDrivers(Array.isArray(data) ? data : data.drivers || []);
       setDriversTotal(Array.isArray(data) ? data.length : data.total || 0);
@@ -214,13 +219,13 @@ export default function Report() {
   const fetchRequisitionRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
     const res = await fetch(
-      `${API_BASE}/requisitions/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `${API_BASE}${path(`/requisitions/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
     );
     const data = await res.json();
     return {
       results: data.results || [],
       count: data.count || 0,
-      totalPages: data.total_pages || 1,
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
       page: data.page || page,
     };
   }, [buildParams]);
@@ -228,13 +233,13 @@ export default function Report() {
   const fetchRemittanceRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
     const res = await fetch(
-      `${API_BASE}/report/remittance/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `${API_BASE}${path(`/report/remittance/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
     );
     const data = await res.json();
     return {
       results: data.results || [],
       count: data.count || 0,
-      totalPages: data.total_pages || 1,
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
       page: data.page || page,
     };
   }, [buildParams]);
@@ -263,7 +268,7 @@ export default function Report() {
   // so CSV/PDF stay complete even though the on-screen table only loads one page.
   const fetchTransactionExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}/tickets/?mode=QUEUE${qs ? `&${qs}` : ""}`);
+    const res = await fetch(`${API_BASE}${path(`/tickets/?mode=QUEUE${qs ? `&${qs}` : ""}`)}`);
     const data = await res.json();
     const list = Array.isArray(data) ? data : data.results || [];
     return list.map(mapTicketToLogRow);
@@ -271,30 +276,30 @@ export default function Report() {
 
   const fetchRoamingExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}/tickets/?mode=UNLOAD${qs ? `&${qs}` : ""}`);
+    const res = await fetch(`${API_BASE}${path(`/tickets/?mode=UNLOAD${qs ? `&${qs}` : ""}`)}`);
     const data = await res.json();
     return Array.isArray(data) ? data : data.results || [];
   }, [buildParams]);
 
   const fetchAuditExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}/audit-logs/?all=true${qs ? `&${qs}` : ""}`);
+    const res = await fetch(`${API_BASE}${path(`/audit-logs/?all=true${qs ? `&${qs}` : ""}`)}`);
     const data = await res.json();
-    return data.logs || [];
+    return IS_REMOTE ? data.results || data || [] : data.logs || [];
   }, [buildParams]);
 
   const fetchRequisitionExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}/requisitions/${qs ? `?${qs}` : ""}`);
+    const res = await fetch(`${API_BASE}${path(`/requisitions/${qs ? `?${qs}` : ""}`)}`);
     const data = await res.json();
     return Array.isArray(data) ? data : data.results || [];
   }, [buildParams]);
 
   const fetchRemittanceExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}/report/remittance/${qs ? `?${qs}` : ""}`);
+    const res = await fetch(`${API_BASE}${path(`/report/remittance/${qs ? `?${qs}` : ""}`)}`);
     const data = await res.json();
-    return data.results || [];
+    return Array.isArray(data) ? data : data.results || [];
   }, [buildParams]);
 
   useEffect(() => {

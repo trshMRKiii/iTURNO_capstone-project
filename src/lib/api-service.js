@@ -9,16 +9,85 @@
 // (same origin, no CORS needed) — see api/remote/ and api/_lib/.
 export const IS_REMOTE = import.meta.env.VITE_API_MODE === "remote";
 
-const API_BASE_URL = IS_REMOTE
+export const API_BASE_URL = IS_REMOTE
   ? "/api/remote"
   : window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000/api"
     : `http://${window.location.hostname}:8000/api`;
 // Backend stays HTTP — only frontend needs HTTPS for camera access
 
+// Maps the LAN (Django) paths that read-only modules already call through
+// apiService/request() to their /api/remote/* equivalent — this is the ONE
+// place that has to know both shapes, so none of the existing components/
+// hooks (queue, dispatch, vehicle, driver, remittance, requisition, etc.)
+// needed to change to work remotely. Order matters: prefix matches (ending
+// in "*") are checked after exact matches.
+const REMOTE_GET_MAP = {
+  "/vehicles/": "/resource/vehicles",
+  "/drivers/": "/resource/drivers",
+  "/tickets/": "/resource/tickets",
+  "/routes/": "/routes",
+  "/users/": "/resource/users",
+  "/puvtypes/": "/resource/puvtypes",
+  "/ticket-forms/": "/resource/ticket-forms",
+  "/roaming-logs/": "/resource/roaming-logs",
+  "/audit-logs/": "/resource/audit-logs",
+  "/requisitions/": "/resource/requisitions",
+  "/ticket-series/": "/resource/ticket-series",
+  "/settings/terminal-price/": "/resource/terminal-price",
+  "/report/remittance/": "/resource/remittance-batches",
+  "/report/summary/": "/report-summary",
+  "/report/collections/": "/report-collections",
+  "/report/chart/": "/report-chart",
+  "/report/eod-reconciliation/": "/eod-reconciliation",
+  "/dashboard/stats/": "/dashboard-stats",
+  "/current-user/": "/current-user",
+};
+
+// Only Route CRUD is writable remotely so far (see api/remote/routes.js) —
+// everything else is view-only by design (transactional data stays
+// LAN-authoritative; see the sync engine in backend/api/sync/). Matches
+// both "/routes/" (create) and "/routes/5/" (LAN-style update/delete path).
+const REMOTE_WRITE_ALLOW = /^\/routes\/?(\d+)?\/?$/;
+
+// Exported for the few places that build fetch() URLs directly instead of
+// going through apiService (currently just the Reports module, which needs
+// several endpoints in parallel) — same translation apiService.request()
+// uses internally, so there's one source of truth for the path mapping.
+export function remotePath(endpoint, method = "GET") {
+  return translateForRemote(endpoint, method);
+}
+
+function translateForRemote(endpoint, method) {
+  const [path, query] = endpoint.split("?");
+  const qs = query ? `?${query}` : "";
+
+  if (method === "GET") {
+    const mapped = REMOTE_GET_MAP[path];
+    return mapped ? `${mapped}${qs}` : endpoint;
+  }
+
+  if (REMOTE_WRITE_ALLOW.test(path)) {
+    const idMatch = path.match(/^\/routes\/(\d+)\/?$/);
+    return idMatch ? `/routes?id=${idMatch[1]}` : "/routes";
+  }
+
+  return null; // not allowed remotely
+}
+
 export const apiService = {
   async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
+    let effectiveEndpoint = endpoint;
+    if (IS_REMOTE) {
+      const method = (options.method || "GET").toUpperCase();
+      const translated = translateForRemote(endpoint, method);
+      if (translated === null) {
+        throw new Error("This action isn't available remotely yet — it only works on the LAN terminal.");
+      }
+      effectiveEndpoint = translated;
+    }
+
+    const url = `${API_BASE_URL}${effectiveEndpoint}`;
     const defaultHeaders = {};
 
     //token
@@ -485,10 +554,10 @@ export const handleLogin = async (
       if (showToast) showToast("Welcome back!", "success");
     }
 
-    // Remote (Vercel) only has the lightweight remote dashboard wired up so
-    // far — the full LAN dashboard expects endpoints that only exist on the
-    // Django API. See RemoteDashboard.jsx.
-    navigate(IS_REMOTE ? "/remote-dashboard" : "/dashboard");
+    // Remote (Vercel) reuses the same dashboard as the LAN — its data hooks
+    // route through apiService's remote-path translation (see IS_REMOTE /
+    // REMOTE_GET_MAP above) to read from Supabase instead of Django.
+    navigate("/dashboard");
   } catch (err) {
     setError(err.message);
   }

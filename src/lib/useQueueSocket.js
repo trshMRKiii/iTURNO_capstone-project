@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { IS_REMOTE } from "./api-service";
 
 const WS_BASE_URL =
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
@@ -13,6 +14,11 @@ export function useQueueSocket(onUpdate) {
   onUpdateRef.current = onUpdate;
 
   useEffect(() => {
+    // No LAN-reachable websocket server from Vercel — remote pages just
+    // don't get push updates; they still work via each page's normal
+    // fetch-on-load / manual refresh.
+    if (IS_REMOTE) return;
+
     let socket;
     let reconnectTimer;
     let cancelled = false;

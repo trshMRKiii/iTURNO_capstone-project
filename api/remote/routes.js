@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "../_lib/supabaseAdmin.js";
 import { requireAuth, requireRole, CAN_EDIT_SETTINGS } from "../_lib/auth.js";
+import { resolveDateRange, inRange } from "../_lib/dateRange.js";
 
 // Route is one of PULL_MODELS (backend/api/sync/registry.py) — Supabase is
 // its source of truth, LAN pulls it down. Writing here is exactly what the
@@ -22,12 +23,39 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const { data, error } = await supabase
-        .from("api_route")
-        .select("*")
-        .order("origin", { ascending: true });
-      if (error) throw error;
-      res.status(200).json(data);
+      // Matches serializers.py's SECOND RouteSerializer (the one actually
+      // used for standalone /routes/ list requests — see api/_lib/shapes.js
+      // for the note on why there are two same-named classes in that file)
+      // — full_name/checked_in_today/revenue_in_range are computed, not
+      // stored columns, same logic as RouteSerializer.get_checked_in_today
+      // / get_revenue_in_range.
+      const { rangeStart, rangeEnd } = resolveDateRange(req.query);
+      const [{ data: routes, error: rErr }, { data: tickets, error: tErr }] = await Promise.all([
+        supabase.from("api_route").select("*").order("origin", { ascending: true }),
+        supabase.from("api_ticket").select("route_id,vehicle_id,collection_amount,issued_at,dispatched_at"),
+      ]);
+      if (rErr) throw rErr;
+      if (tErr) throw tErr;
+
+      const shaped = routes.map((r) => {
+        const routeTickets = (tickets || []).filter(
+          (t) => t.route_id === r.id && inRange(t.issued_at, rangeStart, rangeEnd),
+        );
+        const revenueTickets = routeTickets.filter((t) => t.dispatched_at);
+        return {
+          id: r.id,
+          origin: r.origin,
+          is_active: r.is_active,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          full_name: `${r.origin} - San Fernando`,
+          checked_in_today: new Set(routeTickets.map((t) => t.vehicle_id)).size,
+          revenue_in_range: Math.round(
+            revenueTickets.reduce((s, t) => s + (Number(t.collection_amount) || 0), 0) * 100,
+          ) / 100,
+        };
+      });
+      res.status(200).json(shaped);
       return;
     }
 
@@ -50,7 +78,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (req.method === "PATCH") {
+    if (req.method === "PATCH" || req.method === "PUT") {
       const id = req.query.id;
       if (!id) {
         res.status(400).json({ detail: "id query param is required" });
