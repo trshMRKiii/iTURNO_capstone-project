@@ -21,6 +21,31 @@ export function verifyDjangoPassword(password, encoded) {
   return crypto.timingSafeEqual(a, b);
 }
 
+const SALT_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+function randomAlphanumeric(length) {
+  const bytes = crypto.randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) out += SALT_CHARS[bytes[i] % SALT_CHARS.length];
+  return out;
+}
+
+// Inverse of verifyDjangoPassword — produces a hash Django can verify too,
+// for creating accounts / resetting passwords remotely. Same iteration
+// count Django's current default uses (see a real stored hash's prefix to
+// confirm if this hasher's default ever changes).
+export function hashDjangoPassword(password, iterations = 1200000) {
+  const salt = randomAlphanumeric(12);
+  const derived = crypto.pbkdf2Sync(password, salt, iterations, 32, "sha256");
+  return `pbkdf2_sha256$${iterations}$${salt}$${derived.toString("base64")}`;
+}
+
+// For the temporary password shown to a superadmin when creating a user
+// remotely (no SMTP configured here, so no welcome email like the LAN
+// flow sends — the password is returned in the API response instead).
+export function generateTempPassword() {
+  return randomAlphanumeric(12);
+}
+
 function getSecret() {
   const secret = process.env.REMOTE_JWT_SECRET;
   if (!secret) throw new Error("REMOTE_JWT_SECRET is not configured");
@@ -58,7 +83,11 @@ export const ROLES = {
   MANAGER: "MANAGER",
   ADMIN: "SUPERADMIN",
 };
-export const CAN_EDIT_SETTINGS = [ROLES.MANAGER, ROLES.ADMIN];
+// Everything writable remotely (Route, User, TicketPrice, TerminalPrice,
+// TicketForm, PUVType, and the registry-only fields on Vehicle/Driver) is
+// restricted to SUPERADMIN — deliberately narrower than "any manager" per
+// the user's explicit call for this category of remote write access.
+export const CAN_EDIT_SETTINGS = [ROLES.ADMIN];
 
 // Pulls the Bearer token off the request and verifies it. Throws a plain
 // object with a `status` so handlers can just catch and respond.

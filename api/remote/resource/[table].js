@@ -84,30 +84,9 @@ const RESOURCES = {
     limit: 200,
     shape: (rows) => rows.map(shapeAuditLog),
   },
-  users: {
-    table: "api_user",
-    select: "id, username, first_name, last_name, middle_name, role, is_active, must_reset_password",
-    order: { column: "username", ascending: true },
-    filters: ["role", "is_active"],
-  },
-  puvtypes: {
-    table: "api_puvtype",
-    select: "*",
-    order: { column: "name", ascending: true },
-    filters: [],
-  },
-  "ticket-forms": {
-    table: "api_ticketform",
-    select: "*",
-    order: { column: "name", ascending: true },
-    filters: [],
-  },
-  "terminal-price": {
-    table: "api_terminalprice",
-    select: "*",
-    order: { column: "id", ascending: true },
-    filters: [],
-  },
+  // users, puvtypes, ticket-forms, terminal-price moved to their own
+  // dedicated CRUD files (api/remote/users.js etc.) once those became
+  // writable — one file per writable resource, matching routes.js.
 };
 
 export default async function handler(req, res) {

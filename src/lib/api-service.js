@@ -27,14 +27,14 @@ const REMOTE_GET_MAP = {
   "/drivers/": "/resource/drivers",
   "/tickets/": "/resource/tickets",
   "/routes/": "/routes",
-  "/users/": "/resource/users",
-  "/puvtypes/": "/resource/puvtypes",
-  "/ticket-forms/": "/resource/ticket-forms",
+  "/users/": "/users",
+  "/puvtypes/": "/puv-types",
+  "/ticket-forms/": "/ticket-forms",
   "/roaming-logs/": "/resource/roaming-logs",
   "/audit-logs/": "/resource/audit-logs",
   "/requisitions/": "/resource/requisitions",
   "/ticket-series/": "/resource/ticket-series",
-  "/settings/terminal-price/": "/resource/terminal-price",
+  "/settings/terminal-price/": "/terminal-price",
   "/report/remittance/": "/resource/remittance-batches",
   "/report/summary/": "/report-summary",
   "/report/collections/": "/report-collections",
@@ -44,11 +44,21 @@ const REMOTE_GET_MAP = {
   "/current-user/": "/current-user",
 };
 
-// Only Route CRUD is writable remotely so far (see api/remote/routes.js) —
-// everything else is view-only by design (transactional data stays
-// LAN-authoritative; see the sync engine in backend/api/sync/). Matches
-// both "/routes/" (create) and "/routes/5/" (LAN-style update/delete path).
-const REMOTE_WRITE_ALLOW = /^\/routes\/?(\d+)?\/?$/;
+// Everything writable remotely, and which HTTP methods are actually
+// allowed on each — SUPERADMIN-gated server-side in every case (see
+// CAN_EDIT_SETTINGS in api/_lib/auth.js), this table just avoids even
+// attempting a call that's guaranteed to be rejected (e.g. createVehicle,
+// which isn't allowed remotely — only editing an existing vehicle's
+// registry fields is; see api/remote/vehicles.js).
+const REMOTE_WRITABLE = [
+  { prefix: "/routes/", remote: "/routes", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/users/", remote: "/users", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/puvtypes/", remote: "/puv-types", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/ticket-forms/", remote: "/ticket-forms", methods: ["POST", "PATCH", "PUT", "DELETE"] },
+  { prefix: "/settings/terminal-price/", remote: "/terminal-price", methods: ["PATCH", "PUT"], singleton: true },
+  { prefix: "/vehicles/", remote: "/vehicles", methods: ["PATCH", "PUT"] },
+  { prefix: "/drivers/", remote: "/drivers", methods: ["PATCH", "PUT"] },
+];
 
 // Exported for the few places that build fetch() URLs directly instead of
 // going through apiService (currently just the Reports module, which needs
@@ -67,12 +77,12 @@ function translateForRemote(endpoint, method) {
     return mapped ? `${mapped}${qs}` : endpoint;
   }
 
-  if (REMOTE_WRITE_ALLOW.test(path)) {
-    const idMatch = path.match(/^\/routes\/(\d+)\/?$/);
-    return idMatch ? `/routes?id=${idMatch[1]}` : "/routes";
-  }
+  const resource = REMOTE_WRITABLE.find((r) => path.startsWith(r.prefix));
+  if (!resource || !resource.methods.includes(method)) return null; // not allowed remotely
 
-  return null; // not allowed remotely
+  if (resource.singleton) return resource.remote;
+  const idMatch = path.slice(resource.prefix.length).match(/^(\d+)\/?$/);
+  return idMatch ? `${resource.remote}?id=${idMatch[1]}` : resource.remote;
 }
 
 export const apiService = {
