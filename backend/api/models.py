@@ -129,7 +129,8 @@ class Ticket(models.Model):
 
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='tickets')
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='tickets')
-    active_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets', null=True, blank=True)
+    active_user = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='tickets', null=True, blank=True)
+    active_user_name = models.CharField(max_length=150, blank=True, default="")
 
     route = models.ForeignKey(Route, on_delete=models.SET_NULL, related_name='tickets', null=True, blank=True, db_index=True)
     mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='QUEUE')
@@ -167,19 +168,34 @@ class Ticket(models.Model):
             if latest_price:
                 self.collection_amount = latest_price.amount
             # If no price exists, leave as null — backend will use fallback
+        # Snapshot the issuing user's name so "who issued this" survives even
+        # if the account is later deleted (active_user is SET_NULL) — captured
+        # once, on first save, so it reflects who actually issued it.
+        if self.active_user_id and not self.active_user_name:
+            user = self.active_user
+            self.active_user_name = f"{user.first_name} {user.last_name}".strip() or user.username
         super().save(*args, **kwargs)
 
 class Requisition(models.Model):
     STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('ISSUED', 'Issued')]
 
     date_requested = models.DateTimeField(auto_now_add=True)
-    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requisitions_requested')
+    requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='requisitions_requested', null=True, blank=True)
+    requested_by_name = models.CharField(max_length=150, blank=True, default="")
     approved_by_name = models.CharField(max_length=150, blank=True, default="")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     total_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_archived = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Same reasoning as Ticket.active_user_name — requested_by is SET_NULL,
+        # so capture the name once up front rather than losing it later.
+        if self.requested_by_id and not self.requested_by_name:
+            user = self.requested_by
+            self.requested_by_name = f"{user.first_name} {user.last_name}".strip() or user.username
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Requisition #{self.pk} - {self.status}"
@@ -306,6 +322,40 @@ class BackupRecord(models.Model):
 
     def __str__(self):
         return f"{self.filename} ({self.created_at})"
+
+
+class SyncQueue(models.Model):
+    """Outbox of LAN-owned rows pending push to the Supabase mirror.
+
+    A row is (re-)queued by api/sync/signals.py on every save (or delete —
+    see pending_delete) of a model in api/sync/registry.py's PUSH_MODELS.
+    api/sync/push.py drains rows where synced_at is null; nothing is ever
+    dropped from here on failure — it's just retried again next cycle, so a
+    bad network blip only delays the remote mirror, never loses data (the
+    SQLite row is the real source of truth regardless of sync status).
+    """
+    model_label = models.CharField(max_length=100, db_index=True)
+    object_id = models.CharField(max_length=50)
+    queued_at = models.DateTimeField(auto_now_add=True)
+    synced_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    pending_delete = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['queued_at']
+        constraints = [
+            models.UniqueConstraint(fields=['model_label', 'object_id'], name='unique_sync_queue_object')
+        ]
+
+    def __str__(self):
+        if self.synced_at:
+            state = 'synced'
+        elif self.pending_delete:
+            state = f'pending delete ({self.attempts} attempts)'
+        else:
+            state = f'pending ({self.attempts} attempts)'
+        return f"{self.model_label}#{self.object_id} - {state}"
 
 
 class RoamingLog(models.Model):

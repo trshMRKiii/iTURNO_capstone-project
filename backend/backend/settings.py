@@ -96,26 +96,38 @@ CHANNEL_LAYERS = {
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+#
+# 'default' is always SQLite — the LAN source of truth for live transactions,
+# and it must keep working with no internet connection. DEBUG picks WHICH
+# file: a throwaway one for local test runs vs. a separate one for the real
+# terminal, so test data never mixes with real operational data.
+#
+# 'supabase' is the remote Postgres mirror, used only by the sync engine
+# (api/sync/) — never by regular app code. It pushes LAN transactions out
+# for read-only remote viewing, and pulls down settings/records that
+# admin/manager edit remotely. Pushing is disabled while DEBUG=True (see
+# api/sync/push.py) so local test runs can never leak into the shared
+# remote mirror that real users see.
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / ('db.sqlite3' if DEBUG else 'db_production.sqlite3'),
+    },
+    'supabase': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': {'sslmode': 'require'},
+        'CONN_MAX_AGE': 60,
+    },
+}
 
-if DEBUG:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST'),
-            'PORT': os.getenv('DB_PORT', '5432'),
-            'OPTIONS': {'sslmode': 'require'},
-        }
-    }
+# Sync engine (LAN SQLite <-> Supabase mirror) — see api/sync/
+SYNC_INTERVAL_SECONDS = int(os.getenv('SYNC_INTERVAL_SECONDS', '30'))
+SYNC_BATCH_SIZE = int(os.getenv('SYNC_BATCH_SIZE', '200'))
 
 
 # Password validation
@@ -194,3 +206,34 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # Base URL of the frontend app, used to build the password-reset link sent by email
 FRONTEND_URL = 'http://localhost:5173'
+
+# Sync engine logging — last N cycles are always visible on the console;
+# also kept in a small rotating file so `sync_worker` running unattended
+# still leaves a trail of what synced and what didn't.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'sync': {'format': '%(asctime)s %(levelname)s %(message)s'},
+    },
+    'handlers': {
+        'sync_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'sync',
+        },
+        'sync_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'sync.log',
+            'maxBytes': 1024 * 1024,
+            'backupCount': 2,
+            'formatter': 'sync',
+        },
+    },
+    'loggers': {
+        'sync': {
+            'handlers': ['sync_console', 'sync_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
