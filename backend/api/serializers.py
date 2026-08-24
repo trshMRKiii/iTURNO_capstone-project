@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, AuditLog, BackupRecord, TerminalPrice
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, AuditLog, BackupRecord, TerminalPrice, WipMode
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -272,6 +272,11 @@ class TerminalPriceSerializer(serializers.ModelSerializer):
     class Meta:
         model = TerminalPrice
         fields = ['id', 'amount', 'updated_at']
+
+class WipModeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WipMode
+        fields = ['id', 'is_active', 'updated_at']
 
 class DepositSerializer(serializers.ModelSerializer):
     class Meta:

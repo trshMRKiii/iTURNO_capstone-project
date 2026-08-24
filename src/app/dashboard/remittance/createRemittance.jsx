@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../../lib/api-service";
-import { v4 as uuidv4 } from "uuid";
 
 function formatCurrency(val) {
   return "₱" + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -13,7 +12,7 @@ const Field = ({ label, children }) => (
   </div>
 );
 
-const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
+const CreateBatchForm = ({ onClose, onSave, existingBatches = [], targetDate }) => {
   const [accountableOfficer, setAccountableOfficer] = useState("");
   const [collections, setCollections] = useState([
     { ticketFormNo: "", from: 0, to: 0, ticketsIssued: 0, amount: 0 },
@@ -34,15 +33,33 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
   const [todayTickets, setTodayTickets] = useState([]);
   const [ticketSeries, setTicketSeries] = useState([]);
 
-  const batchId = uuidv4().slice(0, 8).toUpperCase();
-  const dateIssued = new Date().toISOString().split("T")[0];
-
   const getTodayDateString = (date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   };
+
+  // targetDate is the day this batch COVERS — normally today (unchanged
+  // behavior), but an explicit past date when filing a late remittance.
+  const dateIssued = targetDate || getTodayDateString(new Date());
+  const isLate = dateIssued !== getTodayDateString(new Date());
+
+  // Batch ID is TER-<day of year>-<2-digit year> for the day being covered,
+  // e.g. day 236 of 2026 -> TER-236-26. Suffixed with -2, -3, ... on the rare
+  // case a batch already exists for that day (e.g. an intentional duplicate).
+  const batchId = (() => {
+    const [year, month, day] = dateIssued.split("-").map(Number);
+    const dayOfYear =
+      Math.round((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000) + 1;
+    const base = `TER-${String(dayOfYear).padStart(3, "0")}-${String(year).slice(-2)}`;
+
+    const codes = new Set(existingBatches.map((b) => b.batch_code).filter(Boolean));
+    if (!codes.has(base)) return base;
+    let n = 2;
+    while (codes.has(`${base}-${n}`)) n++;
+    return `${base}-${n}`;
+  })();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -62,13 +79,12 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
       .then(setTicketFormOptions)
       .catch(err => console.error("Failed to load ticket forms:", err));
 
-    const today = getTodayDateString(new Date());
     apiService.getTickets()
       .then(data => {
         const tickets = Array.isArray(data) ? data : [];
         setTodayTickets(
           tickets.filter(t =>
-            t.issued_at && getTodayDateString(new Date(t.issued_at)) === today &&
+            t.issued_at && getTodayDateString(new Date(t.issued_at)) === dateIssued &&
             t.status !== "CANCELLED" &&
             t.is_verified === true &&
             !t.remittance_batch
@@ -80,6 +96,10 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
     apiService.request("/ticket-series/")
       .then(data => setTicketSeries(Array.isArray(data) ? data : []))
       .catch(err => console.error("Failed to load ticket series:", err));
+    // dateIssued is derived from the targetDate prop, which doesn't change across
+    // this modal's lifetime — safe to omit from deps, matching the existing
+    // fetch-once-on-mount pattern used for ticketForms/ticketSeries below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const computeRowForForm = (name) => {
@@ -157,7 +177,10 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
 
   const isDuplicateBatch = existingBatches.some((b) => {
     const sameOfficer = (b.issued_by_name || "").trim().toLowerCase() === accountableOfficer.trim().toLowerCase();
-    const sameDay = b.issued_at && b.issued_at.slice(0, 10) === dateIssued;
+    // Compare against the day being COVERED, not the day a batch happened to be
+    // filed on — otherwise two late batches for the same missed day, filed on
+    // different real days, wouldn't be caught by this heuristic.
+    const sameDay = (b.covers_date || (b.issued_at && b.issued_at.slice(0, 10))) === dateIssued;
     const sameAmount = Number(b.total_amount) === Number(totalCollections);
     return sameOfficer && sameDay && sameAmount && totalCollections > 0;
   });
@@ -172,10 +195,10 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
     }
     const payload = {
       id: batchId,
-      issued_at: dateIssued,
       issued_by: accountableOfficer,
       total_amount: totalCollections,
       status: "OPEN",
+      covers_date: dateIssued,
       collections,
       deposits,
     };
@@ -194,7 +217,9 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
               <line x1="16" y1="13" x2="8" y2="13" />
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
-            <h2 className="rem-modal-title">New Remittance Batch</h2>
+            <h2 className="rem-modal-title">
+              {isLate ? `Late Remittance for ${dateIssued}` : "New Remittance Batch"}
+            </h2>
           </div>
           <button className="rem-modal-close" onClick={onClose} aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -210,7 +235,7 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [] }) => {
             <Field label="Batch ID">
               <input type="text" className="rem-input" value={batchId} disabled />
             </Field>
-            <Field label="Date Issued">
+            <Field label={isLate ? "Covering Date" : "Date Issued"}>
               <input type="date" className="rem-input" value={dateIssued} disabled />
             </Field>
             <Field label="Accountable Officer">

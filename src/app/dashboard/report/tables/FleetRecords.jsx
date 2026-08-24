@@ -1,6 +1,7 @@
 import { DataTable } from "../../../../components/ui/dataTable";
 import { useState } from "react";
 import ReportTableModal from "./ReportTableModal";
+import { matchesVehicleRow, matchesDriverRow } from "../reportHook";
 
 const VEHICLE_COLUMNS = [
   "Plate Number",
@@ -33,20 +34,9 @@ export default function FleetRecords({
 
   const isVehicles = activeTab === "vehicles";
 
-  const searchedVehicles = visibleVehicles.filter((v) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    const route = v.route_detail ? `${v.route_detail.origin} - San Fernando` : v.route || "";
-    return [v.plate_number, route, v.active_driver_name]
-      .some((val) => val && val.toLowerCase().includes(q));
-  });
+  const searchedVehicles = visibleVehicles.filter((v) => matchesVehicleRow(v, search));
 
-  const searchedDrivers = visibleDrivers.filter((d) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return [d.iwp_number || String(d.id), d.name, d.contact]
-      .some((val) => val && String(val).toLowerCase().includes(q));
-  });
+  const searchedDrivers = visibleDrivers.filter((d) => matchesDriverRow(d, search));
 
   const searched = isVehicles ? searchedVehicles : searchedDrivers;
   const showAll = isVehicles ? showAllVehicles : showAllDrivers;
@@ -85,20 +75,9 @@ export default function FleetRecords({
     </tr>
   );
 
-  const modalSearchedVehicles = searchedVehicles.filter((v) => {
-    if (!modalSearch) return true;
-    const q = modalSearch.toLowerCase();
-    const route = v.route_detail ? `${v.route_detail.origin} - San Fernando` : v.route || "";
-    return [v.plate_number, route, v.active_driver_name]
-      .some((val) => val && val.toLowerCase().includes(q));
-  });
+  const modalSearchedVehicles = searchedVehicles.filter((v) => matchesVehicleRow(v, modalSearch));
 
-  const modalSearchedDrivers = searchedDrivers.filter((d) => {
-    if (!modalSearch) return true;
-    const q = modalSearch.toLowerCase();
-    return [d.iwp_number || String(d.id), d.name, d.contact]
-      .some((val) => val && String(val).toLowerCase().includes(q));
-  });
+  const modalSearchedDrivers = searchedDrivers.filter((d) => matchesDriverRow(d, modalSearch));
 
   const modalData = isVehicles ? modalSearchedVehicles : modalSearchedDrivers;
 
@@ -159,23 +138,25 @@ export default function FleetRecords({
           )}
           <button
             className="rpt-btn-export rpt-btn-export--green"
-            onClick={isVehicles ? handleExportVehiclesCSV : handleExportDriversCSV}
+            title={search ? "Export only rows matching your search" : "Export all records"}
+            onClick={() => (isVehicles ? handleExportVehiclesCSV(search) : handleExportDriversCSV(search))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Export CSV
+            {search ? "Export Matches (CSV)" : "Export CSV"}
           </button>
           <button
             className="rpt-btn-export rpt-btn-export--red"
-            onClick={isVehicles ? handleExportVehiclesPDF : handleExportDriversPDF}
+            title={search ? "Export only rows matching your search" : "Export all records"}
+            onClick={() => (isVehicles ? handleExportVehiclesPDF(search) : handleExportDriversPDF(search))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
             </svg>
-            Export PDF
+            {search ? "Export Matches (PDF)" : "Export PDF"}
           </button>
         </div>
       </div>

@@ -15,9 +15,10 @@ from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_MET
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, RoamingLog, TerminalPrice
+from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, RoamingLog, TerminalPrice, WipMode
 from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
 from .helpers import record_audit_log, expire_stale_queue_tickets, parse_date_start, parse_date_end, paginate_request
+from .remittance_export import remittance_xlsx_response
 
 
 class AuditLogMixin:
@@ -66,6 +67,20 @@ class IsSuperAdminOrReadOnly(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return bool(request.user and request.user.is_authenticated and request.user.role == 'SUPERADMIN')
+
+
+class IsSupervisorOrAdminForWrite(BasePermission):
+    """Backfill/WIP-mode: transactional territory, so SUPERVISOR and SUPERADMIN both
+    qualify (unlike the System tab's backup/restore, which stays SUPERADMIN-only).
+    Reads are open to any authenticated user so the WIP-mode banner works for every
+    role — only toggling/importing is restricted."""
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user.role in ('SUPERVISOR', 'SUPERADMIN')
 
 
 class CurrentUserView(APIView):
@@ -238,6 +253,8 @@ class TicketViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        if WipMode.get_solo().is_active:
+            raise ValidationError({"detail": "Ticket issuance is temporarily paused for a data backfill."})
         if self.request.user and self.request.user.is_authenticated:
             serializer.save(active_user=self.request.user)
         else:
@@ -265,6 +282,9 @@ class TicketViewSet(viewsets.ModelViewSet):
         """Give out the physical ticket(s) for a queued vehicle: the dispatcher picks a
         denomination and quantity, and this auto-draws the oldest stock (FIFO across
         series) instead of letting a specific series be hand-picked."""
+        if WipMode.get_solo().is_active:
+            raise ValidationError({"detail": "Ticket issuance is temporarily paused for a data backfill."})
+
         vehicle_id = request.data.get('vehicle_id')
         ticket_form_id = request.data.get('ticket_form_id')
 
@@ -435,6 +455,9 @@ class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
                 qs = qs.filter(date_requested__lte=parse_date_end(end_date))
             except ValueError:
                 pass
+        is_archived = self.request.query_params.get('is_archived')
+        if is_archived is not None:
+            qs = qs.filter(is_archived=is_archived.lower() in ('1', 'true', 'yes'))
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -482,3 +505,9 @@ class RoamingLogViewSet(viewsets.ModelViewSet):
 class RemittanceBatchViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = RemittanceBatch.objects.all()
     serializer_class = RemittanceBatchSerializer
+
+    @action(detail=True, methods=["get"], url_path="export-xlsx")
+    def export_xlsx(self, request, pk=None):
+        batch = self.get_object()
+        serialized = self.get_serializer(batch).data
+        return remittance_xlsx_response(batch, serialized)

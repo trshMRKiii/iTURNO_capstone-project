@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../styles/login.css";
 import { apiService } from '../lib/api-service';
 import { useQueueSocket } from '../lib/useQueueSocket';
@@ -12,6 +12,7 @@ function PublicView() {
   const [queue,          setQueue]          = useState([]);
   const [loadingQueue,   setLoadingQueue]   = useState(false);
   const [headerScrolled, setHeaderScrolled] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
     loadQueue();
@@ -31,7 +32,11 @@ function PublicView() {
   // Vehicles are ordered by issue time (earliest first = next to be dispatched),
   // then grouped by route so each route gets its own queue table.
   const loadQueue = async () => {
-    setLoadingQueue(true);
+    // Only show the loading spinner on first mount — a websocket-triggered
+    // refetch (e.g. a new vehicle joining the queue) should swap the table
+    // data in place, not flash the whole board back to a loading state on
+    // the terminal TV.
+    if (!hasLoadedOnce.current) setLoadingQueue(true);
     try {
       const [vehicleData, ticketData] = await Promise.all([
         apiService.getVehicles(),
@@ -74,6 +79,7 @@ function PublicView() {
     } catch (err) {
       console.error('Failed to load queue:', err);
     } finally {
+      hasLoadedOnce.current = true;
       setLoadingQueue(false);
     }
   };

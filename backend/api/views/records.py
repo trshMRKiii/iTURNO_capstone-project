@@ -270,6 +270,7 @@ def remittance_batches(request):
             issued_by=request.user if request.user.is_authenticated else None,
             total_amount=data.get('total_amount', 0),
             status=data.get('status', 'OPEN'),
+            covers_date=data.get('covers_date') or None,
         )
         for c in data.get('collections', []):
             Collection.objects.create(
@@ -290,6 +291,10 @@ def remittance_batches(request):
         return Response({'id': batch.id, 'status': 'created'}, status=201)
 
     batches = RemittanceBatch.objects.select_related('issued_by').order_by('-issued_at')
+
+    is_archived = request.query_params.get('is_archived')
+    if is_archived is not None:
+        batches = batches.filter(is_archived=is_archived.lower() in ('1', 'true', 'yes'))
 
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')

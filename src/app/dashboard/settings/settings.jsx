@@ -3,6 +3,7 @@ import { apiService } from "../../../lib/api-service";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { useTerminalPrice } from "../../../lib/useTerminalPrice";
 import SettingsModal from "../../../components/ui/settingsModal";
+import TicketBackfillTab from "./backfill/TicketBackfillTab";
 import "../../../styles/Settings.css";
 
 const TABS = [
@@ -54,9 +55,23 @@ const TABS = [
     ),
   },
   {
+    key: "backfill",
+    label: "Ticket Backfill",
+    description: "Manually enter or CSV-import missed tickets, and pause live issuance during import",
+    allowedRoles: ["SUPERADMIN", "SUPERVISOR"],
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 21V9" />
+        <path d="M7 14l5-5 5 5" />
+        <path d="M4 3h16" />
+      </svg>
+    ),
+  },
+  {
     key: "system",
     label: "System",
     description: "Backup, restore, and roll back the entire system",
+    allowedRoles: ["SUPERADMIN"],
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -115,15 +130,17 @@ const formatBytes = (bytes) => {
 
 function Settings() {
   const [activeTab, setActiveTab] = useState("puv");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
     apiService.getCurrentUser()
-      .then((user) => setIsAdmin((user?.role || "").toUpperCase() === "SUPERADMIN"))
+      .then((user) => setUserRole((user?.role || "").toUpperCase()))
       .catch((err) => console.error("Failed to load current user:", err));
   }, []);
 
-  const visibleTabs = isAdmin ? TABS : TABS.filter(tab => tab.key !== "system");
+  const isAdmin = userRole === "SUPERADMIN";
+  const canManageBackfill = ["SUPERADMIN", "SUPERVISOR"].includes(userRole);
+  const visibleTabs = TABS.filter(tab => !tab.allowedRoles || tab.allowedRoles.includes(userRole));
 
   const [puvTypes, setPuvTypes] = useState([]);
   const [newType, setNewType] = useState("");
@@ -424,7 +441,7 @@ function Settings() {
             <h2 className="set-panel-title">{TABS.find(t => t.key === activeTab)?.label}</h2>
 
           </div>
-          {activeTab !== "terminalPrice" && activeTab !== "system" && (
+          {activeTab !== "terminalPrice" && activeTab !== "system" && activeTab !== "backfill" && (
             <div className="set-toolbar-actions">
               <button className="set-add-btn" onClick={() => setAddModalOpen(true)}>
                 <PlusIcon />
@@ -592,6 +609,9 @@ function Settings() {
             </div>
           </div>
         )}
+
+        {/* Ticket Backfill (manual entry + CSV) + WIP mode */}
+        {activeTab === "backfill" && canManageBackfill && <TicketBackfillTab />}
 
         {/* System Backup / Restore / Rollback */}
         {activeTab === "system" && isAdmin && (

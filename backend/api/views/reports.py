@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime, timedelta
 
+from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -109,7 +110,17 @@ def eod_reconciliation(request):
     checkout_count = len(dispatched_today)
     expected_cash = round(sum(float(t.collection_amount or 0) for t in dispatched_today), 2)
 
-    batches_today = RemittanceBatch.objects.filter(issued_at__gte=day_start, issued_at__lte=day_end)
+    # A late-filed remittance explicitly names which day it covers (covers_date) so
+    # it's attributed to that day's reconciliation regardless of when it was typed
+    # in; older/normal same-day batches (covers_date is null) fall back to the
+    # original issued_at-within-range bucketing, unchanged. Compare against the
+    # plain PH calendar date (not day_start.date()) — day_start is a UTC instant
+    # 8 hours behind PH midnight, so its .date() lands on the previous UTC day.
+    covers_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    batches_today = RemittanceBatch.objects.filter(
+        Q(covers_date=covers_date) |
+        Q(covers_date__isnull=True, issued_at__gte=day_start, issued_at__lte=day_end)
+    )
     actual_cash = round(sum(float(b.total_amount or 0) for b in batches_today), 2)
 
     by_series = {}

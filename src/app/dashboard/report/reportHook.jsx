@@ -70,74 +70,37 @@ export function SummaryCard({ label, count, total }) {
   );
 }
 
-export const handleDateChange = (field, value) => {
-  setFilters((prev) => {
-    const updated = { ...prev, [field]: value };
-    if (field === "endDate" && updated.startDate && value < updated.startDate)
-      return prev;
-    if (field === "startDate" && updated.endDate && value > updated.endDate)
-      updated.endDate = "";
-    return updated;
-  });
-};
+// Shared row-match predicates: used both by each report table's on-screen
+// search box (filtering the loaded preview/page) and by report.jsx's export
+// handlers (filtering the fully-fetched, date-ranged export rows), so typing
+// a search term and exporting only pulls in what's actually visible/matched
+// instead of always dumping the whole date range.
+function fieldsMatch(fields, query) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return fields.some((v) => v != null && String(v).toLowerCase().includes(q));
+}
 
-export const handleClearFilter = () => {
-  setFilters({ startDate: "", endDate: "" });
-  setTimeout(() => fetchData(), 0);
-};
+export const matchesLogRow = (l, query) =>
+  fieldsMatch([l.timestamp, l.ticket_id, l.action, l.driver, l.vehicle, l.route, l.user], query);
 
-export const handleExportCSV = () => {
-  exportCSV(
-    filteredCollections.map((r) => ({
-      Date: r.issued_at,
-      "Ticket ID": r.id,
-      Driver: r.driver,
-      Vehicle: r.vehicle,
-      Route: r.route,
-      "Amount (PHP)": r.collection_amount || 0,
-    })),
-    `collection_report_${Date.now()}.csv`,
+export const matchesRoamingRow = (t, query) =>
+  fieldsMatch([t.id, t.vehicle?.plate_number, t.driver?.name, t.active_user_name], query);
+
+export const matchesRequisitionRow = (r, query) =>
+  fieldsMatch([r.requested_by_name, r.approved_by_name], query);
+
+export const matchesRemittanceRow = (b, query) =>
+  fieldsMatch([b.issued_by_name], query);
+
+export const matchesAuditRow = (l, query) =>
+  fieldsMatch([l.created_at, l.action_display, l.model_name, l.object_repr, l.user_name], query);
+
+export const matchesVehicleRow = (v, query) =>
+  fieldsMatch(
+    [v.plate_number, v.route_detail ? `${v.route_detail.origin} - San Fernando` : v.route, v.active_driver_name],
+    query,
   );
-};
 
-export const handleExportLogsCSV = () => {
-  exportCSV(
-    logs.map((l) => ({
-      Timestamp: l.timestamp,
-      "Ticket ID": l.ticket_id,
-      Action: l.action,
-      Driver: l.driver,
-      Vehicle: l.vehicle,
-      Route: l.route,
-      "Amount (PHP)": l.amount || 0,
-      User: l.user,
-    })),
-    `transaction_logs_${Date.now()}.csv`,
-  );
-};
-
-export const handleExportVehiclesCSV = () => {
-  exportCSV(
-    vehicles.map((v) => ({
-      "Plate Number": v.plate_number,
-      Route: v.route_detail
-        ? `${v.route_detail.origin} - San Fernando`
-        : v.route,
-      Driver: v.active_driver_name || "—",
-    })),
-    `vehicle_records_${Date.now()}.csv`,
-  );
-};
-
-export const handleExportDriversCSV = () => {
-  exportCSV(
-    drivers.map((d) => ({
-      Code: d.code,
-      Name: d.name,
-      "Contact Number": d.contact_number,
-    })),
-    `driver_records_${Date.now()}.csv`,
-  );
-};
-
-export const handleExportPDF = () => exportPDF(filteredCollections, filters);
+export const matchesDriverRow = (d, query) =>
+  fieldsMatch([d.iwp_number || String(d.id), d.name, d.contact], query);

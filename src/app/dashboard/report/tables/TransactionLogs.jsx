@@ -2,10 +2,9 @@ import { useState } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
-import { formatTime } from "../reportHook";
-
+import { matchesLogRow, matchesRoamingRow } from "../reportHook";
 const LOG_COLUMNS = ["Timestamp", "Ticket ID", "Action", "Driver", "Vehicle", "Route", "User"];
-const ROAMING_COLUMNS = ["Ticket ID", "Time", "Vehicle", "Driver", "Issued By", "Verified"];
+const ROAMING_COLUMNS = ["Ticket ID", "Timestamp", "Vehicle", "Driver", "Issued By", "Verified"];
 
 export default function TransactionLogs({
   logsData,
@@ -35,21 +34,7 @@ export default function TransactionLogs({
   const meta = isLogs ? logsMeta : roamingMeta;
   const fetchPage = isLogs ? onLogsFetchPage : onRoamingFetchPage;
 
-  const matchesLog = (l, query) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return [l.timestamp, l.ticket_id, l.action, l.driver, l.vehicle, l.route, l.user]
-      .some((v) => v && String(v).toLowerCase().includes(q));
-  };
-
-  const matchesRoaming = (t, query) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return [t.id, t.vehicle?.plate_number, t.driver?.name, t.active_user_name]
-      .some((v) => v && String(v).toLowerCase().includes(q));
-  };
-
-  const matches = isLogs ? matchesLog : matchesRoaming;
+  const matches = isLogs ? matchesLogRow : matchesRoamingRow;
   const searched = data.filter((row) => matches(row, search));
   const modalSearched = modalData.filter((row) => matches(row, modalSearch));
 
@@ -82,7 +67,7 @@ export default function TransactionLogs({
 
   const renderLogRow = (l, idx, { rowClass, cellClass }) => (
     <tr key={l.id + idx} className={rowClass}>
-      <td className={`${cellClass} rpt-mono rpt-muted`}>{l.timestamp}</td>
+      <td className={`${cellClass} rpt-mono rpt-muted`}>{l.timestamp ? new Date(l.timestamp).toLocaleString() : "—"}</td>
       <td className={`${cellClass} rpt-mono`}>{l.ticket_id}</td>
       <td className={cellClass}>
         <span
@@ -105,7 +90,7 @@ export default function TransactionLogs({
   const renderRoamingRow = (t, idx, { rowClass, cellClass }) => (
     <tr key={t.id} className={rowClass}>
       <td className={`${cellClass} rpt-mono`}>{String(t.id).replace(/^TICKET-/i, "")}</td>
-      <td className={`${cellClass} rpt-mono rpt-muted`}>{formatTime(t.issued_at)}</td>
+      <td className={`${cellClass} rpt-mono rpt-muted`}>{t.issued_at ? new Date(t.issued_at).toLocaleString() : "—"}</td>
       <td className={cellClass}>
         {t.vehicle?.plate_number ? (
           <span className="rpt-plate">{t.vehicle.plate_number}</span>
@@ -169,24 +154,26 @@ export default function TransactionLogs({
           )}
           <button
             className="rpt-btn-export rpt-btn-export--green"
-            onClick={isLogs ? onExportLogsCSV : onExportRoamingCSV}
+            title={search ? "Export only rows matching your search" : "Export all records in range"}
+            onClick={() => (isLogs ? onExportLogsCSV(search) : onExportRoamingCSV(search))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Export CSV
+            {search ? "Export Matches (CSV)" : "Export CSV"}
           </button>
           <button
             className="rpt-btn-export rpt-btn-export--red"
-            onClick={isLogs ? onExportLogsPDF : onExportRoamingPDF}
+            title={search ? "Export only rows matching your search" : "Export all records in range"}
+            onClick={() => (isLogs ? onExportLogsPDF(search) : onExportRoamingPDF(search))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            Export PDF
+            {search ? "Export Matches (PDF)" : "Export PDF"}
           </button>
         </div>
       </div>

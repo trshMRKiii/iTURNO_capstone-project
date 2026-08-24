@@ -4,6 +4,7 @@ import { peso } from "../reportHook";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
 import ViewRemittance from "../../remittance/viewRemittance";
+import { matchesRequisitionRow, matchesRemittanceRow } from "../reportHook";
 
 const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Approved By", "Ticket Series", "Total Value"];
 const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Issued By", "Total Amount", "Actions"];
@@ -14,11 +15,15 @@ export default function RequisitionRemittance({
   onRequisitionFetchPage,
   onExportRequisitionsCSV,
   onExportRequisitionsPDF,
+  requisitionArchived,
+  onRequisitionArchivedChange,
   remittanceData,
   remittanceMeta,
   onRemittanceFetchPage,
   onExportRemittanceCSV,
   onExportRemittancePDF,
+  remittanceArchived,
+  onRemittanceArchivedChange,
   pageSize,
 }) {
   const [activeTab, setActiveTab] = useState("remittance");
@@ -36,27 +41,13 @@ export default function RequisitionRemittance({
   const data = isRequisition ? requisitionData : remittanceData;
   const meta = isRequisition ? requisitionMeta : remittanceMeta;
   const fetchPage = isRequisition ? onRequisitionFetchPage : onRemittanceFetchPage;
+  const archived = isRequisition ? requisitionArchived : remittanceArchived;
+  const onArchivedChange = isRequisition ? onRequisitionArchivedChange : onRemittanceArchivedChange;
 
   const toggleExpand = (id) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
-  const matchesRequisition = (r, query) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return [r.requested_by_name, r.approved_by_name].some(
-      (val) => val && String(val).toLowerCase().includes(q),
-    );
-  };
-
-  const matchesRemittance = (b, query) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return [b.issued_by_name].some(
-      (val) => val && String(val).toLowerCase().includes(q),
-    );
-  };
-
-  const matches = isRequisition ? matchesRequisition : matchesRemittance;
+  const matches = isRequisition ? matchesRequisitionRow : matchesRemittanceRow;
   const searched = data.filter((row) => matches(row, search));
   const modalSearched = modalData.filter((row) => matches(row, modalSearch));
 
@@ -173,6 +164,20 @@ export default function RequisitionRemittance({
               Requisition
             </button>
           </div>
+          <div className="rpt-tab-group">
+            <button
+              className={`rpt-tab ${!archived ? "rpt-tab--active" : ""}`}
+              onClick={() => onArchivedChange(false)}
+            >
+              Active
+            </button>
+            <button
+              className={`rpt-tab ${archived ? "rpt-tab--active" : ""}`}
+              onClick={() => onArchivedChange(true)}
+            >
+              Archived
+            </button>
+          </div>
           <span className="rpt-record-count">
             {searched.length} of {meta.count} records
           </span>
@@ -192,23 +197,25 @@ export default function RequisitionRemittance({
           )}
           <button
             className="rpt-btn-export rpt-btn-export--green"
-            onClick={isRequisition ? onExportRequisitionsCSV : onExportRemittanceCSV}
+            title={search ? "Export only rows matching your search" : "Export all records in range"}
+            onClick={() => (isRequisition ? onExportRequisitionsCSV(search) : onExportRemittanceCSV(search))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Export CSV
+            {search ? "Export Matches (CSV)" : "Export CSV"}
           </button>
           <button
             className="rpt-btn-export rpt-btn-export--red"
-            onClick={isRequisition ? onExportRequisitionsPDF : onExportRemittancePDF}
+            title={search ? "Export only rows matching your search" : "Export all records in range"}
+            onClick={() => (isRequisition ? onExportRequisitionsPDF(search) : onExportRemittancePDF(search))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            Export PDF
+            {search ? "Export Matches (PDF)" : "Export PDF"}
           </button>
         </div>
       </div>

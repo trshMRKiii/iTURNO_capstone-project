@@ -81,12 +81,31 @@ class Route(models.Model):
 
     @property
     def acronym(self):
+        """Route prefix used in ticket/queue codes, e.g. 'BAC-1'.
+
+        Multi-word origins use one initial per word (up to 3), e.g.
+        'Luna via Balaoan' -> 'LVB'. Single-word origins start at 3 letters
+        and grow one letter at a time only if that would clash with
+        another route's first word, e.g. 'Bacnotan' -> 'BAC' and
+        'Bauang' -> 'BAU' instead of both being 'BA'.
+        """
         words = [w for w in self.origin.split() if w]
+        if not words:
+            return "RT"
         if len(words) >= 2:
             return "".join(w[0] for w in words[:3]).upper()
-        if words:
-            return words[0][:2].upper()
-        return "RT"
+
+        word = words[0].upper()
+        other_first_words = [
+            other.split()[0].upper()
+            for other in Route.objects.exclude(pk=self.pk).values_list('origin', flat=True)
+            if other.strip()
+        ]
+        for length in range(3, len(word) + 1):
+            candidate = word[:length]
+            if not any(other[:length] == candidate for other in other_first_words):
+                return candidate
+        return word
 
     def __str__(self):
         return self.full_name
@@ -263,10 +282,29 @@ class TerminalPrice(models.Model):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
 
+
+class WipMode(models.Model):
+    """Singleton operational flag: while active, new ticket issuance is hard-blocked
+    system-wide (see TicketViewSet.perform_create / dispatch_ticket). Deliberately
+    NOT in sync/registry.py — this is LAN-local control state, not a record worth
+    mirroring, and pull-cycle latency (SYNC_INTERVAL_SECONDS, default 30s) would be
+    wrong for a flag meant to take effect immediately."""
+    is_active = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"WIP Mode: {'ACTIVE' if self.is_active else 'inactive'}"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
 class RemittanceBatch(models.Model):
     batch_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
     issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     issued_at = models.DateTimeField(auto_now_add=True)
+    covers_date = models.DateField(null=True, blank=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, default="OPEN")
     is_archived = models.BooleanField(default=False, db_index=True)

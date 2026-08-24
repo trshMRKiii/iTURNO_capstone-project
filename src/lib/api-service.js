@@ -457,6 +457,31 @@ export const apiService = {
     return this.put("/settings/terminal-price/", data);
   },
 
+  // WIP mode / ticket backfill
+  getWipMode() {
+    return this.get("/settings/wip-mode/");
+  },
+
+  updateWipMode(isActive) {
+    return this.put("/settings/wip-mode/", { is_active: isActive });
+  },
+
+  submitManualBackfill(row, commit) {
+    return this.post("/backfill/manual/", { ...row, commit });
+  },
+
+  previewTicketBackfill(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return this.post("/backfill/preview/", formData);
+  },
+
+  importTicketBackfill(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return this.post("/backfill/import/", formData);
+  },
+
   deleteRemittanceBatch(id) {
     return this.delete(`/remittance/${id}/`);
   },
@@ -489,6 +514,23 @@ export const apiService = {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename || `backup.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  async downloadRemittanceXlsx(id, filename) {
+    const token = sessionStorage.getItem("accessToken");
+    const res = await fetch(`${API_BASE_URL}/remittance/${id}/export-xlsx/`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error(`Failed to export remittance report (HTTP ${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "Remittance_Report.xlsx";
     document.body.appendChild(a);
     a.click();
     a.remove();

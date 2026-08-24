@@ -254,6 +254,71 @@
   transition: background 0.25s, color 0.25s;
 }
 
+/* Global notices (remittance gap, WIP mode) */
+.gnotice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+
+.gnotice-text {
+  flex: 1;
+}
+
+.gnotice-action {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gnotice-action:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.gnotice-dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  display: flex;
+  padding: 2px;
+}
+
+.gnotice-dismiss:hover {
+  opacity: 1;
+}
+
+.gnotice--warning {
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+}
+
+.dark .gnotice--warning {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.gnotice--wip {
+  background: rgba(201, 168, 76, 0.13);
+  color: #92702a;
+}
+
+.dark .gnotice--wip {
+  background: rgba(201, 168, 76, 0.16);
+  color: var(--gold);
+}
+
 /* Mobile header (hidden on desktop) */
 .mobile-header {
   display: none;

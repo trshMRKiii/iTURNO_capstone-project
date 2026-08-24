@@ -122,6 +122,18 @@
 
 .rem-add-btn:active { transform: translateY(0); }
 
+.rem-add-btn--secondary {
+  background: transparent;
+  color: #1a2744;
+  border: 1px solid rgba(26,39,68,0.25);
+  box-shadow: none;
+}
+
+.rem-add-btn--secondary:hover {
+  background: rgba(26,39,68,0.05);
+  box-shadow: none;
+}
+
 /* ── Alert ── */
 .rem-alert {
   display: flex;
@@ -136,6 +148,14 @@
   border: 1px solid rgba(239,68,68,0.25);
   border-left: 4px solid #ef4444;
   color: #b91c1c;
+}
+
+.rem-alert--info {
+  background: rgba(201,168,76,0.1);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-left: 4px solid #c9a84c;
+  color: #8a6d1f;
+  flex-wrap: wrap;
 }
 
 /* ── Table card ── */

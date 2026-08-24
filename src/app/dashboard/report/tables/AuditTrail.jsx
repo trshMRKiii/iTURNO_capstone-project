@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
-import { formatChanges } from "../reportHook";
+import { formatChanges, matchesAuditRow } from "../reportHook";
 
 const AUDIT_COLUMNS = ["Timestamp", "Action", "Item", "Details", "User"];
 
@@ -20,15 +20,8 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onE
   const [modalData, setModalData] = useState([]);
   const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
 
-  const matches = (log, query) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return [log.created_at, log.action_display, log.model_name, log.object_repr, log.user_name]
-      .some((v) => v && String(v).toLowerCase().includes(q));
-  };
-
-  const searched = auditData.filter((l) => matches(l, search));
-  const modalSearched = modalData.filter((l) => matches(l, modalSearch));
+  const searched = auditData.filter((l) => matchesAuditRow(l, search));
+  const modalSearched = modalData.filter((l) => matchesAuditRow(l, modalSearch));
 
   const openModal = async () => {
     setShowModal(true);
@@ -97,20 +90,28 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onE
               View All
             </button>
           )}
-          <button className="rpt-btn-export rpt-btn-export--green" onClick={onExportCSV}>
+          <button
+            className="rpt-btn-export rpt-btn-export--green"
+            title={search ? "Export only rows matching your search" : "Export all records in range"}
+            onClick={() => onExportCSV(search)}
+          >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Export CSV
+            {search ? "Export Matches (CSV)" : "Export CSV"}
           </button>
-          <button className="rpt-btn-export rpt-btn-export--red" onClick={onExportPDF}>
+          <button
+            className="rpt-btn-export rpt-btn-export--red"
+            title={search ? "Export only rows matching your search" : "Export all records in range"}
+            onClick={() => onExportPDF(search)}
+          >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            Export PDF
+            {search ? "Export Matches (PDF)" : "Export PDF"}
           </button>
         </div>
       </div>

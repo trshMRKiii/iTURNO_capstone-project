@@ -25,6 +25,7 @@ import {
 import { apiService } from "../../lib/api-service";
 import { useToast, useConfirm } from "../../components/ui/ToastConfirmContext";
 import ForcePasswordChange from "../../components/auth/ForcePasswordChange";
+import GlobalNotices from "../../components/notices/GlobalNotices";
 import "./../../styles/mainIndex.css";
 import sfcLogo from "../../pictures/sfc-nobg-logo.png";
 
@@ -143,6 +144,7 @@ function mainIndex() {
 
   const userRole = currentUser.role || "Unknown Role";
   const userRoleLabel = ROLE_LABELS[userRole] || userRole;
+  const canViewRemittance = ROLE_NAV[userRole]?.includes("/dashboard/Remittance");
   const userInitials =
     userName
       .split(" ")
@@ -329,6 +331,7 @@ function mainIndex() {
       </aside>
 
       <main className="main-content">
+        <GlobalNotices canViewRemittance={canViewRemittance} />
         <Routes>
           <Route index element={<Dashboard />} />
           <Route path="Dashboard" element={<Dashboard />} />

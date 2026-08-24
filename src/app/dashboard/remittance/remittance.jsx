@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import CreateBatchForm from "./createRemittance";
 import ViewRemittance from "./viewRemittance";
 import { useRemittance } from "./useRemittance";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { apiService } from "../../../lib/api-service";
 import { today } from "../report/reportHook";
+import { getPhDateString } from "../../../lib/phDate";
 import EodReconciliation from "../report/tables/EodReconciliation";
 import "../../../styles/Remittance.css";
 import "../../../styles/Report.css";
@@ -28,6 +30,8 @@ export default function Remittance() {
 
   const showToast = useToast();
   const showConfirm = useConfirm();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewBatch, setViewBatch] = useState(null);
@@ -35,6 +39,40 @@ export default function Remittance() {
   const [eod, setEod] = useState(null);
   const [eodLoading, setEodLoading] = useState(false);
   const [batchTab, setBatchTab] = useState("active");
+
+  // Late-remittance flow: lateTargetDate is null for a normal (today) batch,
+  // or a past date string when filing for a previously missed day.
+  const [lateTargetDate, setLateTargetDate] = useState(null);
+  const [showLatePicker, setShowLatePicker] = useState(false);
+  const [latePickerDate, setLatePickerDate] = useState(getPhDateString(-1));
+
+  // Arriving from the remittance-gap banner (via navigate state) jumps straight
+  // into the late-remittance flow, pre-filled with the specific missed date —
+  // consumed once, then cleared so a back/refresh doesn't reopen it.
+  useEffect(() => {
+    if (location.state?.lateDate) {
+      setLateTargetDate(location.state.lateDate);
+      setShowModal(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreateNewBatch = () => {
+    setLateTargetDate(null);
+    setShowModal(true);
+  };
+
+  const handleStartLateRemittance = () => {
+    setLatePickerDate(getPhDateString(-1));
+    setShowLatePicker(true);
+  };
+
+  const handleConfirmLateDate = () => {
+    setLateTargetDate(latePickerDate);
+    setShowLatePicker(false);
+    setShowModal(true);
+  };
 
   const fetchEod = useCallback(async () => {
     setEodLoading(true);
@@ -113,7 +151,14 @@ export default function Remittance() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button className="rem-add-btn" onClick={() => setShowModal(true)}>
+          <button className="rem-add-btn rem-add-btn--secondary" onClick={handleStartLateRemittance}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            File Late Remittance
+          </button>
+          <button className="rem-add-btn" onClick={handleCreateNewBatch}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M5 12h14" />
               <path d="M12 5v14" />
@@ -122,6 +167,21 @@ export default function Remittance() {
           </button>
         </div>
       </div>
+
+      {showLatePicker && (
+        <div className="rem-alert rem-alert--info">
+          <span>File a late remittance covering which day?</span>
+          <input
+            type="date"
+            className="rem-input"
+            value={latePickerDate}
+            max={getPhDateString(-1)}
+            onChange={(e) => setLatePickerDate(e.target.value)}
+          />
+          <button className="rem-btn rem-btn--view" onClick={handleConfirmLateDate}>Continue</button>
+          <button className="rem-btn rem-btn--delete" onClick={() => setShowLatePicker(false)}>Cancel</button>
+        </div>
+      )}
 
       {error && (
         <div className="rem-alert">
@@ -264,9 +324,16 @@ export default function Remittance() {
       {/* Create Modal */}
       {showModal && (
         <CreateBatchForm
-          onClose={() => setShowModal(false)}
-          onSave={handleSaveBatch}
+          onClose={() => {
+            setShowModal(false);
+            setLateTargetDate(null);
+          }}
+          onSave={async (payload) => {
+            await handleSaveBatch(payload);
+            setLateTargetDate(null);
+          }}
           existingBatches={batches}
+          targetDate={lateTargetDate}
         />
       )}
 
