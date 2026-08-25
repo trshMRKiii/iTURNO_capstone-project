@@ -11,7 +11,10 @@ export function useRemittance() {
   const fetchBatches = async () => {
     try {
       const res = await apiService.get("/report/remittance/");
-      setBatches(res.results || []);
+      // LAN's view always wraps as {results,count}; the remote endpoint only
+      // does that when a page param is sent (which this call doesn't send),
+      // returning a bare array instead — handle both shapes.
+      setBatches(Array.isArray(res) ? res : res.results || []);
     } catch (err) {
       console.error("Failed to load remittance batches", err);
       setError("Failed to load remittance batches");
