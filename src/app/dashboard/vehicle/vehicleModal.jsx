@@ -19,7 +19,7 @@ function VehicleModal({ vehicle, onClose }) {
   useEffect(() => {
     if (!vehicle) return;
     setLoading(true);
-    Promise.all([apiService.getTickets(), apiService.getRoamingLogs()])
+    Promise.all([apiService.getTickets({ vehicle_id: vehicle.id }), apiService.getRoamingLogs()])
       .then(([ticketData, roamingData]) => {
         const vehicleTickets = (ticketData || [])
           .filter((t) => t.vehicle_id === vehicle.id || t.vehicle?.id === vehicle.id)

@@ -31,8 +31,21 @@ def _push_upsert(row, model):
         row.save(using='default', update_fields=['synced_at', 'last_error'])
         return False
 
+    # instance.save() re-stamps every auto_now/auto_now_add field to "now" on
+    # INSERT (Field.pre_save doesn't know this is a mirror write of an older
+    # record) — without restoring the real values, anything backdated locally
+    # (a late-filed remittance, a backfilled ticket) would show up in Supabase
+    # timestamped at push time instead of when it actually happened.
+    auto_time_fields = [
+        f.attname for f in model._meta.fields
+        if getattr(f, 'auto_now', False) or getattr(f, 'auto_now_add', False)
+    ]
+    original_values = {name: getattr(instance, name) for name in auto_time_fields}
+
     with transaction.atomic(using='supabase'):
         instance.save(using='supabase')
+        if auto_time_fields:
+            model.objects.using('supabase').filter(pk=instance.pk).update(**original_values)
     row.synced_at = timezone.now()
     row.last_error = ''
     row.save(using='default', update_fields=['synced_at', 'last_error'])

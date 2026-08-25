@@ -238,6 +238,9 @@ class TicketViewSet(viewsets.ModelViewSet):
         mode_param = self.request.query_params.get('mode')
         if mode_param:
             qs = qs.filter(mode__in=[m.strip() for m in mode_param.split(',') if m.strip()])
+        vehicle_id = self.request.query_params.get('vehicle_id')
+        if vehicle_id:
+            qs = qs.filter(vehicle_id=vehicle_id)
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date:

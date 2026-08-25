@@ -30,7 +30,8 @@ export function useCollection(userRole) {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const data = await apiService.getTickets();
+      const today = getTodayDateString(new Date());
+      const data = await apiService.getTickets({ start_date: today, end_date: today });
       setTickets(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {

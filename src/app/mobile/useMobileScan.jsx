@@ -55,7 +55,7 @@ export function useMobileScan() {
       apiService.getDrivers(),
       apiService.getTicketForms(),
       apiService.request("/ticket-series/"),
-      apiService.getTickets(),
+      apiService.getTickets({ status: "QUEUED" }),
     ]);
     setVehicles(v);
     setDrivers(d);

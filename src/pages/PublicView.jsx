@@ -40,7 +40,7 @@ function PublicView() {
     try {
       const [vehicleData, ticketData] = await Promise.all([
         apiService.getVehicles(),
-        apiService.getTickets(),
+        apiService.getTickets({ status: "QUEUED" }),
       ]);
 
       const vehicles = Array.isArray(vehicleData) ? vehicleData : [];

@@ -112,6 +112,15 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / ('db.sqlite3' if DEBUG else 'db_production.sqlite3'),
+        # SQLite only allows one writer at a time; two staff dispatching tickets
+        # at the same moment is entirely realistic at a live terminal, and
+        # without an explicit timeout the second writer gets "database is
+        # locked" immediately instead of just waiting its turn.
+        # SQLite only allows one writer at a time; two staff dispatching tickets
+        # at the same moment is entirely realistic at a live terminal, and
+        # without an explicit timeout the second writer gets "database is
+        # locked" immediately instead of just waiting its turn.
+        'OPTIONS': {'timeout': 20},
     },
     'supabase': {
         'ENGINE': 'django.db.backends.postgresql',

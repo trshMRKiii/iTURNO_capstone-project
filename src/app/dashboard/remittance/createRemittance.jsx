@@ -79,7 +79,7 @@ const CreateBatchForm = ({ onClose, onSave, existingBatches = [], targetDate }) 
       .then(setTicketFormOptions)
       .catch(err => console.error("Failed to load ticket forms:", err));
 
-    apiService.getTickets()
+    apiService.getTickets({ start_date: dateIssued, end_date: dateIssued })
       .then(data => {
         const tickets = Array.isArray(data) ? data : [];
         setTodayTickets(

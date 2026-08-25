@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useTerminalPrice } from "../../../lib/useTerminalPrice";
+import { getPhDateString } from "../../../lib/phDate";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 export const statusColor = {
@@ -63,7 +64,8 @@ export function useQueue(userRole = "") {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      setTickets(await apiService.getTickets());
+      const today = getPhDateString();
+      setTickets(await apiService.getTickets({ start_date: today, end_date: today }));
     } catch (err) {
       setError(err.message);
     } finally {

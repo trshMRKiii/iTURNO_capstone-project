@@ -66,7 +66,7 @@ export function useDriver() {
 
   const fetchTickets = async () => {
     try {
-      const data = await apiService.getTickets();
+      const data = await apiService.getTickets({ status: "QUEUED" });
       setTickets(data);
     } catch {
       /* non-critical */
