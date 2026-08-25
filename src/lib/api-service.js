@@ -74,6 +74,25 @@ export function remotePath(endpoint, method = "GET") {
   return translateForRemote(endpoint, method);
 }
 
+// Thin fetch() wrapper for callers that need the raw Response (Reports fires
+// several endpoints in parallel and does its own .json() handling instead of
+// apiService.request()'s parsed-data contract). Reuses the same remote path
+// translation and Authorization header attachment as request() — without
+// this, remote calls reach the serverless functions with no auth header and
+// requireAuth() in api/_lib/auth.js 401s every one of them.
+export function authFetch(endpoint, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const effectiveEndpoint = IS_REMOTE
+    ? translateForRemote(endpoint, method) ?? endpoint
+    : endpoint;
+
+  const token = sessionStorage.getItem("accessToken");
+  const headers = { ...options.headers };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  return fetch(`${API_BASE_URL}${effectiveEndpoint}`, { ...options, headers });
+}
+
 function translateForRemote(endpoint, method) {
   const [path, query] = endpoint.split("?");
   const qs = query ? `?${query}` : "";
@@ -457,12 +476,22 @@ export const apiService = {
     return this.put("/settings/terminal-price/", data);
   },
 
-  // WIP mode / ticket backfill
+  // WIP mode / ticket backfill — WipMode is deliberately LAN-local, never
+  // mirrored to Supabase (see the model's docstring in backend/api/models.py):
+  // a flag meant to block ticket issuance immediately can't tolerate the
+  // sync engine's pull-cycle latency. There's no remote endpoint for it by
+  // design, so short-circuit instead of hitting a route that doesn't exist.
   getWipMode() {
+    if (IS_REMOTE) return Promise.resolve({ is_active: false });
     return this.get("/settings/wip-mode/");
   },
 
   updateWipMode(isActive) {
+    if (IS_REMOTE) {
+      return Promise.reject(
+        new Error("WIP mode isn't available remotely — it only works on the LAN terminal."),
+      );
+    }
     return this.put("/settings/wip-mode/", { is_active: isActive });
   },
 

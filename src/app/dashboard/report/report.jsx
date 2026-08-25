@@ -32,14 +32,8 @@ import AuditTrail from "./tables/AuditTrail";
 import FleetRecords from "./tables/FleetRecords";
 import RequisitionRemittance from "./tables/RequisitionRemittance";
 import { getDriverCode } from "../driver/driver-utils";
-import { API_BASE_URL, IS_REMOTE, remotePath } from "../../../lib/api-service";
+import { IS_REMOTE, authFetch } from "../../../lib/api-service";
 import "../../../styles/Report.css";
-
-const API_BASE = API_BASE_URL;
-// Bypasses apiService's fetch wrapper (needs several requests in parallel
-// with its own response handling), so it has to do its own LAN->remote path
-// translation — same mapping apiService.request() uses, via remotePath().
-const path = (endpoint) => (IS_REMOTE ? remotePath(endpoint) ?? endpoint : endpoint);
 
 const PAGE_SIZE = 30;
 const EMPTY_PAGE_META = { count: 0, totalPages: 1 };
@@ -112,9 +106,9 @@ export default function Report() {
       const qs = buildParams();
       const q = qs ? `?${qs}` : "";
       const [sumRes, colRes, chartRes] = await Promise.all([
-        fetch(`${API_BASE}${path(`/report/summary/${q}`)}`),
-        fetch(`${API_BASE}${path(`/report/collections/${q}`)}`),
-        fetch(`${API_BASE}${path(`/report/chart/${q}`)}`),
+        authFetch(`/report/summary/${q}`),
+        authFetch(`/report/collections/${q}`),
+        authFetch(`/report/chart/${q}`),
       ]);
       setSummary(await sumRes.json());
       setCollections((await colRes.json()).results || []);
@@ -131,8 +125,8 @@ export default function Report() {
   // top-30 preview shown on the main card.
   const fetchTransactionRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
-    const res = await fetch(
-      `${API_BASE}${path(`/tickets/?mode=QUEUE&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
+    const res = await authFetch(
+      `/tickets/?mode=QUEUE&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
@@ -145,8 +139,8 @@ export default function Report() {
 
   const fetchRoamingRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
-    const res = await fetch(
-      `${API_BASE}${path(`/tickets/?mode=UNLOAD&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
+    const res = await authFetch(
+      `/tickets/?mode=UNLOAD&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
@@ -159,8 +153,8 @@ export default function Report() {
 
   const fetchAuditRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
-    const res = await fetch(
-      `${API_BASE}${path(`/audit-logs/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`)}`,
+    const res = await authFetch(
+      `/audit-logs/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     // Remote /resource/audit-logs returns {results,count} (shared shape
@@ -207,7 +201,7 @@ export default function Report() {
 
   const fetchVehicles = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}${path("/vehicles/")}`);
+      const res = await authFetch("/vehicles/");
       const data = await res.json();
       setVehicles(Array.isArray(data) ? data : data.vehicles || []);
       setVehiclesTotal(Array.isArray(data) ? data.length : data.total || 0);
@@ -218,7 +212,7 @@ export default function Report() {
 
   const fetchDrivers = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}${path("/drivers/")}`);
+      const res = await authFetch("/drivers/");
       const data = await res.json();
       setDrivers(Array.isArray(data) ? data : data.drivers || []);
       setDriversTotal(Array.isArray(data) ? data.length : data.total || 0);
@@ -229,8 +223,8 @@ export default function Report() {
 
   const fetchRequisitionRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
-    const res = await fetch(
-      `${API_BASE}${path(`/requisitions/?page=${page}&page_size=${PAGE_SIZE}&is_archived=${requisitionArchived}${qs ? `&${qs}` : ""}`)}`,
+    const res = await authFetch(
+      `/requisitions/?page=${page}&page_size=${PAGE_SIZE}&is_archived=${requisitionArchived}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
@@ -243,8 +237,8 @@ export default function Report() {
 
   const fetchRemittanceRaw = useCallback(async (page = 1) => {
     const qs = buildParams();
-    const res = await fetch(
-      `${API_BASE}${path(`/report/remittance/?page=${page}&page_size=${PAGE_SIZE}&is_archived=${remittanceArchived}${qs ? `&${qs}` : ""}`)}`,
+    const res = await authFetch(
+      `/report/remittance/?page=${page}&page_size=${PAGE_SIZE}&is_archived=${remittanceArchived}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
@@ -279,7 +273,7 @@ export default function Report() {
   // so CSV/PDF stay complete even though the on-screen table only loads one page.
   const fetchTransactionExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}${path(`/tickets/?mode=QUEUE${qs ? `&${qs}` : ""}`)}`);
+    const res = await authFetch(`/tickets/?mode=QUEUE${qs ? `&${qs}` : ""}`);
     const data = await res.json();
     const list = Array.isArray(data) ? data : data.results || [];
     return list.map(mapTicketToLogRow);
@@ -287,22 +281,22 @@ export default function Report() {
 
   const fetchRoamingExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}${path(`/tickets/?mode=UNLOAD${qs ? `&${qs}` : ""}`)}`);
+    const res = await authFetch(`/tickets/?mode=UNLOAD${qs ? `&${qs}` : ""}`);
     const data = await res.json();
     return Array.isArray(data) ? data : data.results || [];
   }, [buildParams]);
 
   const fetchAuditExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(`${API_BASE}${path(`/audit-logs/?all=true${qs ? `&${qs}` : ""}`)}`);
+    const res = await authFetch(`/audit-logs/?all=true${qs ? `&${qs}` : ""}`);
     const data = await res.json();
     return IS_REMOTE ? data.results || data || [] : data.logs || [];
   }, [buildParams]);
 
   const fetchRequisitionExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(
-      `${API_BASE}${path(`/requisitions/?is_archived=${requisitionArchived}${qs ? `&${qs}` : ""}`)}`,
+    const res = await authFetch(
+      `/requisitions/?is_archived=${requisitionArchived}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return Array.isArray(data) ? data : data.results || [];
@@ -310,8 +304,8 @@ export default function Report() {
 
   const fetchRemittanceExportRows = useCallback(async () => {
     const qs = buildParams();
-    const res = await fetch(
-      `${API_BASE}${path(`/report/remittance/?is_archived=${remittanceArchived}${qs ? `&${qs}` : ""}`)}`,
+    const res = await authFetch(
+      `/report/remittance/?is_archived=${remittanceArchived}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return Array.isArray(data) ? data : data.results || [];
