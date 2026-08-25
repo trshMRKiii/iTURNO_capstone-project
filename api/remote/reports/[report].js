@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "../../_lib/supabaseAdmin.js";
 import { requireAuth } from "../../_lib/auth.js";
 import { resolveDateRange, phRangeStart, phRangeEnd, phDateKey, inRange } from "../../_lib/dateRange.js";
+import { renderRemittanceXlsx } from "../../_lib/remittanceXlsx.js";
 
 // Merges dashboard-stats/report-summary/report-collections/report-chart/
 // eod-reconciliation into one function (Vercel Hobby's 12-function cap —
@@ -214,12 +215,38 @@ async function eodReconciliation(req, res, supabase) {
   });
 }
 
+async function remittanceXlsx(req, res, supabase) {
+  const id = req.query.id;
+  if (!id) {
+    res.status(400).json({ detail: "id is required" });
+    return;
+  }
+
+  const { data: batch, error } = await supabase
+    .from("api_remittancebatch")
+    .select("*, deposits:api_deposit(*), collections:api_collection(*), issued_by:api_user(first_name,last_name,username)")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!batch) {
+    res.status(404).json({ detail: "Not found" });
+    return;
+  }
+
+  const buf = await renderRemittanceXlsx(batch);
+  const filename = `Remittance_${batch.batch_code || batch.id}.xlsx`;
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.status(200).send(buf);
+}
+
 const REPORTS = {
   "dashboard-stats": dashboardStats,
   summary: summaryReport,
   collections: collectionsReport,
   chart: chartReport,
   "eod-reconciliation": eodReconciliation,
+  "remittance-xlsx": remittanceXlsx,
 };
 
 export default async function handler(req, res) {
