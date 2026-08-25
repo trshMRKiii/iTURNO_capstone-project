@@ -210,14 +210,14 @@ def driver_records(request):
 @api_view(['GET'])
 def public_queue(request):
     expire_stale_queue_tickets()
-    vehicles_with_issued_tickets = Vehicle.objects.filter(
-        tickets__status='ISSUED',
+    vehicles_with_queued_tickets = Vehicle.objects.filter(
+        tickets__status='QUEUED',
         is_archived=False
     ).distinct().select_related('route', 'active_driver')
 
     data = []
-    for vehicle in vehicles_with_issued_tickets:
-        latest_ticket = vehicle.tickets.filter(status='ISSUED').order_by('-issued_at').first()
+    for vehicle in vehicles_with_queued_tickets:
+        latest_ticket = vehicle.tickets.filter(status='QUEUED').order_by('-issued_at').first()
         departure_time = None
         if latest_ticket:
             local_dt = latest_ticket.issued_at + timedelta(hours=8)

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function ReportTableModal({ title, subtitle, count, onClose, children, searchValue, onSearchChange, searchPlaceholder }) {
+export default function ReportTableModal({ title, subtitle, count, onClose, children, footer, bodyRef, searchValue, onSearchChange, searchPlaceholder }) {
   return (
     <div className="rpt-overlay" onClick={onClose}>
       <div className="rpt-modal" onClick={(e) => e.stopPropagation()}>
@@ -41,7 +41,8 @@ export default function ReportTableModal({ title, subtitle, count, onClose, chil
           </div>
         </div>
 
-        <div className="rpt-modal-body">{children}</div>
+        <div className="rpt-modal-body" ref={bodyRef}>{children}</div>
+        {footer && <div className="rpt-modal-footer">{footer}</div>}
       </div>
     </div>
   );

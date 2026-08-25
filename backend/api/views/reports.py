@@ -102,7 +102,7 @@ def eod_reconciliation(request):
     day_end = parse_date_end(date_str)
 
     dispatched_today = list(Ticket.objects.filter(
-        status__in=['DISPATCHED', 'COLLECTED'],
+        status='COLLECTED',
         dispatched_at__gte=day_start,
         dispatched_at__lte=day_end,
     ).select_related('series'))
@@ -142,7 +142,7 @@ def eod_reconciliation(request):
                 'missing_numbers': missing,
             })
 
-    open_sessions = Ticket.objects.filter(status='ISSUED').select_related('vehicle', 'driver').order_by('issued_at')
+    open_sessions = Ticket.objects.filter(status='QUEUED').select_related('vehicle', 'driver').order_by('issued_at')
     open_sessions_data = [{
         'ticket_id': t.id,
         'plate_number': t.vehicle.plate_number if t.vehicle else None,

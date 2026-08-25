@@ -30,21 +30,17 @@ const peso = (n) => {
 // introducing a new palette: green=good, amber=pending, blue=active, red=critical,
 // slate=neutral. Every dot is always paired with a text label, never color alone.
 const TICKET_STATUS_META = {
-  ISSUED: { label: "Issued", color: "#f59e0b" },
-  DISPATCHED: { label: "Dispatched", color: "#3b82f6" },
+  QUEUED: { label: "Queued", color: "#f59e0b" },
   COLLECTED: { label: "Collected", color: "#22c55e" },
   CANCELLED: { label: "Cancelled", color: "#ef4444" },
-  RETURNED: { label: "Returned", color: "#94a3b8" },
 };
-const TICKET_STATUS_ORDER = ["ISSUED", "DISPATCHED", "COLLECTED", "CANCELLED", "RETURNED"];
+const TICKET_STATUS_ORDER = ["QUEUED", "COLLECTED", "CANCELLED"];
 
 const FLEET_STATUS_META = {
   QUEUED: { label: "Queued", color: "#f59e0b" },
-  DISPATCHED: { label: "Dispatched", color: "#3b82f6" },
   AVAILABLE: { label: "Available", color: "#22c55e" },
-  MAINTENANCE: { label: "Maintenance", color: "#ef4444" },
 };
-const FLEET_STATUS_ORDER = ["QUEUED", "DISPATCHED", "AVAILABLE", "MAINTENANCE"];
+const FLEET_STATUS_ORDER = ["QUEUED", "AVAILABLE"];
 
 // Matches AuditTrail.jsx's ACTION_COLORS exactly so audit entries look the same everywhere.
 const ACTION_COLORS = { CREATE: "#22c55e", UPDATE: "#3b82f6", DELETE: "#ef4444" };
@@ -221,7 +217,12 @@ export default function Dashboard() {
           apiService.getRoutes(range).catch(() => []),
           apiService.getAuditLogs({ ...range, all: true }).catch(() => ({ logs: [] })),
         ]);
-        setRoutes(Array.isArray(routeData) ? routeData : []);
+        // Backend returns routes alphabetically (origin) — fine for picker dropdowns
+        // elsewhere, but this sidebar ranks routes by activity, so re-sort busiest first.
+        const sortedRoutes = (Array.isArray(routeData) ? routeData : []).sort(
+          (a, b) => (b.checked_in_today ?? 0) - (a.checked_in_today ?? 0),
+        );
+        setRoutes(sortedRoutes);
         setActivity(Array.isArray(logsData.logs) ? logsData.logs : []);
         setActivityPage(0);
       } catch {

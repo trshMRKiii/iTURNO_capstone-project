@@ -88,10 +88,10 @@ function Queue({ userRole }) {
   const activeTickets = filteredTickets.filter((t) => t.status !== "CANCELLED");
   const roamingTickets = activeTickets.filter((t) => t.mode === "UNLOAD");
   const queuingTickets = activeTickets.filter(
-    (t) => t.mode === "QUEUE" && t.status === "ISSUED",
+    (t) => t.mode === "QUEUE" && t.status === "QUEUED",
   );
   const ticketsTab = activeTickets.filter(
-    (t) => !(t.mode === "QUEUE" && t.status === "ISSUED"),
+    (t) => !(t.mode === "QUEUE" && t.status === "QUEUED"),
   );
 
   const displayTickets =

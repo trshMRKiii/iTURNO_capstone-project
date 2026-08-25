@@ -28,7 +28,7 @@ function PublicView() {
   // A vehicle qualifies for the queue if:
   //   - status === 'QUEUED'
   //   - not archived
-  //   - has at least one ticket that is ISSUED and not late
+  //   - has at least one ticket that is QUEUED and not late
   // Vehicles are ordered by issue time (earliest first = next to be dispatched),
   // then grouped by route so each route gets its own queue table.
   const loadQueue = async () => {
@@ -46,7 +46,7 @@ function PublicView() {
       const vehicles = Array.isArray(vehicleData) ? vehicleData : [];
       const tickets  = Array.isArray(ticketData)  ? ticketData  : [];
 
-      // Filter: only QUEUED, non-archived vehicles that have an active ISSUED ticket
+      // Filter: only QUEUED, non-archived vehicles that have an active QUEUED ticket
       const queuedVehicles = vehicles.filter(
         (v) =>
           v.status === 'QUEUED' &&
@@ -54,16 +54,16 @@ function PublicView() {
           tickets.some(
             (t) =>
               t.vehicle?.id === v.id &&
-              t.status === 'ISSUED',
+              t.status === 'QUEUED',
           ),
       );
 
-      // Attach the relevant issued ticket to each vehicle for easy access (e.g. departure_time)
+      // Attach the relevant queued ticket to each vehicle for easy access (e.g. departure_time)
       const withTicket = queuedVehicles.map((v) => {
         const ticket = tickets.find(
           (t) =>
             t.vehicle?.id === v.id &&
-            t.status === 'ISSUED',
+            t.status === 'QUEUED',
         );
         return { ...v, _ticket: ticket || null };
       });

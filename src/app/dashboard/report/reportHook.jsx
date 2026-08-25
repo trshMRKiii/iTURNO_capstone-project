@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+
 export const peso = (n) => {
   const num = parseFloat(n);
   if (isNaN(num)) return "₱0.00";
@@ -12,10 +14,8 @@ export const peso = (n) => {
 
 export const STATUS_COLORS = {
   COLLECTED: "#22c55e",
-  ISSUED: "#3b82f6",
-  DISPATCHED: "#f59e0b",
+  QUEUED: "#3b82f6",
   CANCELLED: "#ef4444",
-  RETURNED: "#8b5cf6",
 };
 
 export const today = new Date().toISOString().split("T")[0];
@@ -104,3 +104,36 @@ export const matchesVehicleRow = (v, query) =>
 
 export const matchesDriverRow = (d, query) =>
   fieldsMatch([d.iwp_number || String(d.id), d.name, d.contact], query);
+
+// The report tables only ever hold one server-paginated page (e.g. 30 rows) in
+// memory, so filtering that page client-side silently misses matches sitting
+// on other pages — the search box looked like it searched everything but only
+// ever searched what happened to already be loaded. Once there's a real query,
+// this fetches the *complete* date-ranged result set (the same fetcher the
+// CSV/PDF export buttons already use) and matches against all of it instead.
+// Debounced so fast typing doesn't fire a fetch per keystroke.
+export function useDebouncedSearchAll(fetchAll, query, delayMs = 300) {
+  const [allResults, setAllResults] = useState(null);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setAllResults(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const rows = await fetchAll();
+        if (!cancelled) setAllResults(rows);
+      } catch {
+        if (!cancelled) setAllResults([]);
+      }
+    }, delayMs);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, fetchAll, delayMs]);
+
+  return allResults;
+}

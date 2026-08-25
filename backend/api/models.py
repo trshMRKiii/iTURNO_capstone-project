@@ -114,8 +114,6 @@ class Route(models.Model):
 class Vehicle(models.Model):
     STATUS_CHOICES = [
         ('AVAILABLE', 'Available'),
-        ('DISPATCHED', 'Dispatched'),
-        ('MAINTENANCE', 'Maintenance'),
         ('QUEUED', 'Queued'),
     ]
 
@@ -141,7 +139,7 @@ class Vehicle(models.Model):
         ]
 
 class Ticket(models.Model):
-    STATUS_CHOICES = [('ISSUED', 'Issued'), ('DISPATCHED', 'Dispatched'), ('COLLECTED', 'Collected'), ('CANCELLED', 'Cancelled'), ('RETURNED', 'Returned')]
+    STATUS_CHOICES = [('QUEUED', 'Queued'), ('COLLECTED', 'Collected'), ('CANCELLED', 'Cancelled')]
     MODE_CHOICES = [('UNLOAD', 'Unload'), ('QUEUE', 'Queue')]
 
     id = models.CharField(max_length=50, primary_key=True)
@@ -155,7 +153,7 @@ class Ticket(models.Model):
     mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='QUEUE')
     series = models.ForeignKey('TicketSeries', on_delete=models.SET_NULL, related_name='tickets', null=True, blank=True)
     remittance_batch = models.ForeignKey('RemittanceBatch', on_delete=models.SET_NULL, related_name='tickets', null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ISSUED')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='QUEUED')
     collection_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     is_verified = models.BooleanField(default=False, db_index=True)
     issued_at = models.DateTimeField(auto_now_add=True, db_index=True)

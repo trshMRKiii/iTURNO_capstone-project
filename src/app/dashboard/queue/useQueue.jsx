@@ -4,11 +4,9 @@ import { useTerminalPrice } from "../../../lib/useTerminalPrice";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 export const statusColor = {
-  ISSUED: "queue-status--issued",
-  DISPATCHED: "queue-status--dispatched",
+  QUEUED: "queue-status--queued",
   COLLECTED: "queue-status--collected",
   CANCELLED: "queue-status--cancelled",
-  RETURNED: "queue-status--returned",
 };
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
@@ -205,7 +203,7 @@ export function useQueue(userRole = "") {
 
     const driverHasActiveTicket = tickets.some(
       (t) =>
-        t.driver?.id === selectedDriver.id && ["ISSUED"].includes(t.status),
+        t.driver?.id === selectedDriver.id && ["QUEUED"].includes(t.status),
     );
 
     if (driverHasActiveTicket) {
@@ -214,7 +212,7 @@ export function useQueue(userRole = "") {
     }
 
     // Vehicle must be AVAILABLE
-    if (!["AVAILABLE", "DISPATCHED"].includes(selectedVehicle.status)) {
+    if (selectedVehicle.status !== "AVAILABLE") {
       setIssueError(
         `Vehicle is currently ${selectedVehicle.status} and cannot be ticketed.`,
       );
@@ -237,7 +235,7 @@ export function useQueue(userRole = "") {
           vehicle_id: selectedVehicle.id,
           driver_id: selectedDriver.id,
           route: selectedVehicle.route_detail?.id || null,
-          status: "ISSUED",
+          status: "QUEUED",
           mode: "QUEUE",
           is_verified: false,
         });
@@ -289,9 +287,12 @@ export function useQueue(userRole = "") {
           driver_id: selectedDriver.id,
           route: selectedVehicle.route_detail?.id || null,
           series_id: parseInt(selectedSeriesId),
-          status: "ISSUED",
+          // Roam pays the toll on the spot — the backend always issues these
+          // as COLLECTED/verified regardless of what's sent here (see the
+          // is_roam branch in TicketSerializer.create()).
+          status: "COLLECTED",
           mode: "UNLOAD",
-          is_verified: false,
+          is_verified: true,
           issuance_group: issuanceGroup,
         };
         if (ticketFee > 0) {
@@ -340,7 +341,7 @@ export function useQueue(userRole = "") {
     () =>
       vehicles.filter(
         (v) =>
-          ["AVAILABLE", "DISPATCHED"].includes(v.status) &&
+          v.status === "AVAILABLE" &&
           (!selectedRouteId || String(v.route_detail?.id) === String(selectedRouteId)),
       ),
     [vehicles, selectedRouteId],

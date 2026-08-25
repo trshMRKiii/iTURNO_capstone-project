@@ -59,7 +59,7 @@ def expire_stale_queue_tickets(actor=None):
     with transaction.atomic():
         stale = list(
             Ticket.objects.select_for_update()
-            .filter(status='ISSUED', issued_at__lt=today_start)
+            .filter(status='QUEUED', issued_at__lt=today_start)
         )
         if not stale:
             return

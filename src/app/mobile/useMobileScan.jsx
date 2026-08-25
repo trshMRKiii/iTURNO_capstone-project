@@ -122,7 +122,7 @@ export function useMobileScan() {
         )
         .map((v) => {
           const ticket = tickets.find(
-            (t) => t.vehicle?.id === v.id && t.status === "ISSUED"
+            (t) => t.vehicle?.id === v.id && t.status === "QUEUED"
           );
           return {
             id: v.id,
@@ -243,12 +243,12 @@ export function useMobileScan() {
         await fetchData();
       } else if (mode === "QUEUE") {
         // Check-in only — denomination/quantity are chosen later, at Dispatch.
-        if (!["AVAILABLE", "DISPATCHED"].includes(scannedVehicle.status)) {
+        if (scannedVehicle.status !== "AVAILABLE") {
           throw new Error(`Vehicle is ${scannedVehicle.status} — cannot check in.`);
         }
 
         const driverHasActiveTicket = tickets.some(
-          (t) => t.driver?.id === selectedDriver.id && t.status === "ISSUED"
+          (t) => t.driver?.id === selectedDriver.id && t.status === "QUEUED"
         );
         if (driverHasActiveTicket) {
           throw new Error("This driver already has an active ticket.");
@@ -259,7 +259,7 @@ export function useMobileScan() {
           vehicle_id: scannedVehicle.id,
           driver_id: selectedDriver.id,
           route: scannedVehicle.route_detail?.id || null,
-          status: "ISSUED",
+          status: "QUEUED",
           mode: "QUEUE",
           is_verified: false,
         });
@@ -267,7 +267,7 @@ export function useMobileScan() {
         setResult(`Vehicle checked into queue (ticket ${newTicket.id}).`);
         await fetchData();
       } else if (mode === "ROAM") {
-        if (!["AVAILABLE", "DISPATCHED"].includes(scannedVehicle.status)) {
+        if (scannedVehicle.status !== "AVAILABLE") {
           throw new Error(`Vehicle is ${scannedVehicle.status} — cannot issue ticket.`);
         }
 
@@ -296,9 +296,12 @@ export function useMobileScan() {
             driver_id: selectedDriver.id,
             route: scannedVehicle.route_detail?.id || null,
             series_id: parseInt(selectedSeriesId),
-            status: "ISSUED",
+            // Roam pays the toll on the spot — the backend always issues these
+            // as COLLECTED/verified regardless of what's sent here (see the
+            // is_roam branch in TicketSerializer.create()).
+            status: "COLLECTED",
             mode: "UNLOAD",
-            is_verified: false,
+            is_verified: true,
             issuance_group: issuanceGroup,
           };
           if (ticketFee > 0) payload.collection_amount = ticketFee;

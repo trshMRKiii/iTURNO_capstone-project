@@ -941,16 +941,10 @@
 }
 
 /* ── Ticket status colour variants ── */
-.queue-status--issued {
+.queue-status--queued {
   background: rgba(234, 179, 8, 0.12);
   color: #92400e;
   border: 1px solid rgba(234, 179, 8, 0.3);
-}
-
-.queue-status--dispatched {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
-  border: 1px solid rgba(59, 130, 246, 0.25);
 }
 
 .queue-status--collected {
@@ -965,11 +959,6 @@
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
-.queue-status--returned {
-  background: rgba(139, 92, 246, 0.1);
-  color: #6d28d9;
-  border: 1px solid rgba(139, 92, 246, 0.22);
-}
 
 /* ── Status cell wrapper (badge + cancel reason stacked) ── */
 .queue-status-cell {

@@ -545,6 +545,14 @@
 .rpt-modal-body {
   padding: 0;
   overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Pager sits outside the scrollable body so it stays put — not buried below
+   30 rows of table content, and not affected by table scroll. */
+.rpt-modal-footer {
+  flex-shrink: 0;
 }
 
 .rpt-modal-body .rpt-table-wrap {

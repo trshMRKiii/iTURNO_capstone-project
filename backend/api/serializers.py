@@ -142,7 +142,7 @@ class TicketSerializer(serializers.ModelSerializer):
 
             driver = Driver.objects.get(id=driver_id)
 
-            open_tickets = list(Ticket.objects.filter(vehicle=vehicle, status='ISSUED'))
+            open_tickets = list(Ticket.objects.filter(vehicle=vehicle, status='QUEUED'))
             # A quantity>1 issuance makes several sequential create() calls that share one
             # issuance_group — those are the same check-in, not a duplicate one.
             is_continuation = bool(issuance_group) and open_tickets and all(
@@ -155,7 +155,7 @@ class TicketSerializer(serializers.ModelSerializer):
                 )
 
             if not is_continuation:
-                if vehicle.status not in ('AVAILABLE', 'DISPATCHED'):
+                if vehicle.status != 'AVAILABLE':
                     raise serializers.ValidationError(
                         {"vehicle_id": f"Vehicle is currently {vehicle.status} and cannot be checked in."}
                     )
@@ -175,9 +175,11 @@ class TicketSerializer(serializers.ModelSerializer):
                 series.save(update_fields=['start_no', 'updated_at'])
 
             if is_roam:
-                # Roam check-in is also check-out — dispatch is automatic,
-                # so the ticket is born already dispatched with no queue step.
-                validated_data['status'] = 'DISPATCHED'
+                # Roam check-in is also check-out — the toll is paid on the spot
+                # and the vehicle roams off again, so the ticket is born already
+                # collected with no queue/dispatch step.
+                validated_data['status'] = 'COLLECTED'
+                validated_data['is_verified'] = True
                 validated_data['dispatched_at'] = timezone.now()
             elif not is_continuation:
                 # Queue check-ins get a route-acronym + daily bay number

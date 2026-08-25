@@ -48,7 +48,7 @@ function Dispatch() {
     try {
       const [vehicleData, ticketData, driverData, ticketFormData, ticketSeriesData] = await Promise.all([
         apiService.getVehicles({ status: "QUEUED", is_archived: "false" }),
-        apiService.getTickets({ status: "ISSUED,DISPATCHED" }),
+        apiService.getTickets({ status: "QUEUED" }),
         apiService.getDrivers({ status: "ACTIVE" }),
         apiService.getTicketForms(),
         apiService.request("/ticket-series/"),
@@ -91,23 +91,13 @@ function Dispatch() {
   );
 
   // Server already scopes vehicles (status=QUEUED, is_archived=false) and tickets
-  // (status=ISSUED,DISPATCHED) — see fetchData(). These Maps index the small
-  // remaining `tickets` array by vehicle so queue/render logic doesn't rescan
-  // it per row on every render (e.g. every keystroke in the Cancel/Swap modals).
+  // (status=QUEUED) — see fetchData(). This Map indexes the small remaining
+  // `tickets` array by vehicle so queue/render logic doesn't rescan it per row
+  // on every render (e.g. every keystroke in the Cancel/Swap modals).
   const openTicketByVehicleId = useMemo(() => {
     const map = new Map();
     for (const t of tickets) {
-      if (t.status === "ISSUED" && t.vehicle?.id != null && !map.has(t.vehicle.id)) {
-        map.set(t.vehicle.id, t);
-      }
-    }
-    return map;
-  }, [tickets]);
-
-  const dispatchedTicketByVehicleId = useMemo(() => {
-    const map = new Map();
-    for (const t of tickets) {
-      if (t.status === "DISPATCHED" && t.vehicle?.id != null && !map.has(t.vehicle.id)) {
+      if (t.status === "QUEUED" && t.vehicle?.id != null && !map.has(t.vehicle.id)) {
         map.set(t.vehicle.id, t);
       }
     }
@@ -148,7 +138,7 @@ function Dispatch() {
 
   const getDriverName = (vehicle) => {
     if (vehicle.active_driver_name) return vehicle.active_driver_name;
-    const ticket = dispatchedTicketByVehicleId.get(vehicle.id);
+    const ticket = openTicketByVehicleId.get(vehicle.id);
     return ticket?.driver?.name || "—";
   };
 
@@ -232,10 +222,10 @@ function Dispatch() {
     setCancelling(true);
     setCancelError("");
     try {
-      // Cancel every ISSUED ticket for this vehicle — quantity > 1 issuance
+      // Cancel every QUEUED ticket for this vehicle — quantity > 1 issuance
       // creates multiple tickets that all belong to the same pending trip.
       const activeTickets = tickets.filter(
-        (t) => t.vehicle?.id === cancelTarget.id && t.status === "ISSUED",
+        (t) => t.vehicle?.id === cancelTarget.id && t.status === "QUEUED",
       );
       await Promise.all(
         activeTickets.map((t) =>

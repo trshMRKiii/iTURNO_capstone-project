@@ -306,7 +306,7 @@ class TicketViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             placeholder = Ticket.objects.select_for_update().filter(
-                vehicle=vehicle, status='ISSUED',
+                vehicle=vehicle, status='QUEUED',
             ).order_by('issued_at').first()
             if not placeholder:
                 raise ValidationError({"vehicle_id": "No open ticket found for this vehicle."})
@@ -374,10 +374,10 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def reassign_driver(self, request, pk=None):
-        """Swap the driver on a vehicle that's still waiting in queue (open/ISSUED ticket)."""
+        """Swap the driver on a vehicle that's still waiting in queue (open/QUEUED ticket)."""
         ticket = self.get_object()
-        if ticket.status != 'ISSUED':
-            raise ValidationError("Only an open (ISSUED) ticket's driver can be reassigned.")
+        if ticket.status != 'QUEUED':
+            raise ValidationError("Only an open (QUEUED) ticket's driver can be reassigned.")
 
         driver_id = request.data.get('driver_id')
         if not driver_id:
@@ -391,7 +391,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         if new_driver.status != 'ACTIVE':
             raise ValidationError({"driver_id": "Selected driver is not active and cannot be assigned."})
 
-        conflict = Ticket.objects.filter(driver=new_driver, status='ISSUED').exclude(vehicle=ticket.vehicle).exists()
+        conflict = Ticket.objects.filter(driver=new_driver, status='QUEUED').exclude(vehicle=ticket.vehicle).exists()
         if conflict:
             raise ValidationError({"driver_id": "This driver already has an active ticket on another vehicle."})
 
@@ -399,7 +399,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         vehicle = ticket.vehicle
 
         with transaction.atomic():
-            siblings = Ticket.objects.filter(vehicle=vehicle, status='ISSUED')
+            siblings = Ticket.objects.filter(vehicle=vehicle, status='QUEUED')
             if ticket.issuance_group:
                 siblings = siblings.filter(issuance_group=ticket.issuance_group)
             else:

@@ -1,18 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import { peso } from "../reportHook";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
 import ViewRemittance from "../../remittance/viewRemittance";
-import { matchesRequisitionRow, matchesRemittanceRow } from "../reportHook";
+import { matchesRequisitionRow, matchesRemittanceRow, useDebouncedSearchAll } from "../reportHook";
 
 const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Approved By", "Ticket Series", "Total Value"];
 const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Issued By", "Total Amount", "Actions"];
+// Main card shows a short preview like the other report cards (FleetRecords) —
+// "View All" opens the modal for the full paginated list.
+const PREVIEW_SIZE = 5;
 
 export default function RequisitionRemittance({
   requisitionData,
   requisitionMeta,
   onRequisitionFetchPage,
+  onRequisitionFetchAll,
   onExportRequisitionsCSV,
   onExportRequisitionsPDF,
   requisitionArchived,
@@ -20,6 +24,7 @@ export default function RequisitionRemittance({
   remittanceData,
   remittanceMeta,
   onRemittanceFetchPage,
+  onRemittanceFetchAll,
   onExportRemittanceCSV,
   onExportRemittancePDF,
   remittanceArchived,
@@ -36,11 +41,13 @@ export default function RequisitionRemittance({
   const [modalPage, setModalPage] = useState(1);
   const [modalData, setModalData] = useState([]);
   const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
+  const modalBodyRef = useRef(null);
 
   const isRequisition = activeTab === "requisition";
   const data = isRequisition ? requisitionData : remittanceData;
   const meta = isRequisition ? requisitionMeta : remittanceMeta;
   const fetchPage = isRequisition ? onRequisitionFetchPage : onRemittanceFetchPage;
+  const fetchAll = isRequisition ? onRequisitionFetchAll : onRemittanceFetchAll;
   const archived = isRequisition ? requisitionArchived : remittanceArchived;
   const onArchivedChange = isRequisition ? onRequisitionArchivedChange : onRemittanceArchivedChange;
 
@@ -48,8 +55,35 @@ export default function RequisitionRemittance({
     setExpandedId((prev) => (prev === id ? null : id));
 
   const matches = isRequisition ? matchesRequisitionRow : matchesRemittanceRow;
-  const searched = data.filter((row) => matches(row, search));
-  const modalSearched = modalData.filter((row) => matches(row, modalSearch));
+
+  // data/modalData only ever hold one loaded page — once there's an actual
+  // query, search the complete date-ranged result set instead of just that page.
+  const searchAll = useDebouncedSearchAll(fetchAll, search);
+  const modalSearchAll = useDebouncedSearchAll(fetchAll, modalSearch);
+  const isModalSearching = modalSearch.trim() && modalSearchAll;
+
+  const searched = searchAll
+    ? searchAll.filter((row) => matches(row, search))
+    : data.filter((row) => matches(row, search));
+  const preview = searched.slice(0, PREVIEW_SIZE);
+  const total = searchAll ? searched.length : meta.count;
+
+  const modalFilteredAll = isModalSearching
+    ? modalSearchAll.filter((row) => matches(row, modalSearch))
+    : [];
+  const modalSearched = isModalSearching
+    ? modalFilteredAll.slice((modalPage - 1) * pageSize, modalPage * pageSize)
+    : modalData;
+  const modalTotal = isModalSearching ? modalFilteredAll.length : modalMeta.count;
+  const modalTotalPages = isModalSearching
+    ? Math.max(Math.ceil(modalFilteredAll.length / pageSize), 1)
+    : modalMeta.totalPages;
+
+  // A fresh modal search should start back at page 1, not wherever the
+  // server-paginated browsing left off.
+  useEffect(() => {
+    setModalPage(1);
+  }, [modalSearch]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -72,6 +106,11 @@ export default function RequisitionRemittance({
   };
 
   const changeModalPage = async (page) => {
+    modalBodyRef.current?.scrollTo({ top: 0 });
+    if (isModalSearching) {
+      setModalPage(page);
+      return;
+    }
     const result = await fetchPage(page);
     setModalPage(result.page);
     setModalData(result.results);
@@ -179,7 +218,7 @@ export default function RequisitionRemittance({
             </button>
           </div>
           <span className="rpt-record-count">
-            {searched.length} of {meta.count} records
+            {preview.length} of {total} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
@@ -190,7 +229,7 @@ export default function RequisitionRemittance({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {meta.count > pageSize && (
+          {total > PREVIEW_SIZE && (
             <button className="rpt-btn rpt-btn--secondary" onClick={openModal}>
               View All
             </button>
@@ -220,26 +259,29 @@ export default function RequisitionRemittance({
         </div>
       </div>
 
-      <DataTable columns={columns} data={searched} rowRenderer={rowRenderer} />
+      <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} />
 
       {showModal && (
         <ReportTableModal
           title={isRequisition ? "Requisition" : "Remittance"}
           subtitle={isRequisition ? "Complete history of ticket series requisitions" : "Complete history of remittance batches"}
-          count={modalMeta.count}
+          count={modalTotal}
           onClose={closeModal}
           searchValue={modalSearch}
           onSearchChange={setModalSearch}
           searchPlaceholder={isRequisition ? "Search requisitions…" : "Search remittance…"}
+          bodyRef={modalBodyRef}
+          footer={
+            <Pager
+              page={modalPage}
+              totalPages={modalTotalPages}
+              count={modalTotal}
+              pageSize={pageSize}
+              onPageChange={changeModalPage}
+            />
+          }
         >
           <DataTable columns={columns} data={modalSearched} rowRenderer={rowRenderer} />
-          <Pager
-            page={modalPage}
-            totalPages={modalMeta.totalPages}
-            count={modalMeta.count}
-            pageSize={pageSize}
-            onPageChange={changeModalPage}
-          />
         </ReportTableModal>
       )}
 

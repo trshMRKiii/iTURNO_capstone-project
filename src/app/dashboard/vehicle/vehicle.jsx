@@ -494,16 +494,6 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                       }
                     />
                   </Field>
-                  <Field label="Status">
-                    <select
-                      className="veh-select"
-                      value={form.status}
-                      onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    >
-                      <option value="AVAILABLE">Available</option>
-                      <option value="MAINTENANCE">Under Maintenance</option>
-                    </select>
-                  </Field>
                 </div>
               </div>
 

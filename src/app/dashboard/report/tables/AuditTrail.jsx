@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
-import { formatChanges, matchesAuditRow } from "../reportHook";
+import { formatChanges, matchesAuditRow, useDebouncedSearchAll } from "../reportHook";
 
 const AUDIT_COLUMNS = ["Timestamp", "Action", "Item", "Details", "User"];
+// Main card shows a short preview like the other report cards (FleetRecords) —
+// "View All" opens the modal for the full paginated list.
+const PREVIEW_SIZE = 5;
 
 const ACTION_COLORS = {
   CREATE: "#22c55e",
@@ -12,16 +15,43 @@ const ACTION_COLORS = {
   DELETE: "#ef4444",
 };
 
-export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onExportCSV, onExportPDF, pageSize }) {
+export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onAuditFetchAll, onExportCSV, onExportPDF, pageSize }) {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState("");
   const [modalPage, setModalPage] = useState(1);
   const [modalData, setModalData] = useState([]);
   const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
+  const modalBodyRef = useRef(null);
 
-  const searched = auditData.filter((l) => matchesAuditRow(l, search));
-  const modalSearched = modalData.filter((l) => matchesAuditRow(l, modalSearch));
+  // auditData/modalData only ever hold one loaded page — once there's an actual
+  // query, search the complete date-ranged result set instead of just that page.
+  const searchAll = useDebouncedSearchAll(onAuditFetchAll, search);
+  const modalSearchAll = useDebouncedSearchAll(onAuditFetchAll, modalSearch);
+  const isModalSearching = modalSearch.trim() && modalSearchAll;
+
+  const searched = searchAll
+    ? searchAll.filter((l) => matchesAuditRow(l, search))
+    : auditData.filter((l) => matchesAuditRow(l, search));
+  const preview = searched.slice(0, PREVIEW_SIZE);
+  const total = searchAll ? searched.length : auditMeta.count;
+
+  const modalFilteredAll = isModalSearching
+    ? modalSearchAll.filter((l) => matchesAuditRow(l, modalSearch))
+    : [];
+  const modalSearched = isModalSearching
+    ? modalFilteredAll.slice((modalPage - 1) * pageSize, modalPage * pageSize)
+    : modalData;
+  const modalTotal = isModalSearching ? modalFilteredAll.length : modalMeta.count;
+  const modalTotalPages = isModalSearching
+    ? Math.max(Math.ceil(modalFilteredAll.length / pageSize), 1)
+    : modalMeta.totalPages;
+
+  // A fresh modal search should start back at page 1, not wherever the
+  // server-paginated browsing left off.
+  useEffect(() => {
+    setModalPage(1);
+  }, [modalSearch]);
 
   const openModal = async () => {
     setShowModal(true);
@@ -38,6 +68,11 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onE
   };
 
   const changeModalPage = async (page) => {
+    modalBodyRef.current?.scrollTo({ top: 0 });
+    if (isModalSearching) {
+      setModalPage(page);
+      return;
+    }
     const result = await onAuditFetchPage(page);
     setModalPage(result.page);
     setModalData(result.results);
@@ -74,7 +109,7 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onE
             <button className="rpt-tab rpt-tab--active">Audit Trail</button>
           </div>
           <span className="rpt-record-count">
-            {searched.length} of {auditMeta.count} records
+            {preview.length} of {total} records
           </span>
         </div>
         <div className="rpt-card-header-actions">
@@ -85,7 +120,7 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onE
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {auditMeta.count > pageSize && (
+          {total > PREVIEW_SIZE && (
             <button className="rpt-btn rpt-btn--secondary" onClick={openModal}>
               View All
             </button>
@@ -116,26 +151,29 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onE
         </div>
       </div>
 
-      <DataTable columns={AUDIT_COLUMNS} data={searched} rowRenderer={renderRow} />
+      <DataTable columns={AUDIT_COLUMNS} data={preview} rowRenderer={renderRow} />
 
       {showModal && (
         <ReportTableModal
           title="Audit Trail"
           subtitle="Full history of who created, changed, or deleted records"
-          count={modalMeta.count}
+          count={modalTotal}
           onClose={closeModal}
           searchValue={modalSearch}
           onSearchChange={setModalSearch}
           searchPlaceholder="Search audit trail…"
+          bodyRef={modalBodyRef}
+          footer={
+            <Pager
+              page={modalPage}
+              totalPages={modalTotalPages}
+              count={modalTotal}
+              pageSize={pageSize}
+              onPageChange={changeModalPage}
+            />
+          }
         >
           <DataTable columns={AUDIT_COLUMNS} data={modalSearched} rowRenderer={renderRow} />
-          <Pager
-            page={modalPage}
-            totalPages={modalMeta.totalPages}
-            count={modalMeta.count}
-            pageSize={pageSize}
-            onPageChange={changeModalPage}
-          />
         </ReportTableModal>
       )}
     </div>

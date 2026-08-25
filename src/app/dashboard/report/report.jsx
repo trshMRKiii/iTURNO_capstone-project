@@ -620,6 +620,8 @@ export default function Report() {
         onRoamingFetchPage={fetchRoamingRaw}
         onExportRoamingCSV={handleExportRoamingCSV}
         onExportRoamingPDF={handleExportRoamingPDF}
+        onLogsFetchAll={fetchTransactionExportRows}
+        onRoamingFetchAll={fetchRoamingExportRows}
         STATUS_COLORS={STATUS_COLORS}
         pageSize={PAGE_SIZE}
       />
@@ -628,6 +630,7 @@ export default function Report() {
         requisitionData={requisitionData}
         requisitionMeta={requisitionMeta}
         onRequisitionFetchPage={fetchRequisitionRaw}
+        onRequisitionFetchAll={fetchRequisitionExportRows}
         onExportRequisitionsCSV={handleExportRequisitionsCSV}
         onExportRequisitionsPDF={handleExportRequisitionsPDF}
         requisitionArchived={requisitionArchived}
@@ -635,6 +638,7 @@ export default function Report() {
         remittanceData={remittanceData}
         remittanceMeta={remittanceMeta}
         onRemittanceFetchPage={fetchRemittanceRaw}
+        onRemittanceFetchAll={fetchRemittanceExportRows}
         onExportRemittanceCSV={handleExportRemittanceCSV}
         onExportRemittancePDF={handleExportRemittancePDF}
         remittanceArchived={remittanceArchived}
@@ -661,6 +665,7 @@ export default function Report() {
         auditData={auditData}
         auditMeta={auditMeta}
         onAuditFetchPage={fetchAuditRaw}
+        onAuditFetchAll={fetchAuditExportRows}
         onExportCSV={handleExportAuditCSV}
         onExportPDF={handleExportAuditPDF}
         pageSize={PAGE_SIZE}

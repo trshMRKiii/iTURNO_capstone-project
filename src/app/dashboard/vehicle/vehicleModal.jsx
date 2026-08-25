@@ -4,11 +4,9 @@ import { apiService } from "../../../lib/api-service";
 const MAX_RECORDS = 20;
 
 const STATUS_COLORS = {
-  ISSUED: "#3b82f6",
-  DISPATCHED: "#f59e0b",
+  QUEUED: "#3b82f6",
   COLLECTED: "#22c55e",
   CANCELLED: "#ef4444",
-  RETURNED: "#8b5cf6",
   ROAMING: "#f97316",
 };
 

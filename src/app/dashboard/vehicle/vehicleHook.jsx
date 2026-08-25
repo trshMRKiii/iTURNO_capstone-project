@@ -17,14 +17,12 @@ const EMPTY_FORM = {
 
 export const STATUS_COLOR = {
   AVAILABLE: "veh-status--available",
-  ON_TRIP: "veh-status--trip",
-  MAINTENANCE: "veh-status--maintenance",
+  QUEUED: "veh-status--queued",
 };
 
 export const STATUS_LABEL = {
   AVAILABLE: "Available",
-  ON_TRIP: "On Trip",
-  MAINTENANCE: "Under Maintenance",
+  QUEUED: "Queued",
 };
 
 // Formats free-typed input into LLL-1234 as the user types, auto-inserting the dash.

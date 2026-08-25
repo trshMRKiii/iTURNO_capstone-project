@@ -73,9 +73,9 @@ export function useDriver() {
     }
   };
 
-  // Check if driver has an active (ISSUED or DISPATCHED) ticket
+  // Check if driver has an active (QUEUED) ticket
   const isDriverOnActiveTicket = (driverId) =>
-    tickets.some((t) => t.driver?.id === driverId && t.status === "ISSUED");
+    tickets.some((t) => t.driver?.id === driverId && t.status === "QUEUED");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
