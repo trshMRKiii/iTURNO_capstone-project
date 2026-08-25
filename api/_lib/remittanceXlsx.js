@@ -66,7 +66,12 @@ export async function renderRemittanceXlsx(batch) {
     }
     if (row !== undefined) {
       sheet1.getCell(`C${row}`).value = fromNo;
-      sheet1.getCell(`E${row}`).value = toNo;
+      // Template gives "From" (C) no number format but "To" (E) a 2-decimal
+      // money format, even though both are ticket numbers, not currency —
+      // match E to C's plain format so the pair reads consistently.
+      const toCell = sheet1.getCell(`E${row}`);
+      toCell.value = toNo;
+      toCell.numFmt = "General";
       sheet1.getCell(`G${row}`).value = amount;
     }
 
