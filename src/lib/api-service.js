@@ -551,10 +551,10 @@ export const apiService = {
 
   async downloadRemittanceXlsx(id, filename) {
     const token = sessionStorage.getItem("accessToken");
-    const url = IS_REMOTE
+    const endpoint = IS_REMOTE
       ? `${API_BASE_URL}/reports/remittance-xlsx?id=${id}`
       : `${API_BASE_URL}/remittance/${id}/export-xlsx/`;
-    const res = await fetch(url, {
+    const res = await fetch(endpoint, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) throw new Error(`Failed to export remittance report (HTTP ${res.status})`);
