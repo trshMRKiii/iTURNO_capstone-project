@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useToast, useConfirm } from "../../../../components/ui/ToastConfirmContext";
+import { IS_REMOTE } from "../../../../lib/api-service";
 import { useTicketBackfill } from "./useTicketBackfill";
 import BackfillResults from "./BackfillResults";
 import {
@@ -59,6 +60,7 @@ export default function TicketBackfillTab() {
     vehicles, drivers, routes, ticketForms,
     manualRow, manualPreview, manualBusy, updateManualField, resetManualRow, previewManualRow, confirmManualRow,
     csvFile, setCsvFile, csvReport, csvBusy, previewCsv, importCsv, resetCsv,
+    remoteRequests, remoteRequestsLoading,
   } = useTicketBackfill();
 
   const [mode, setMode] = useState("manual");
@@ -134,12 +136,19 @@ export default function TicketBackfillTab() {
   };
 
   const handleConfirmManual = async () => {
-    const ok = await showConfirm(`Add ticket #${manualRow[F_TICKET_ID]}? This creates a real record.`);
+    const ok = await showConfirm(
+      IS_REMOTE
+        ? `Queue ticket #${manualRow[F_TICKET_ID]} for backfill? The LAN terminal creates it on its next sync.`
+        : `Add ticket #${manualRow[F_TICKET_ID]}? This creates a real record.`
+    );
     if (!ok) return;
     try {
       const result = await confirmManualRow();
       if (result.outcome === "ok") {
-        showToast(`Ticket #${result.ticket_id} added`, "success");
+        showToast(
+          result.queued ? `Ticket #${result.ticket_id} queued for backfill` : `Ticket #${result.ticket_id} added`,
+          "success"
+        );
         setVehicleSearch("");
         setDriverSearch("");
         setIssuedAtLocal("");
@@ -182,9 +191,11 @@ export default function TicketBackfillTab() {
         <span className={`tbf-pill ${wipMode?.is_active ? "tbf-pill--wip" : "tbf-pill--active"}`}>
           {wipLoading ? "…" : wipMode?.is_active ? "WIP" : "Active"}
         </span>
-        <button className="set-add-btn" onClick={handleToggleWip} disabled={wipLoading || togglingWip}>
-          {wipMode?.is_active ? "Switch to Active" : "Switch to WIP"}
-        </button>
+        {!IS_REMOTE && (
+          <button className="set-add-btn" onClick={handleToggleWip} disabled={wipLoading || togglingWip}>
+            {wipMode?.is_active ? "Switch to Active" : "Switch to WIP"}
+          </button>
+        )}
         {wipMode?.updated_at && (
           <span className="tbf-meta">Last changed {new Date(wipMode.updated_at).toLocaleString()}</span>
         )}
@@ -194,12 +205,18 @@ export default function TicketBackfillTab() {
         dispatching tickets while WIP is on. Use it while backfilling paper tickets below, then
         switch back to Active when done. Use a ticket-numbering scheme for paper backfills that
         won't collide with your active ticket series ranges.
+        {IS_REMOTE && " Switching WIP on or off only works from the LAN terminal itself."}
       </p>
 
-      {!wipLoading && !wipMode?.is_active && (
+      {!IS_REMOTE && !wipLoading && !wipMode?.is_active && (
         <div className="tbf-nudge">
           <span>Currently Active — consider switching to WIP before importing to avoid collisions with live ticket issuance.</span>
           <button className="set-add-btn" onClick={handleToggleWip} disabled={togglingWip}>Switch to WIP</button>
+        </div>
+      )}
+      {IS_REMOTE && !wipLoading && !wipMode?.is_active && (
+        <div className="tbf-nudge">
+          <span>Remote backfill needs WIP mode active first — switch it on from the LAN terminal, then come back here.</span>
         </div>
       )}
 
@@ -219,7 +236,11 @@ export default function TicketBackfillTab() {
         </button>
       </div>
 
-      {mode === "manual" && (
+      {mode === "manual" && IS_REMOTE && !wipLoading && !wipMode?.is_active && (
+        <p className="set-rewards-note">Waiting on WIP mode — the form below unlocks once it's active.</p>
+      )}
+
+      {mode === "manual" && (!IS_REMOTE || wipMode?.is_active) && (
         <div className="tbf-manual-form">
           <div className="set-add-row">
             <label className="set-field">
@@ -369,7 +390,7 @@ export default function TicketBackfillTab() {
             </label>
           </div>
 
-          {manualPreview && manualPreview.outcome === "ok" && (
+          {!IS_REMOTE && manualPreview && manualPreview.outcome === "ok" && (
             <div className="tbf-preview-line">
               Will {manualPreview.committed ? "record" : "create"} ticket #{manualPreview.ticket_id} for{" "}
               {manualPreview.vehicle} / {manualPreview.driver}
@@ -379,20 +400,61 @@ export default function TicketBackfillTab() {
           )}
 
           <div className="set-add-row">
-            <button className="set-add-btn" onClick={handlePreviewManual} disabled={manualBusy || !manualRow[F_TICKET_ID]}>
-              Preview
-            </button>
+            {!IS_REMOTE && (
+              <button className="set-add-btn" onClick={handlePreviewManual} disabled={manualBusy || !manualRow[F_TICKET_ID]}>
+                Preview
+              </button>
+            )}
             <button
               className="set-add-btn"
               onClick={handleConfirmManual}
-              disabled={manualBusy || !manualPreview || manualPreview.outcome !== "ok"}
+              disabled={
+                manualBusy ||
+                (IS_REMOTE
+                  ? !manualRow[F_TICKET_ID] || !manualRow[F_PLATE] || !manualRow[F_DRIVER_IWP] || !manualRow[F_DRIVER_LAST]
+                  : !manualPreview || manualPreview.outcome !== "ok")
+              }
             >
-              Confirm & Add
+              {IS_REMOTE ? "Queue for Backfill" : "Confirm & Add"}
             </button>
             <button className="set-delete-btn" onClick={handleClearManualForm} disabled={manualBusy}>
               Clear
             </button>
           </div>
+
+          {IS_REMOTE && (
+            <div className="tbf-remote-requests">
+              <h4>Recent remote backfill requests</h4>
+              {remoteRequestsLoading ? (
+                <p className="set-rewards-note">Loading…</p>
+              ) : remoteRequests.length === 0 ? (
+                <p className="set-rewards-note">No requests queued yet.</p>
+              ) : (
+                <table className="set-table">
+                  <thead>
+                    <tr>
+                      <th>Ticket #</th>
+                      <th>Status</th>
+                      <th>Requested by</th>
+                      <th>Submitted</th>
+                      <th>Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {remoteRequests.map((r) => (
+                      <tr key={r.id} className="set-row">
+                        <td className="set-cell-label">{r.ticket_id}</td>
+                        <td>{r.status}</td>
+                        <td className="set-cell-meta">{r.requested_by_name}</td>
+                        <td className="set-cell-meta">{new Date(r.created_at).toLocaleString()}</td>
+                        <td className="set-cell-meta">{r.result_reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </div>
       )}
 

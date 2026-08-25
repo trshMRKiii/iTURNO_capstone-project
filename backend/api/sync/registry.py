@@ -14,13 +14,20 @@ change.
 """
 from api.models import (
     Vehicle, Driver, Ticket, TicketSeries, Requisition,
-    RemittanceBatch, Deposit, Collection, AuditLog,
+    RemittanceBatch, Deposit, Collection, AuditLog, WipMode,
     User, Route, TicketPrice, TerminalPrice, TicketForm, PUVType,
 )
 
+# WipMode is pushed for remote *display* only (gates the remote backfill UI) —
+# the LAN-side issuance block itself always reads it locally, never through
+# Supabase, so push latency here doesn't affect that. RemoteBackfillRequest
+# isn't listed here or in PULL_MODELS: the remote endpoint writes PENDING rows
+# straight to Supabase itself, and api/sync/apply_remote_backfill.py applies
+# them with custom logic (not a plain mirror), so it doesn't fit either list's
+# generic push/pull semantics.
 PUSH_MODELS = [
     Vehicle, Driver, Ticket, TicketSeries, Requisition,
-    RemittanceBatch, Deposit, Collection, AuditLog,
+    RemittanceBatch, Deposit, Collection, AuditLog, WipMode,
 ]
 
 PULL_MODELS = [

@@ -48,6 +48,7 @@ const REMOTE_GET_MAP = {
   "/report/eod-reconciliation/": "/reports/eod-reconciliation",
   "/dashboard/stats/": "/reports/dashboard-stats",
   "/current-user/": "/auth/current-user",
+  "/settings/wip-mode/": "/settings/wip-mode",
 };
 
 // Everything writable remotely, and which HTTP methods are actually
@@ -64,6 +65,11 @@ const REMOTE_WRITABLE = [
   { prefix: "/settings/terminal-price/", remote: "/settings/terminal-price", methods: ["PATCH", "PUT"], singleton: true },
   { prefix: "/vehicles/", remote: "/registry/vehicles", methods: ["PATCH", "PUT"] },
   { prefix: "/drivers/", remote: "/registry/drivers", methods: ["PATCH", "PUT"] },
+  // Doesn't create a Ticket directly (LAN is always authoritative for those —
+  // see sync/registry.py's PUSH_MODELS) — queues a RemoteBackfillRequest row
+  // instead, applied by the LAN's next sync cycle. Only accepted while
+  // WipMode is active (api/remote/settings/[resource].js enforces this).
+  { prefix: "/backfill/manual/", remote: "/settings/backfill", methods: ["POST"] },
 ];
 
 // Exported for the few places that build fetch() URLs directly instead of
@@ -476,13 +482,12 @@ export const apiService = {
     return this.put("/settings/terminal-price/", data);
   },
 
-  // WIP mode / ticket backfill — WipMode is deliberately LAN-local, never
-  // mirrored to Supabase (see the model's docstring in backend/api/models.py):
-  // a flag meant to block ticket issuance immediately can't tolerate the
-  // sync engine's pull-cycle latency. There's no remote endpoint for it by
-  // design, so short-circuit instead of hitting a route that doesn't exist.
+  // WIP mode: toggling stays LAN-only (see the model's docstring in
+  // backend/api/models.py) — a flag meant to block ticket issuance
+  // immediately can't tolerate the sync engine's pull-cycle latency.
+  // Reading it remotely is fine though (WipMode is pushed to Supabase for
+  // exactly this — see sync/registry.py), and gates remote backfill below.
   getWipMode() {
-    if (IS_REMOTE) return Promise.resolve({ is_active: false });
     return this.get("/settings/wip-mode/");
   },
 
@@ -495,8 +500,20 @@ export const apiService = {
     return this.put("/settings/wip-mode/", { is_active: isActive });
   },
 
+  // Remotely (only while WIP is active — enforced server-side), this queues
+  // a RemoteBackfillRequest instead of creating the ticket outright, so
+  // `commit` is meaningless there: there's no remote preview, every call
+  // queues for real. See useTicketBackfill's IS_REMOTE branching.
   submitManualBackfill(row, commit) {
     return this.post("/backfill/manual/", { ...row, commit });
+  },
+
+  // Remote-only: recent RemoteBackfillRequest rows and their apply status,
+  // for the "queued" panel useTicketBackfill shows in place of a live
+  // preview. No LAN equivalent — the LAN applies these via sync, it doesn't
+  // need to list them.
+  getRemoteBackfillRequests() {
+    return this.get("/settings/backfill");
   },
 
   previewTicketBackfill(file) {

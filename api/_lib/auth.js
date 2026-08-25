@@ -89,6 +89,11 @@ export const ROLES = {
 // the user's explicit call for this category of remote write access.
 export const CAN_EDIT_SETTINGS = [ROLES.ADMIN];
 
+// Matches IsSupervisorOrAdminForWrite (backend/api/views/viewsets.py) and the
+// frontend's canManageBackfill check — backfill submission is a step down
+// from full settings access, open to supervisors too.
+export const CAN_BACKFILL = [ROLES.ADMIN, ROLES.SUPERVISOR];
+
 // Pulls the Bearer token off the request and verifies it. Throws a plain
 // object with a `status` so handlers can just catch and respond.
 export function requireAuth(req) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiService } from "../../../../lib/api-service";
+import { apiService, IS_REMOTE } from "../../../../lib/api-service";
 import {
   F_TICKET_ID, F_PLATE, F_DRIVER_IWP, F_DRIVER_LAST, F_DRIVER_FIRST,
   F_ROUTE, F_TICKET_TYPE, F_AMOUNT, F_ISSUED_AT, F_MODE, F_NOTES,
@@ -37,6 +37,22 @@ export function useTicketBackfill() {
   const [csvReport, setCsvReport] = useState(null);
   const [csvBusy, setCsvBusy] = useState(false);
 
+  // Remote has no live preview (see submitManualBackfill's comment in
+  // api-service.js) — this list of queued requests + their apply status is
+  // what stands in for it on the remote dashboard.
+  const [remoteRequests, setRemoteRequests] = useState([]);
+  const [remoteRequestsLoading, setRemoteRequestsLoading] = useState(false);
+
+  const fetchRemoteRequests = () => {
+    if (!IS_REMOTE) return Promise.resolve();
+    setRemoteRequestsLoading(true);
+    return apiService
+      .getRemoteBackfillRequests()
+      .then(setRemoteRequests)
+      .catch((err) => console.error("Failed to load remote backfill requests:", err))
+      .finally(() => setRemoteRequestsLoading(false));
+  };
+
   const fetchWipMode = () => {
     setWipLoading(true);
     return apiService
@@ -48,6 +64,7 @@ export function useTicketBackfill() {
 
   useEffect(() => {
     fetchWipMode();
+    fetchRemoteRequests();
     apiService.getVehicles().then(setVehicles).catch((err) => console.error("Failed to load vehicles:", err));
     apiService.getDrivers().then(setDrivers).catch((err) => console.error("Failed to load drivers:", err));
     apiService.getRoutes().then(setRoutes).catch((err) => console.error("Failed to load routes:", err));
@@ -92,6 +109,7 @@ export function useTicketBackfill() {
       const result = await apiService.submitManualBackfill(manualRow, true);
       if (result.outcome === "ok") {
         resetManualRow();
+        if (IS_REMOTE) await fetchRemoteRequests();
       }
       return result;
     } finally {
@@ -133,5 +151,6 @@ export function useTicketBackfill() {
     vehicles, drivers, routes, ticketForms,
     manualRow, manualPreview, manualBusy, updateManualField, resetManualRow, previewManualRow, confirmManualRow,
     csvFile, setCsvFile, csvReport, csvBusy, previewCsv, importCsv, resetCsv,
+    remoteRequests, remoteRequestsLoading,
   };
 }

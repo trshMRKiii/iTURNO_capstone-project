@@ -283,10 +283,11 @@ class TerminalPrice(models.Model):
 
 class WipMode(models.Model):
     """Singleton operational flag: while active, new ticket issuance is hard-blocked
-    system-wide (see TicketViewSet.perform_create / dispatch_ticket). Deliberately
-    NOT in sync/registry.py — this is LAN-local control state, not a record worth
-    mirroring, and pull-cycle latency (SYNC_INTERVAL_SECONDS, default 30s) would be
-    wrong for a flag meant to take effect immediately."""
+    system-wide (see TicketViewSet.perform_create / dispatch_ticket). The LAN-side
+    block always reads this straight from 'default' with zero latency — that part
+    never goes through Supabase. It's in PUSH_MODELS purely so the remote dashboard
+    can *display* whether WIP is on (e.g. to gate remote backfill submission),
+    which can tolerate ordinary push latency same as any other pushed record."""
     is_active = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -297,6 +298,36 @@ class WipMode(models.Model):
     def get_solo(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class RemoteBackfillRequest(models.Model):
+    """A backfill row submitted from the remote (Vercel) dashboard while WipMode
+    is active. Ticket is push-only (sync/registry.py) — LAN is always
+    authoritative for what tickets exist — so a remote submission can't create a
+    Ticket directly. It lands here instead (written straight to Supabase by the
+    remote endpoint), and api/sync/apply_remote_backfill.py applies it through
+    the same _resolve_row/_create_ticket path as a local manual entry on the next
+    sync cycle, then writes the outcome back onto this same row for the remote
+    UI to poll."""
+    STATUS_CHOICES = [('PENDING', 'Pending'), ('APPLIED', 'Applied'), ('FAILED', 'Failed')]
+
+    # Raw payload, keyed by the same plain-English field names
+    # (F_TICKET_ID etc. in backend/api/views/backfill.py and
+    # src/app/dashboard/settings/backfill/fields.js) that _resolve_row expects
+    # — avoids duplicating every backfill column onto this model too.
+    payload = models.JSONField()
+    ticket_id = models.CharField(max_length=50, blank=True, default="")  # denormalized for quick display
+    requested_by_name = models.CharField(max_length=150, blank=True, default="")
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    result_reason = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"RemoteBackfillRequest({self.ticket_id or self.pk}, {self.status})"
+
 
 class RemittanceBatch(models.Model):
     batch_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
