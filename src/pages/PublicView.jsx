@@ -24,13 +24,12 @@ function PublicView() {
   }, []);
 
   // ── Core queue loader ──────────────────────────────────────────────────────
-  // Logic: fetch vehicles + tickets together.
-  // A vehicle qualifies for the queue if:
-  //   - status === 'QUEUED'
-  //   - not archived
-  //   - has at least one ticket that is QUEUED and not late
-  // Vehicles are ordered by issue time (earliest first = next to be dispatched),
-  // then grouped by route so each route gets its own queue table.
+  // Hits the dedicated public queue endpoint (no login required) instead of
+  // the authenticated /vehicles/ and /tickets/ endpoints — those 401 for an
+  // unauthenticated visitor and the api-service's refresh/logout flow then
+  // bounces this page to the login screen. The backend already returns
+  // vehicles ordered earliest-queued-first, so index 0 within a route group
+  // is the next to be dispatched.
   const loadQueue = async () => {
     // Only show the loading spinner on first mount — a websocket-triggered
     // refetch (e.g. a new vehicle joining the queue) should swap the table
@@ -38,44 +37,8 @@ function PublicView() {
     // the terminal TV.
     if (!hasLoadedOnce.current) setLoadingQueue(true);
     try {
-      const [vehicleData, ticketData] = await Promise.all([
-        apiService.getVehicles(),
-        apiService.getTickets({ status: "QUEUED" }),
-      ]);
-
-      const vehicles = Array.isArray(vehicleData) ? vehicleData : [];
-      const tickets  = Array.isArray(ticketData)  ? ticketData  : [];
-
-      // Filter: only QUEUED, non-archived vehicles that have an active QUEUED ticket
-      const queuedVehicles = vehicles.filter(
-        (v) =>
-          v.status === 'QUEUED' &&
-          !v.is_archived &&
-          tickets.some(
-            (t) =>
-              t.vehicle?.id === v.id &&
-              t.status === 'QUEUED',
-          ),
-      );
-
-      // Attach the relevant queued ticket to each vehicle for easy access (e.g. departure_time)
-      const withTicket = queuedVehicles.map((v) => {
-        const ticket = tickets.find(
-          (t) =>
-            t.vehicle?.id === v.id &&
-            t.status === 'QUEUED',
-        );
-        return { ...v, _ticket: ticket || null };
-      });
-
-      // Earliest-issued first, so index 0 within a route group is the next to dispatch
-      withTicket.sort((a, b) => {
-        const aTime = a._ticket?.issued_at ? new Date(a._ticket.issued_at).getTime() : 0;
-        const bTime = b._ticket?.issued_at ? new Date(b._ticket.issued_at).getTime() : 0;
-        return aTime - bTime;
-      });
-
-      setQueue(withTicket);
+      const data = await apiService.get('/queue/');
+      setQueue(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load queue:', err);
     } finally {
@@ -93,7 +56,7 @@ function PublicView() {
 
   // Group by route → one table per route
   const queueGrouped = queue.reduce((acc, v) => {
-    const key = v.route_detail?.full_name || v.route_detail?.origin || 'No Route';
+    const key = v.route || 'No Route';
     if (!acc[key]) acc[key] = [];
     acc[key].push(v);
     return acc;
@@ -190,16 +153,14 @@ function PublicView() {
                         <tr key={v.id}>
                           <td className="lp-td--num">{idx + 1}</td>
                           <td><span className="lp-plate">{v.plate_number}</span></td>
-                          <td>{v.active_driver_name || <span className="lp-na">Unassigned</span>}</td>
+                          <td>{v.driver || <span className="lp-na">Unassigned</span>}</td>
                           <td>
                             <span className={`lp-status ${idx === 0 ? 'lp-status--available' : ''}`}>
                               {idx === 0 ? 'Active' : 'Queued'}
                             </span>
                           </td>
                           <td className="lp-td--time">
-                            {idx === 0 && v._ticket?.issued_at
-                              ? new Date(v._ticket.issued_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              : '—'}
+                            {idx === 0 && v.departure_time ? v.departure_time : '—'}
                           </td>
                         </tr>
                       ))}

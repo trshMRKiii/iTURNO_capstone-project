@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Min, Q
 from django.utils import timezone
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from ..models import Ticket, TicketPrice, Vehicle, Driver, Route, RemittanceBatch, Collection, Deposit, AuditLog, TerminalPrice, TicketSeries
@@ -208,27 +209,29 @@ def driver_records(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def public_queue(request):
     expire_stale_queue_tickets()
     vehicles_with_queued_tickets = Vehicle.objects.filter(
         tickets__status='QUEUED',
         is_archived=False
-    ).distinct().select_related('route', 'active_driver')
+    ).distinct().select_related('route', 'active_driver').annotate(
+        _queue_time=Min('tickets__issued_at', filter=Q(tickets__status='QUEUED'))
+    ).order_by('_queue_time')
 
     data = []
     for vehicle in vehicles_with_queued_tickets:
-        latest_ticket = vehicle.tickets.filter(status='QUEUED').order_by('-issued_at').first()
+        route_name = vehicle.route.full_name if vehicle.route else 'No Route'
         departure_time = None
-        if latest_ticket:
-            local_dt = latest_ticket.issued_at + timedelta(hours=8)
+        if vehicle._queue_time:
+            local_dt = vehicle._queue_time + timedelta(hours=8)
             departure_time = local_dt.strftime('%I:%M %p')
 
         data.append({
             'id': vehicle.id,
             'plate_number': vehicle.plate_number,
-            'driver': vehicle.active_driver.name if vehicle.active_driver else '',
-            'route': vehicle.route.full_name if vehicle.route else '',
-            'status': vehicle.get_status_display(),
+            'driver': f"{vehicle.active_driver.last_name}, {vehicle.active_driver.first_name}".strip() if vehicle.active_driver else '',
+            'route': route_name,
             'departure_time': departure_time,
         })
 

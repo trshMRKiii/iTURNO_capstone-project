@@ -354,12 +354,12 @@ export default function Dashboard() {
               <StatCard
                 label="Vehicles Checked In"
                 value={stats?.active_vehicles ?? 0}
-                sub={isTodayOnly ? "Resets daily" : rangeLabel}
+                sub={isTodayOnly ? "Checked in today" : rangeLabel}
               />
               <StatCard
                 label="Drivers Checked In"
                 value={stats?.active_drivers ?? 0}
-                sub={isTodayOnly ? "Resets daily" : rangeLabel}
+                sub={isTodayOnly ? "Checked in today" : rangeLabel}
               />
             </div>
           </div>

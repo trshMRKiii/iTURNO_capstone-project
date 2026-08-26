@@ -216,6 +216,22 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 # Base URL of the frontend app, used to build the password-reset link sent by email
 FRONTEND_URL = 'http://localhost:5173'
 
+
+# SMS queue alerts (Semaphore — https://semaphore.co)
+# Not wired into dispatch yet — see api/sms/semaphore.py for the send_sms()
+# client this will call once the trigger logic (5th-in-line + next-up on
+# dispatch.jsx) is built on top of it.
+# Off by default, same switch style as DEBUG above.
+# Turn ON: set SMS_ENABLED=True in backend/.env and fill in SEMAPHORE_API_KEY.
+# Turn OFF: set SMS_ENABLED=False (or unset it) in backend/.env — send_sms()
+# then just logs and returns instead of calling the Semaphore API.
+SMS_ENABLED = os.getenv('SMS_ENABLED', 'False') == 'True'
+SEMAPHORE_API_KEY = os.getenv('SEMAPHORE_API_KEY', '')
+SEMAPHORE_SENDER_NAME = os.getenv('SEMAPHORE_SENDER_NAME', '')
+SEMAPHORE_API_URL = 'https://api.semaphore.co/api/v4/messages'
+# Queue position (1-indexed) that triggers the early "you're almost up" alert.
+SMS_QUEUE_ALERT_POSITION = int(os.getenv('SMS_QUEUE_ALERT_POSITION', '5'))
+
 # Sync engine logging — last N cycles are always visible on the console;
 # also kept in a small rotating file so `sync_worker` running unattended
 # still leaves a trail of what synced and what didn't.
@@ -240,6 +256,11 @@ LOGGING = {
     },
     'loggers': {
         'sync': {
+            'handlers': ['sync_console', 'sync_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'sms': {
             'handlers': ['sync_console', 'sync_file'],
             'level': 'INFO',
             'propagate': False,
