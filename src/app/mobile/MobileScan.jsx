@@ -12,12 +12,11 @@ function MobileScan() {
     mode,
     setMode,
     queuePosition,
-    selectedSeriesId,
-    setSelectedSeriesId,
+    roamTicketFormId,
+    setRoamTicketFormId,
     ticketQuantity,
     setTicketQuantity,
     activeDrivers,
-    availableSeries,
     ticketFee,
     denominationOptions,
     dispatchTicketFormId,
@@ -343,22 +342,28 @@ function MobileScan() {
             </>
           )}
 
-          {/* Ticket Series (ROAM mode issues + dispatches in one step) */}
+          {/* Denomination (ROAM mode issues + dispatches in one step — the server
+              draws the physical numbers FIFO, same as Dispatch) */}
           {mode === "ROAM" && (
             <div className="ms-field">
-              <span className="ms-label">Ticket Series</span>
+              <span className="ms-label">Denomination</span>
               <select
                 className="ms-select"
-                value={selectedSeriesId}
-                onChange={(e) => setSelectedSeriesId(e.target.value)}
+                value={roamTicketFormId}
+                onChange={(e) => setRoamTicketFormId(e.target.value)}
               >
-                <option value="">— Select series —</option>
-                {availableSeries.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.ticket_form_label || "Unspecified"} — Series {s.series_no} ({s.pcs} pcs)
+                <option value="">— Select a denomination —</option>
+                {denominationOptions.map((form) => (
+                  <option key={form.id} value={form.id}>
+                    {form.name} — {form.remaining} pcs remaining
                   </option>
                 ))}
               </select>
+              {denominationOptions.length === 0 && (
+                <span className="ms-field-hint">
+                  No ticket stock available for any denomination.
+                </span>
+              )}
               {ticketFee > 0 && (
                 <span className="ms-fee">Fee: ₱{ticketFee.toFixed(2)}</span>
               )}
@@ -433,7 +438,7 @@ function MobileScan() {
               submitting ||
               (mode === "DISPATCH"
                 ? queuePosition !== 1 || !dispatchTicketFormId
-                : !selectedDriver || (mode === "ROAM" && !selectedSeriesId))
+                : !selectedDriver || (mode === "ROAM" && !roamTicketFormId))
             }
           >
             {submitting

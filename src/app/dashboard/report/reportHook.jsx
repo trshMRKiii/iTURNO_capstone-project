@@ -18,7 +18,10 @@ export const STATUS_COLORS = {
   CANCELLED: "#ef4444",
 };
 
-export const today = new Date().toISOString().split("T")[0];
+// Built from local date parts (not toISOString, which is UTC) so the max-selectable
+// date in the report filters always matches the user's actual local calendar day.
+const now = new Date();
+export const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
 // Default report window: Jan 1 of the current year through today. Keeps the
 // initial load bounded to the current year's data instead of the whole table
@@ -55,19 +58,6 @@ export function exportCSV(data, filename = "report.csv") {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-export function SummaryCard({ label, count, total }) {
-  return (
-    <div className="rpt-summary-card">
-      <span className="rpt-summary-label">{label}</span>
-      <div className="rpt-summary-count">
-        {count}
-        <span className="rpt-summary-unit">tickets</span>
-      </div>
-      <div className="rpt-summary-total">{peso(total)}</div>
-    </div>
-  );
 }
 
 // Shared row-match predicates: used both by each report table's on-screen

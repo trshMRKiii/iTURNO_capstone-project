@@ -195,7 +195,8 @@ def _consume_series_fifo(ticket_form_id, quantity):
     """
     series_list = list(
         TicketSeries.objects.select_for_update()
-        .filter(ticket_form_id=ticket_form_id).order_by('requisition_id', 'id')
+        .filter(ticket_form_id=ticket_form_id, requisition__is_archived=False)
+        .order_by('requisition_id', 'id')
     )
     already_issued = {
         s.id: s.tickets.count() for s in series_list
@@ -360,6 +361,86 @@ class TicketViewSet(viewsets.ModelViewSet):
             TicketSerializer(new_tickets, many=True, context={'request': request}).data
         )
 
+    @action(detail=False, methods=['post'], url_path='roam')
+    def roam_ticket(self, request):
+        """Issue ticket(s) for a vehicle that's roaming, not queued: the toll is paid
+        on the spot, so the ticket is born already COLLECTED. Draws physical ticket
+        numbers the same FIFO way dispatch does, so the two paths can't hand out
+        the same number — see _consume_series_fifo."""
+        if WipMode.get_solo().is_active:
+            raise ValidationError({"detail": "Ticket issuance is temporarily paused for a data backfill."})
+
+        vehicle_id = request.data.get('vehicle_id')
+        driver_id = request.data.get('driver_id')
+        ticket_form_id = request.data.get('ticket_form_id')
+
+        if not vehicle_id or not driver_id or not ticket_form_id:
+            raise ValidationError({"vehicle_id": "vehicle_id, driver_id, and ticket_form_id are required."})
+        try:
+            quantity = max(1, int(request.data.get('quantity')))
+        except (TypeError, ValueError):
+            raise ValidationError({"quantity": "Quantity must be a whole number."})
+
+        try:
+            vehicle = Vehicle.objects.get(id=vehicle_id)
+        except Vehicle.DoesNotExist:
+            raise ValidationError({"vehicle_id": "Vehicle not found."})
+        try:
+            driver = Driver.objects.get(id=driver_id)
+        except Driver.DoesNotExist:
+            raise ValidationError({"driver_id": "Driver not found."})
+        try:
+            ticket_form = TicketForm.objects.get(id=ticket_form_id)
+        except TicketForm.DoesNotExist:
+            raise ValidationError({"ticket_form_id": "Ticket form not found."})
+
+        if vehicle.status != 'AVAILABLE':
+            raise ValidationError({"vehicle_id": f"Vehicle is {vehicle.status} — cannot issue ticket."})
+        if driver.status != 'ACTIVE':
+            raise ValidationError({"driver_id": "Selected driver is not active."})
+
+        price = ticket_form.price or 0
+        terminal_price = TerminalPrice.get_solo().amount
+        if terminal_price and price * quantity != terminal_price:
+            raise ValidationError({
+                "quantity": (
+                    f"Total collection amount (₱{price * quantity:.2f}) must match "
+                    f"the terminal price of ₱{terminal_price:.2f}."
+                )
+            })
+
+        with transaction.atomic():
+            units = _consume_series_fifo(ticket_form.id, quantity)
+
+            dispatched_at = timezone.now()
+            issuance_group = uuid.uuid4().hex
+            active_user = request.user if request.user.is_authenticated else None
+
+            new_tickets = [
+                Ticket.objects.create(
+                    id=ticket_id,
+                    vehicle=vehicle,
+                    driver=driver,
+                    active_user=active_user,
+                    route=vehicle.route,
+                    mode='UNLOAD',
+                    series=series,
+                    status='COLLECTED',
+                    is_verified=True,
+                    collection_amount=price,
+                    dispatched_at=dispatched_at,
+                    issuance_group=issuance_group,
+                )
+                for series, ticket_id in units
+            ]
+
+            vehicle.active_driver = driver
+            vehicle.save(update_fields=['active_driver', 'updated_at'])
+
+        return Response(
+            TicketSerializer(new_tickets, many=True, context={'request': request}).data
+        )
+
     def perform_update(self, serializer):
         was_verified = serializer.instance.is_verified
         ticket = serializer.save()
@@ -488,7 +569,9 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         today = date.today()
-        return TicketSeries.objects.select_related('ticket_form', 'issued_to').annotate(
+        return TicketSeries.objects.filter(requisition__is_archived=False).select_related(
+            'ticket_form', 'issued_to'
+        ).annotate(
             _total_issued=Count('tickets'),
             _issued_before_today=Count('tickets', filter=Q(tickets__issued_at__date__lt=today)),
         )

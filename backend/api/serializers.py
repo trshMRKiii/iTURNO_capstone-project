@@ -100,6 +100,13 @@ class TicketSeriesBriefSerializer(serializers.ModelSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
+    # Declared explicitly (instead of letting ModelSerializer auto-generate it)
+    # to skip DRF's automatic UniqueValidator — when series_id is given, create()
+    # recomputes and overwrites this with the true next number anyway, so
+    # validating the client's guess against the DB here would reject requests
+    # that create() would have gone on to handle correctly.
+    id = serializers.CharField(max_length=50)
+
     # For writing (creating): accept just IDs
     vehicle_id = serializers.IntegerField(write_only=True, required=True)
     driver_id = serializers.IntegerField(write_only=True, required=True)
@@ -166,13 +173,17 @@ class TicketSerializer(serializers.ModelSerializer):
 
             series = None
             if series_id:
-                series = TicketSeries.objects.get(id=series_id)
-                start = int(series.start_no)
+                # start_no/end_no are the original allotted range and stay fixed —
+                # remaining stock is derived from how many Ticket rows already
+                # reference this series, same convention as _consume_series_fifo
+                # (dispatch) uses, so the two paths can't hand out the same number.
+                series = TicketSeries.objects.select_for_update().get(id=series_id)
+                original_start = int(series.start_no)
                 end = int(series.end_no)
-                if start >= end:
+                next_no = original_start + series.tickets.count()
+                if next_no > end:
                     raise serializers.ValidationError({"series_id": "This ticket series is depleted."})
-                series.start_no = str(start + 1)
-                series.save(update_fields=['start_no', 'updated_at'])
+                validated_data['id'] = str(next_no)
 
             if is_roam:
                 # Roam check-in is also check-out — the toll is paid on the spot

@@ -1,14 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 import { DataTable } from "../../../components/ui/dataTable";
 import {
   STATUS_COLORS,
@@ -16,7 +6,6 @@ import {
   yearStart,
   formatChanges,
   exportCSV,
-  SummaryCard,
   matchesLogRow,
   matchesRoamingRow,
   matchesRequisitionRow,
@@ -59,11 +48,6 @@ export default function Report() {
     startDate: yearStart,
     endDate: today,
   });
-  const [summary, setSummary] = useState(null);
-  const [collections, setCollections] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const [showAllCollections, setShowAllCollections] = useState(false);
-
   const [transactionData, setTransactionData] = useState([]);
   const [transactionMeta, setTransactionMeta] = useState(EMPTY_PAGE_META);
 
@@ -97,28 +81,6 @@ export default function Report() {
     if (filters.endDate) p.set("end_date", filters.endDate);
     return p.toString();
   }, [filters.startDate, filters.endDate]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    setShowAllCollections(false);
-    try {
-      const qs = buildParams();
-      const q = qs ? `?${qs}` : "";
-      const [sumRes, colRes, chartRes] = await Promise.all([
-        authFetch(`/report/summary/${q}`),
-        authFetch(`/report/collections/${q}`),
-        authFetch(`/report/chart/${q}`),
-      ]);
-      setSummary(await sumRes.json());
-      setCollections((await colRes.json()).results || []);
-      setChartData((await chartRes.json()).chart_data || []);
-    } catch {
-      setError("Failed to load report data. Check your API connection.");
-    } finally {
-      setLoading(false);
-    }
-  }, [buildParams]);
 
   // Raw page fetchers — return data instead of touching state, so the "View All"
   // modal in each table can browse further pages without disturbing the
@@ -176,6 +138,7 @@ export default function Report() {
       setTransactionMeta({ count: data.count, totalPages: data.totalPages });
     } catch {
       console.error("Failed to load transaction logs");
+      setError("Failed to load report data. Check your API connection.");
     }
   }, [fetchTransactionRaw]);
 
@@ -186,6 +149,7 @@ export default function Report() {
       setRoamingMeta({ count: data.count, totalPages: data.totalPages });
     } catch {
       console.error("Failed to load roaming logs");
+      setError("Failed to load report data. Check your API connection.");
     }
   }, [fetchRoamingRaw]);
 
@@ -196,6 +160,7 @@ export default function Report() {
       setAuditMeta({ count: data.count, totalPages: data.totalPages });
     } catch {
       console.error("Failed to load audit trail");
+      setError("Failed to load report data. Check your API connection.");
     }
   }, [fetchAuditRaw]);
 
@@ -256,6 +221,7 @@ export default function Report() {
       setRequisitionMeta({ count: data.count, totalPages: data.totalPages });
     } catch {
       console.error("Failed to load requisitions");
+      setError("Failed to load report data. Check your API connection.");
     }
   }, [fetchRequisitionRaw]);
 
@@ -266,6 +232,7 @@ export default function Report() {
       setRemittanceMeta({ count: data.count, totalPages: data.totalPages });
     } catch {
       console.error("Failed to load remittance batches");
+      setError("Failed to load report data. Check your API connection.");
     }
   }, [fetchRemittanceRaw]);
 
@@ -312,10 +279,11 @@ export default function Report() {
   }, [buildParams, remittanceArchived]);
 
   useEffect(() => {
-    fetchData();
-    fetchTransactionPage();
-    fetchRoamingPage();
-    fetchAuditPage();
+    setLoading(true);
+    setError("");
+    Promise.all([fetchTransactionPage(), fetchRoamingPage(), fetchAuditPage()]).finally(() =>
+      setLoading(false),
+    );
     fetchVehicles();
     fetchDrivers();
   }, []);
@@ -342,12 +310,15 @@ export default function Report() {
   };
 
   const refetchFiltered = () => {
-    fetchData();
-    fetchTransactionPage();
-    fetchRoamingPage();
-    fetchAuditPage();
-    fetchRequisitionPage();
-    fetchRemittancePage();
+    setLoading(true);
+    setError("");
+    Promise.all([
+      fetchTransactionPage(),
+      fetchRoamingPage(),
+      fetchAuditPage(),
+      fetchRequisitionPage(),
+      fetchRemittancePage(),
+    ]).finally(() => setLoading(false));
   };
 
   const handleClearFilter = () => {

@@ -340,6 +340,15 @@ export const apiService = {
     });
   },
 
+  roamTicket(vehicleId, driverId, { ticketFormId, quantity }) {
+    return this.post("/tickets/roam/", {
+      vehicle_id: vehicleId,
+      driver_id: driverId,
+      ticket_form_id: ticketFormId,
+      quantity,
+    });
+  },
+
   getVehicles(params = {}) {
     const qs = new URLSearchParams(params).toString();
     return this.get(`/vehicles/${qs ? `?${qs}` : ""}`);
