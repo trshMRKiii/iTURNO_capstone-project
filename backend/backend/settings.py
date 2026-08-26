@@ -135,7 +135,7 @@ DATABASES = {
 }
 
 # Sync engine (LAN SQLite <-> Supabase mirror) — see api/sync/
-SYNC_INTERVAL_SECONDS = int(os.getenv('SYNC_INTERVAL_SECONDS', '30'))
+SYNC_INTERVAL_SECONDS = int(os.getenv('SYNC_INTERVAL_SECONDS', '10'))
 SYNC_BATCH_SIZE = int(os.getenv('SYNC_BATCH_SIZE', '200'))
 
 
