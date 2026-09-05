@@ -2,10 +2,14 @@ import { supabaseAdmin } from "../../_lib/supabaseAdmin.js";
 import {
   requireAuth,
   verifyDjangoPassword,
+  hashDjangoPassword,
   signAccessToken,
   signRefreshToken,
+  signPasswordResetToken,
+  verifyPasswordResetToken,
   verifyToken,
 } from "../../_lib/auth.js";
+import { sendPasswordResetEmail } from "../../_lib/mailer.js";
 
 // Merges token/token-refresh/current-user into one function, dispatched by
 // the [action] URL segment — Vercel's Hobby plan caps a deployment at 12
@@ -110,7 +114,97 @@ async function me(req, res) {
   }
 }
 
-const ACTIONS = { token: login, "token-refresh": refresh, "current-user": me };
+// Mirrors backend/api/views/auth.py's forgot_password/reset_password, minus
+// Django's PasswordResetTokenGenerator (needs Django's SECRET_KEY/hasher —
+// see signPasswordResetToken in api/_lib/auth.js for the JWT-based
+// equivalent). Same "respond the same way either way" behavior so this
+// can't be used to probe which emails are registered.
+async function forgotPassword(req, res) {
+  if (req.method !== "POST") {
+    res.status(405).json({ detail: "Method not allowed" });
+    return;
+  }
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!email) {
+    res.status(400).json({ detail: "Email is required." });
+    return;
+  }
+  try {
+    // ilike (not eq) to match Django's username__iexact case-insensitive lookup
+    // in backend/api/views/auth.py — escape % and _ first so they can't be used
+    // as SQL LIKE wildcards to match unintended accounts.
+    const escapedEmail = email.replace(/[%_\\]/g, "\\$&");
+    const { data: user, error } = await supabaseAdmin()
+      .from("api_user")
+      .select("id, username, password, first_name, is_active")
+      .ilike("username", escapedEmail)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (user && user.is_active) {
+      const token = signPasswordResetToken(user);
+      const resetLink = `https://${req.headers.host}/reset-password?uid=${user.id}&token=${token}`;
+      await sendPasswordResetEmail(user.username, user.first_name || user.username, resetLink);
+    }
+  } catch (err) {
+    console.error("remote/auth/forgot-password error:", err);
+    // Fall through to the same generic response — never reveal server-side failures here.
+  }
+  res.status(200).json({ detail: "If an account exists for that email, a reset link has been sent." });
+}
+
+async function resetPasswordRemote(req, res) {
+  if (req.method !== "POST") {
+    res.status(405).json({ detail: "Method not allowed" });
+    return;
+  }
+  const { uid, token, new_password: newPassword } = req.body || {};
+  if (!uid || !token || !newPassword) {
+    res.status(400).json({ detail: "Missing required fields." });
+    return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ detail: "Password must be at least 8 characters." });
+    return;
+  }
+  try {
+    const { data: user, error } = await supabaseAdmin()
+      .from("api_user")
+      .select("id, password")
+      .eq("id", uid)
+      .maybeSingle();
+    if (error) throw error;
+    if (!user) {
+      res.status(400).json({ detail: "Invalid or expired reset link." });
+      return;
+    }
+
+    verifyPasswordResetToken(token, user);
+
+    const { error: updateError } = await supabaseAdmin()
+      .from("api_user")
+      .update({ password: hashDjangoPassword(newPassword) })
+      .eq("id", uid);
+    if (updateError) throw updateError;
+
+    res.status(200).json({ detail: "Password has been reset successfully." });
+  } catch (err) {
+    if (err?.message?.includes("Token") || err?.name === "JsonWebTokenError" || err?.name === "TokenExpiredError") {
+      res.status(400).json({ detail: "Invalid or expired reset link." });
+      return;
+    }
+    console.error("remote/auth/reset-password error:", err);
+    res.status(500).json({ detail: "Failed to reset password." });
+  }
+}
+
+const ACTIONS = {
+  token: login,
+  "token-refresh": refresh,
+  "current-user": me,
+  "forgot-password": forgotPassword,
+  "reset-password": resetPasswordRemote,
+};
 
 export default async function handler(req, res) {
   const action = ACTIONS[req.query.action];

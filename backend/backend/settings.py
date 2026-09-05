@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 # Local dev: leave DEBUG unset in backend/.env (defaults to True).
 # Production: set DEBUG=False in the environment.
-DEBUG = os.getenv('DEBUG', 'True') == 'False'
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 

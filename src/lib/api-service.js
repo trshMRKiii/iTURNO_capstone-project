@@ -58,6 +58,9 @@ const REMOTE_GET_MAP = {
 // which isn't allowed remotely — only editing an existing vehicle's
 // registry fields is; see api/remote/registry/[resource].js).
 const REMOTE_WRITABLE = [
+  // Public (no login yet) — handled by api/remote/auth/[action].js alongside token/refresh.
+  { prefix: "/auth/forgot-password/", remote: "/auth/forgot-password", methods: ["POST"] },
+  { prefix: "/auth/reset-password/", remote: "/auth/reset-password", methods: ["POST"] },
   { prefix: "/routes/", remote: "/settings/routes", methods: ["POST", "PATCH", "PUT", "DELETE"] },
   { prefix: "/users/", remote: "/settings/users", methods: ["POST", "PATCH", "PUT", "DELETE"] },
   { prefix: "/puvtypes/", remote: "/settings/puv-types", methods: ["POST", "PATCH", "PUT", "DELETE"] },

@@ -74,6 +74,29 @@ export function verifyToken(token) {
   return jwt.verify(token, getSecret());
 }
 
+// Password-reset token: same idea as Django's PasswordResetTokenGenerator
+// (backend/api/views/auth.py) — a token that self-invalidates once used, but
+// as a signed JWT instead of Django's algorithm (which needs Django's own
+// SECRET_KEY/hasher and can't be replicated here). Binding a fragment of the
+// *current* password hash into the payload means the token stops verifying
+// the moment the password actually changes, without needing a DB-side
+// used/unused flag. 3-day expiry matches Django's PASSWORD_RESET_TIMEOUT default.
+export function signPasswordResetToken(user) {
+  return jwt.sign(
+    { sub: String(user.id), type: "password-reset", pwd: String(user.password).slice(-12) },
+    getSecret(),
+    { expiresIn: "3d" },
+  );
+}
+
+export function verifyPasswordResetToken(token, user) {
+  const payload = verifyToken(token);
+  if (payload.type !== "password-reset") throw new Error("Not a password-reset token");
+  if (payload.sub !== String(user.id)) throw new Error("Token does not match user");
+  if (payload.pwd !== String(user.password).slice(-12)) throw new Error("Token already used");
+  return payload;
+}
+
 // Role constants match the *stored* choice values in api.models.User.ROLE_CHOICES
 // (backend/api/models.py) — the "Admin" label (migration 0043) is display-only,
 // the stored value is still SUPERADMIN.
