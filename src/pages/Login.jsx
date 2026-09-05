@@ -100,7 +100,13 @@ function Login() {
                 <button
                   type="button"
                   className="lp-link-btn"
-                  onClick={() => { setModalView("forgot"); setError(""); }}
+                  onClick={() => {
+                    setModalView("forgot");
+                    setError("");
+                    setForgotSent(false);
+                    setForgotEmail("");
+                    setForgotError("");
+                  }}
                 >
                   Forgot password?
                 </button>
