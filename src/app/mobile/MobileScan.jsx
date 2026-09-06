@@ -37,6 +37,7 @@ function MobileScan() {
   const [scanError, setScanError] = useState(null);
   const [photoZoomOpen, setPhotoZoomOpen] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
+  const [dismissedNotices, setDismissedNotices] = useState({});
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -140,6 +141,21 @@ function MobileScan() {
     setPhotoBroken(false);
   }, [selectedDriver]);
 
+  const dismissNotice = (key, message) =>
+    setDismissedNotices((prev) => ({ ...prev, [key]: message }));
+
+  const notices = [
+    result && dismissedNotices.result !== result
+      ? { key: "result", type: "success", message: result }
+      : null,
+    error && dismissedNotices.error !== error
+      ? { key: "error", type: "error", message: error }
+      : null,
+    scanError && dismissedNotices.scanError !== scanError
+      ? { key: "scanError", type: "error", message: scanError }
+      : null,
+  ].filter(Boolean);
+
   if (loading) {
     return (
       <div className="ms-page">
@@ -163,14 +179,22 @@ function MobileScan() {
         </div>
       </header>
 
-      {result && (
-        <div className="ms-alert ms-alert--success">{result}</div>
-      )}
-      {error && (
-        <div className="ms-alert ms-alert--error">{error}</div>
-      )}
-      {scanError && (
-        <div className="ms-alert ms-alert--error">{scanError}</div>
+      {notices.length > 0 && (
+        <div className="ms-notice-stack">
+          {notices.map((n) => (
+            <div key={n.key} className={`ms-alert ms-alert--${n.type}`}>
+              <span>{n.message}</span>
+              <button
+                type="button"
+                className="ms-alert-close"
+                aria-label="Dismiss notice"
+                onClick={() => dismissNotice(n.key, n.message)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* QR Scanner */}

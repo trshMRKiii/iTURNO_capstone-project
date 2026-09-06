@@ -57,13 +57,49 @@
 }
 
 /* ── Alerts ── */
+.ms-notice-stack {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 480px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.ms-notice-stack .ms-alert {
+  pointer-events: auto;
+  margin-bottom: 0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  animation: ms-notice-in 0.18s ease-out;
+}
+
+@keyframes ms-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .ms-alert {
-  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 12px 12px 16px;
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 500;
   margin-bottom: 12px;
-  text-align: center;
+  text-align: left;
 }
 
 .ms-alert--success {
@@ -76,6 +112,29 @@
   background: #fee2e2;
   color: #991b1b;
   border: 1px solid #fca5a5;
+}
+
+.ms-alert-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.ms-alert-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 /* ── Card ── */
