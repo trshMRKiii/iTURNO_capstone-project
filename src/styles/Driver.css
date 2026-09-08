@@ -487,6 +487,21 @@
   background: var(--bg-hover);
 }
 
+.drv-input--error {
+  border-color: #ef4444;
+}
+
+.drv-input--error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.12);
+}
+
+.drv-field-error {
+  font-size: 11.5px;
+  color: #b91c1c;
+  margin: 0;
+}
+
 /* ── Warning text ── */
 .drv-warn-text {
   display: flex;

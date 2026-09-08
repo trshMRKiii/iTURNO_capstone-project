@@ -16,6 +16,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
     drivers,
     loading,
     error,
+    fieldErrors,
     editing,
     isModalOpen,
     form,
@@ -419,24 +420,6 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
             </div>
 
             <form onSubmit={handleSubmit} className="drv-modal-body">
-              {error && (
-                <div className="drv-alert drv-alert--inline">
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {error}
-                </div>
-              )}
-
               {/* Profile photo section */}
               <div className="drv-profile-hero">
                 <div className="drv-profile-avatar-wrap">
@@ -503,23 +486,29 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                     <label className="drv-label">First Name</label>
                     <input
                       type="text"
-                      className="drv-input"
+                      className={`drv-input${fieldErrors.first_name ? " drv-input--error" : ""}`}
                       placeholder="First name"
                       value={form.first_name}
                       onChange={(e) =>
                         setForm({ ...form, first_name: capitalizeWords(e.target.value) })
                       }
                     />
+                    {fieldErrors.first_name && (
+                      <p className="drv-field-error">{fieldErrors.first_name}</p>
+                    )}
                   </div>
                   <div className="drv-field">
                     <label className="drv-label">Last Name</label>
                     <input
                       type="text"
-                      className="drv-input"
+                      className={`drv-input${fieldErrors.last_name ? " drv-input--error" : ""}`}
                       placeholder="Last name"
                       value={form.last_name}
                       onChange={(e) => setForm({ ...form, last_name: capitalizeWords(e.target.value) })}
                     />
+                    {fieldErrors.last_name && (
+                      <p className="drv-field-error">{fieldErrors.last_name}</p>
+                    )}
                   </div>
                   <div className="drv-field">
                     <label className="drv-label">Middle Name <span className="drv-optional">(optional)</span></label>
@@ -540,13 +529,16 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                     <label className="drv-label">IWP Number</label>
                     <input
                       type="text"
-                      className="drv-input"
+                      className={`drv-input${fieldErrors.iwp_number ? " drv-input--error" : ""}`}
                       placeholder="e.g. IWP-001"
                       value={form.iwp_number}
                       onChange={(e) =>
                         setForm({ ...form, iwp_number: e.target.value })
                       }
                     />
+                    {fieldErrors.iwp_number && (
+                      <p className="drv-field-error">{fieldErrors.iwp_number}</p>
+                    )}
                   </div>
                   <div className="drv-field">
                     <label className="drv-label">Gender</label>
@@ -697,7 +689,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                     <label className="drv-label">Contact Number</label>
                     <input
                       type="text"
-                      className="drv-input"
+                      className={`drv-input${fieldErrors.contact ? " drv-input--error" : ""}`}
                       placeholder="e.g. 09XXXXXXXXX"
                       value={form.contact}
                       onChange={(e) =>
@@ -705,8 +697,10 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                       }
                       pattern="\d{11}"
                       maxLength={11}
-                      required
                     />
+                    {fieldErrors.contact && (
+                      <p className="drv-field-error">{fieldErrors.contact}</p>
+                    )}
                   </div>
                   <div className="drv-field">
                     <label className="drv-label">Status</label>
@@ -761,6 +755,24 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                     />
                     <span className="drv-qr-label">{form.qr_code}</span>
                   </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="drv-alert drv-alert--inline">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  {error}
                 </div>
               )}
 

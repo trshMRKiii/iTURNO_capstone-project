@@ -224,12 +224,20 @@ export const apiService = {
       if (!response.ok) {
         console.error(`[API] Error Response:`, data);
         // DRF field-validation errors come back as { field: ["message"] } rather
-        // than { detail: "message" } — surface the first field message as plain
-        // text instead of dumping raw JSON in front of the user.
+        // than { detail: "message" } — surface the first field name + message as
+        // plain text instead of dumping raw JSON or an unattributed message.
         let message = data?.detail;
         if (!message && data && typeof data === "object") {
-          const firstValue = Object.values(data)[0];
-          message = Array.isArray(firstValue) ? firstValue[0] : firstValue;
+          const [firstKey, firstValue] = Object.entries(data)[0] || [];
+          const text = Array.isArray(firstValue) ? firstValue[0] : firstValue;
+          if (firstKey && typeof text === "string") {
+            const label = firstKey
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase());
+            message = `${label}: ${text}`;
+          } else {
+            message = text;
+          }
         }
         const error = new Error(
           message ||

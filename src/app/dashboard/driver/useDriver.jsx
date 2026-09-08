@@ -3,6 +3,21 @@ import { apiService } from "../../../lib/api-service";
 import { useConfirm, useToast } from "../../../components/ui/ToastConfirmContext";
 import { buildDriverPayload, normalizeDriverForm } from "./driver-utils";
 
+const REQUIRED_FIELD_MESSAGES = {
+  first_name: "First name is required.",
+  last_name: "Last name is required.",
+  iwp_number: "IWP number is required to generate a QR code.",
+  contact: "Contact number is required.",
+};
+
+const validateDriverForm = (form) => {
+  const errors = {};
+  for (const [key, message] of Object.entries(REQUIRED_FIELD_MESSAGES)) {
+    if (!form[key]?.toString().trim()) errors[key] = message;
+  }
+  return errors;
+};
+
 const EMPTY_FORM = {
   first_name: "",
   middle_name: "",
@@ -41,9 +56,14 @@ export function useDriver() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Only starts validating on the fly once a submit attempt has failed —
+  // recomputed on every render so a field's error clears the moment it's filled in.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [editing, setEditing] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  const fieldErrors = submitAttempted ? validateDriverForm(form) : {};
 
   const showConfirm = useConfirm();
   const showToast = useToast();
@@ -79,6 +99,12 @@ export function useDriver() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errors = validateDriverForm(form);
+    if (Object.keys(errors).length > 0) {
+      setSubmitAttempted(true);
+      setError("Please fill in the highlighted fields.");
+      return;
+    }
     // Guard: cannot set INACTIVE if driver has an active ticket
     if (
       editing &&
@@ -93,10 +119,6 @@ export function useDriver() {
     const confirmMsg = editing ? "Confirm update?" : "Confirm registry?";
     const confirmed = await showConfirm(confirmMsg);
     if (!confirmed) return;
-    if (!form.iwp_number?.trim()) {
-      setError("IWP Number is required to generate a QR code.");
-      return;
-    }
     try {
       const payload = buildDriverPayload({ ...form, qr_code: form.iwp_number.trim() });
       if (editing) {
@@ -114,12 +136,14 @@ export function useDriver() {
   const handleEdit = (driver) => {
     setEditing(driver);
     setForm(normalizeDriverForm(driver));
+    setSubmitAttempted(false);
     setIsModalOpen(true);
   };
 
   const handleAdd = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setSubmitAttempted(false);
     setIsModalOpen(true);
   };
 
@@ -128,6 +152,7 @@ export function useDriver() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setError(null);
+    setSubmitAttempted(false);
   };
 
   const handleDelete = async (id) => {
@@ -154,6 +179,7 @@ export function useDriver() {
     drivers,
     loading,
     error,
+    fieldErrors,
     editing,
     isModalOpen,
     form,

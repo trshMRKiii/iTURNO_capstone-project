@@ -35,7 +35,7 @@ class Driver(models.Model):
     iwp_number = models.CharField(max_length=50, blank=True, db_index=True)
 
     first_name = models.CharField(max_length=100, db_index=True)
-    middle_name = models.CharField(max_length=100, db_index=True)
+    middle_name = models.CharField(max_length=100, blank=True, db_index=True)
     last_name = models.CharField(max_length=100, db_index=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
     birthdate = models.DateField(null=True, blank=True)
