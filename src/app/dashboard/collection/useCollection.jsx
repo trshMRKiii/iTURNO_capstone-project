@@ -1,95 +1,116 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { apiService } from "../../../lib/api-service";
 
-export function useCollection(userRole) {
+export const getTodayDateString = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const PAGE_SIZE = 25;
+// Debounce search so typing doesn't fire a request per keystroke.
+const SEARCH_DEBOUNCE_MS = 350;
+
+// One tab's worth of tickets (mode QUEUE or UNLOAD), fetched a page at a time
+// from the server — search and date range are query params, not client-side
+// filters, so results always reflect the full dataset, not just the loaded
+// page. Both tabs share startDate/endDate but keep independent search/page
+// state, since mixing modes into one page of results would misalign each
+// tab's own page numbers against its own total count.
+function usePaginatedTickets(mode, startDate, endDate, search) {
   const [tickets, setTickets] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [todayStats, setTodayStats] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
 
-  const getTodayDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-  const isTodayTicket = (ticket) => {
-    if (!ticket?.issued_at) return false;
-    return (
-      getTodayDateString(new Date(ticket.issued_at)) ===
-      getTodayDateString(new Date())
-    );
-  };
+  // A new filter invalidates whatever page we were on — e.g. page 4 of an
+  // unfiltered list is meaningless once a search narrows it to one result.
+  useEffect(() => {
+    setPage(1);
+  }, [mode, startDate, endDate, search]);
 
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    const params = { mode, page, page_size: PAGE_SIZE };
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    if (search) params.search = search;
 
-  const fetchTickets = async () => {
-    try {
-      setLoading(true);
-      const today = getTodayDateString(new Date());
-      const data = await apiService.getTickets({ start_date: today, end_date: today });
-      setTickets(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    apiService
+      .getTickets(params)
+      .then((data) => {
+        if (cancelled) return;
+        setTickets(Array.isArray(data?.results) ? data.results : []);
+        setCount(Number(data?.count) || 0);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-  const todaysTickets = useMemo(() => tickets.filter(isTodayTicket), [tickets]);
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, page, startDate, endDate, search]);
 
+  return { tickets, page, setPage, count, totalPages: Math.max(Math.ceil(count / PAGE_SIZE), 1), loading, error };
+}
+
+function useDebounced(value, delayMs) {
+  const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    const active = todaysTickets.filter((t) => t.status !== "CANCELLED");
-    if (active.length === 0) {
-      setTodayStats(null);
-      return;
-    }
-    setTodayStats({
-      total: active.reduce((sum, t) => sum + Number(t.collection_amount || 0), 0),
-      count: active.length,
-    });
-  }, [todaysTickets]);
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
 
-  const safeLower = (val) => String(val ?? "").toLowerCase();
+export function useCollection() {
+  // Empty = no date filter = show everything (paginated), per the "default
+  // to the entire history" behavior — start/end are opt-in narrowing, not a
+  // mandatory range.
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const filteredTickets = useMemo(() => {
-    const term = safeLower(searchTerm);
-    const filtered = tickets.filter(
-      (t) =>
-        safeLower(t.id).includes(term) ||
-        safeLower(t.vehicle?.plate_number).includes(term) ||
-        safeLower(t.driver?.name).includes(term) ||
-        safeLower(t.vehicle?.route_detail?.full_name).includes(term) ||
-        (t.status === "CANCELLED" && "cancelled".includes(term)) ||
-        (t.status !== "CANCELLED" && "collected".includes(term)),
-    );
-    return filtered.sort(
-      (a, b) => new Date(b.issued_at) - new Date(a.issued_at),
-    );
-  }, [searchTerm, tickets]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roamingSearch, setRoamingSearch] = useState("");
+  const debouncedSearch = useDebounced(searchTerm, SEARCH_DEBOUNCE_MS);
+  const debouncedRoamingSearch = useDebounced(roamingSearch, SEARCH_DEBOUNCE_MS);
 
-  const clearSuccessMessage = () => setSuccessMessage("");
-  const clearError = () => setError(null);
+  const collection = usePaginatedTickets("QUEUE", startDate, endDate, debouncedSearch);
+  const roaming = usePaginatedTickets("UNLOAD", startDate, endDate, debouncedRoamingSearch);
 
   return {
-    tickets,
-    filteredTickets,
+    startDate,
+    endDate,
+    setStartDate,
+    setEndDate,
+
+    tickets: collection.tickets,
+    page: collection.page,
+    setPage: collection.setPage,
+    totalPages: collection.totalPages,
+    count: collection.count,
+    loading: collection.loading,
+    error: collection.error,
     searchTerm,
-    loading,
-    error,
-    todayStats,
-    successMessage,
     setSearchTerm,
-    setError,
-    setSuccessMessage,
-    fetchTickets,
-    clearSuccessMessage,
-    clearError,
+
+    roamingTickets: roaming.tickets,
+    roamingPage: roaming.page,
+    setRoamingPage: roaming.setPage,
+    roamingTotalPages: roaming.totalPages,
+    roamingCount: roaming.count,
+    roamingLoading: roaming.loading,
+    roamingError: roaming.error,
+    roamingSearch,
+    setRoamingSearch,
   };
 }
 

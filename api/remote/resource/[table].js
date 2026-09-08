@@ -73,6 +73,10 @@ const RESOURCES = {
     select: TICKET_SELECT,
     order: { column: "issued_at", ascending: false },
     filters: ["status", "mode"],
+    // Mirrors TicketViewSet.get_queryset's start_date/end_date (backend/api/views/viewsets.py:246-257),
+    // which filters created_at against Philippine-time day boundaries (backend/api/views/helpers.py) —
+    // match that offset here so a date picked in the UI returns the same rows on LAN and remote.
+    dateField: "created_at",
     limit: 200,
     shape: (rows) => rows.map(shapeTicket),
   },
@@ -155,6 +159,43 @@ export default async function handler(req, res) {
         query = query.in(field, value.split(","));
       } else {
         query = query.eq(field, value);
+      }
+    }
+
+    if (resource.dateField) {
+      const { start_date: startDate, end_date: endDate } = filters;
+      if (startDate) query = query.gte(resource.dateField, `${startDate}T00:00:00+08:00`);
+      if (endDate) query = query.lte(resource.dateField, `${endDate}T23:59:59.999+08:00`);
+    }
+
+    // Mirrors TicketViewSet.get_queryset's `search` (backend/api/views/viewsets.py) —
+    // Ticket ID / Vehicle / Driver / Issued By, the columns the Collection Log
+    // table actually shows, plus the same fuzzy status-substring shortcut.
+    // vehicle/driver live on joined tables, which supabase-js's .or() can't
+    // reach directly, so resolve matching ids first and OR those in by id.
+    if (key === "tickets" && filters.search?.trim()) {
+      // PostgREST's or=() DSL treats "," and "()" as syntax — strip them from
+      // user input so a search term can't break out of this filter expression.
+      const term = filters.search.trim().replace(/[,()]/g, "");
+      if (term) {
+        const like = `%${term}%`;
+        const [{ data: vehicleMatches, error: vehicleErr }, { data: driverMatches, error: driverErr }] =
+          await Promise.all([
+            supabaseAdmin().from("api_vehicle").select("id").ilike("plate_number", like),
+            supabaseAdmin().from("api_driver").select("id").or(`first_name.ilike.${like},last_name.ilike.${like}`),
+          ]);
+        if (vehicleErr) throw vehicleErr;
+        if (driverErr) throw driverErr;
+
+        const orParts = [`id.ilike.${like}`, `active_user_name.ilike.${like}`];
+        if (vehicleMatches?.length) orParts.push(`vehicle_id.in.(${vehicleMatches.map((v) => v.id).join(",")})`);
+        if (driverMatches?.length) orParts.push(`driver_id.in.(${driverMatches.map((d) => d.id).join(",")})`);
+
+        const lowered = term.toLowerCase();
+        if ("cancelled".includes(lowered)) orParts.push("status.eq.CANCELLED");
+        if ("collected".includes(lowered)) orParts.push("status.neq.CANCELLED");
+
+        query = query.or(orParts.join(","));
       }
     }
 

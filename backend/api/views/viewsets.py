@@ -255,6 +255,25 @@ class TicketViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(created_at__lte=parse_date_end(end_date))
             except ValueError:
                 pass
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            # Matches the Ticket ID / Vehicle / Driver / Issued By columns actually
+            # shown in the Collection Log table (src/app/dashboard/collection),
+            # plus the same fuzzy status-substring shortcut the old client-side
+            # filter had (typing "cancel" finds cancelled tickets, etc).
+            condition = (
+                Q(id__icontains=search)
+                | Q(vehicle__plate_number__icontains=search)
+                | Q(driver__first_name__icontains=search)
+                | Q(driver__last_name__icontains=search)
+                | Q(active_user_name__icontains=search)
+            )
+            lowered = search.lower()
+            if lowered in 'cancelled':
+                condition |= Q(status='CANCELLED')
+            if lowered in 'collected':
+                condition |= ~Q(status='CANCELLED')
+            qs = qs.filter(condition)
         return qs
 
     def perform_create(self, serializer):
