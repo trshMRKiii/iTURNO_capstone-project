@@ -77,7 +77,7 @@ function Login() {
             <>
               <div className="lp-login-modal__brand">
                 <img src={sfcLogo} alt="Logo" className="lp-login-modal__logo" style={{ borderRadius: '40px' }} />
-                <h2>Staff Access</h2>
+                <h2>North Central Terminal</h2>
                 <p>Sign in to manage terminal operations</p>
               </div>
               <form onSubmit={handleSubmit} className="lp-login-form">

@@ -51,7 +51,7 @@ function passwordResetHtml(userName, resetLink) {
                 Hi ${userName},
               </p>
               <p style="margin:0 0 24px; font-size:14px; line-height:1.6; color:#333333;">
-                We received a request to reset the password for your iTURNO account. Click the button below to choose a new password. This link will expire soon for your security.
+                We received a request to reset the password for your North Central Terminal account. Click the button below to choose a new password. This link will expire soon for your security.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
                 <tr>
@@ -77,7 +77,7 @@ function passwordResetHtml(userName, resetLink) {
           <tr>
             <td style="padding:20px 32px; background-color:#f5f6f9; text-align:center;">
               <p style="margin:0; font-size:11px; color:#999999;">
-                This is an automated message from iTURNO. Please don't reply to this email.
+                This is an automated message from North Central Terminal. Please don't reply to this email.
               </p>
             </td>
           </tr>
@@ -94,7 +94,7 @@ export async function sendPasswordResetEmail(toEmail, userName, resetLink) {
   await getTransporter().sendMail({
     from,
     to: toEmail,
-    subject: "Reset your iTURNO password",
+    subject: "Reset your North Central Terminal password",
     text:
       `Hi ${userName},\n\n` +
       "We received a request to reset your password. Click the link below to choose a new one:\n\n" +

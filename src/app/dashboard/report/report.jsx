@@ -4,7 +4,6 @@ import {
   STATUS_COLORS,
   today,
   yearStart,
-  formatChanges,
   exportCSV,
   matchesLogRow,
   matchesRoamingRow,
@@ -13,6 +12,8 @@ import {
   matchesAuditRow,
   matchesVehicleRow,
   matchesDriverRow,
+  formatAuditItem,
+  formatAuditDetails,
 } from "./reportHook";
 import { exportTablePDF } from "./exportPDF";
 
@@ -463,8 +464,8 @@ export default function Report() {
   const buildAuditExportRow = (l) => ({
     Timestamp: l.created_at ? new Date(l.created_at).toLocaleString() : "—",
     Action: l.action_display || l.action,
-    Item: `${l.model_name} #${l.object_id}`,
-    Details: l.object_repr || formatChanges(l.changes),
+    Item: formatAuditItem(l),
+    Details: formatAuditDetails(l),
     User: l.user_name || "System",
   });
 

@@ -121,7 +121,11 @@ function MobileScan() {
       rafRef.current = requestAnimationFrame(scanFrame);
     } catch (err) {
       const msg = err.name || err.message || String(err);
-      if (msg.includes("NotAllowed") || msg.includes("Permission")) {
+      if (msg.includes("AbortError")) {
+        // A stale camera stream from a previous attempt is usually the cause —
+        // a retry hits the same error, but a reload clears it reliably.
+        window.location.reload();
+      } else if (msg.includes("NotAllowed") || msg.includes("Permission")) {
         setScanError("Camera permission denied. Allow camera access in your browser settings and try again.");
       } else if (msg.includes("NotFound") || msg.includes("DevicesNotFound")) {
         setScanError("No camera found on this device.");
@@ -156,6 +160,15 @@ function MobileScan() {
       : null,
   ].filter(Boolean);
 
+  // Notices are pinned to the bottom of the viewport, near the submit button
+  // the user was just looking at — scroll down so a new one is never missed.
+  useEffect(() => {
+    if (notices.length > 0) {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, error, scanError]);
+
   if (loading) {
     return (
       <div className="ms-page">
@@ -174,7 +187,7 @@ function MobileScan() {
           </svg>
         </button>
         <div>
-          <h1 className="ms-title">iTURNO Mobile</h1>
+          <h1 className="ms-title">North Central Terminal</h1>
           <p className="ms-subtitle">Scan QR to issue ticket or log roaming</p>
         </div>
       </header>

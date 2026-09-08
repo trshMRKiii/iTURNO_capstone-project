@@ -78,6 +78,10 @@ export function useMobileScan() {
   }, []);
 
   useEffect(() => {
+    if (!sessionStorage.getItem("accessToken")) {
+      apiService.logout();
+      return;
+    }
     fetchData()
       .catch(() => setError("Failed to load data. Check your connection."))
       .finally(() => setLoading(false));

@@ -26,7 +26,6 @@ export function useTicketBackfill() {
 
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
-  const [routes, setRoutes] = useState([]);
   const [ticketForms, setTicketForms] = useState([]);
 
   const [manualRow, setManualRow] = useState(EMPTY_ROW);
@@ -67,7 +66,6 @@ export function useTicketBackfill() {
     fetchRemoteRequests();
     apiService.getVehicles().then(setVehicles).catch((err) => console.error("Failed to load vehicles:", err));
     apiService.getDrivers().then(setDrivers).catch((err) => console.error("Failed to load drivers:", err));
-    apiService.getRoutes().then(setRoutes).catch((err) => console.error("Failed to load routes:", err));
     apiService.getTicketForms().then(setTicketForms).catch((err) => console.error("Failed to load ticket forms:", err));
   }, []);
 
@@ -148,7 +146,7 @@ export function useTicketBackfill() {
 
   return {
     wipMode, wipLoading, togglingWip, toggleWipMode,
-    vehicles, drivers, routes, ticketForms,
+    vehicles, drivers, ticketForms,
     manualRow, manualPreview, manualBusy, updateManualField, resetManualRow, previewManualRow, confirmManualRow,
     csvFile, setCsvFile, csvReport, csvBusy, previewCsv, importCsv, resetCsv,
     remoteRequests, remoteRequestsLoading,

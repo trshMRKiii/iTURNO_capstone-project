@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 # Local dev: leave DEBUG unset in backend/.env (defaults to True).
 # Production: set DEBUG=False in the environment.
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'True') == 'False'
 
 ALLOWED_HOSTS = ['*']
 
@@ -112,10 +112,6 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / ('db.sqlite3' if DEBUG else 'db_production.sqlite3'),
-        # SQLite only allows one writer at a time; two staff dispatching tickets
-        # at the same moment is entirely realistic at a live terminal, and
-        # without an explicit timeout the second writer gets "database is
-        # locked" immediately instead of just waiting its turn.
         # SQLite only allows one writer at a time; two staff dispatching tickets
         # at the same moment is entirely realistic at a live terminal, and
         # without an explicit timeout the second writer gets "database is
@@ -217,20 +213,17 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 FRONTEND_URL = 'http://localhost:5173'
 
 
-# SMS queue alerts (Semaphore — https://semaphore.co)
-# Not wired into dispatch yet — see api/sms/semaphore.py for the send_sms()
-# client this will call once the trigger logic (5th-in-line + next-up on
-# dispatch.jsx) is built on top of it.
+# SMS queue alerts (PhilSMS — https://philsms.com). Both alerts are wired in:
+# queue-join (api/serializers.py TicketSerializer.create) and next-up-on-
+# dispatch (api/views/viewsets.py dispatch_ticket action).
 # Off by default, same switch style as DEBUG above.
-# Turn ON: set SMS_ENABLED=True in backend/.env and fill in SEMAPHORE_API_KEY.
+# Turn ON: set SMS_ENABLED=True in backend/.env and fill in PHILSMS_API_TOKEN.
 # Turn OFF: set SMS_ENABLED=False (or unset it) in backend/.env — send_sms()
-# then just logs and returns instead of calling the Semaphore API.
-SMS_ENABLED = os.getenv('SMS_ENABLED', 'False') == 'True'
-SEMAPHORE_API_KEY = os.getenv('SEMAPHORE_API_KEY', '')
-SEMAPHORE_SENDER_NAME = os.getenv('SEMAPHORE_SENDER_NAME', '')
-SEMAPHORE_API_URL = 'https://api.semaphore.co/api/v4/messages'
-# Queue position (1-indexed) that triggers the early "you're almost up" alert.
-SMS_QUEUE_ALERT_POSITION = int(os.getenv('SMS_QUEUE_ALERT_POSITION', '5'))
+# then just logs and returns instead of calling the PhilSMS API.
+SMS_ENABLED = os.getenv('SMS_ENABLED', 'False') == 'False'
+PHILSMS_API_TOKEN = os.getenv('PHILSMS_API_TOKEN', '')
+PHILSMS_SENDER_ID = os.getenv('PHILSMS_SENDER_ID', 'PhilSMS')
+PHILSMS_API_URL = 'https://dashboard.philsms.com/api/v3/sms/send'
 
 # Sync engine logging — last N cycles are always visible on the console;
 # also kept in a small rotating file so `sync_worker` running unattended

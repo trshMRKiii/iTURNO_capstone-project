@@ -7,6 +7,7 @@ from django.utils.crypto import get_random_string
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, RoamingLog, AuditLog, BackupRecord, TerminalPrice, WipMode
+from .sms import send_sms_async, queue_position_message
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -212,6 +213,20 @@ class TicketSerializer(serializers.ModelSerializer):
                 vehicle.status = 'QUEUED'
                 vehicle.active_driver = driver
                 vehicle.save(update_fields=['status', 'active_driver', 'updated_at'])
+
+                # One SMS per check-in (not per physical ticket unit, so a
+                # quantity>1 continuation doesn't resend it), telling the
+                # driver their spot in line. Skipped at position 1 — that
+                # vehicle is already heading straight to the loading bay.
+                # Sent async, after commit, so the check-in request doesn't
+                # block on PhilSMS's HTTP round trip.
+                if not is_continuation and route:
+                    position = Ticket.objects.filter(
+                        route=route, mode='QUEUE', status='QUEUED',
+                    ).count()
+                    if position > 1:
+                        message = queue_position_message(position, route.full_name)
+                        transaction.on_commit(lambda: send_sms_async(driver.contact, message))
 
         return ticket
 

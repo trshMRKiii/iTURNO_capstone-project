@@ -46,6 +46,25 @@ export const formatChanges = (changes) => {
   return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
 };
 
+// Some models (e.g. Ticket) use a long generated string as their primary key
+// instead of a small sequential number — showing that raw id next to the
+// model name is meaningless to a user, so it's dropped and left to the
+// Details column's object_repr to identify the record instead.
+export const formatAuditItem = (log) =>
+  log.object_id && String(log.object_id).length <= 12
+    ? `${log.model_name} #${log.object_id}`
+    : log.model_name;
+
+// object_repr alone only names which record was touched (e.g. "Ticket SJ-1"),
+// not what happened to it — pair it with the submitted field changes so the
+// column reads as an instruction ("Ticket SJ-1 — status: CANCELLED, ...")
+// instead of just repeating the item's identity.
+export const formatAuditDetails = (log) => {
+  const changes = formatChanges(log.changes);
+  if (log.object_repr && changes !== "—") return `${log.object_repr} — ${changes}`;
+  return log.object_repr || changes;
+};
+
 export function exportCSV(data, filename = "report.csv") {
   if (!data.length) return;
   const headers = Object.keys(data[0]);

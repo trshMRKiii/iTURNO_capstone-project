@@ -25,7 +25,7 @@ def apply_pending():
                 ticket = _create_ticket(resolved)
                 record_audit_log(
                     user=None, action='CREATE', model_name='Ticket',
-                    object_id=ticket.pk, object_repr=f"Remote backfill: {ticket.pk}",
+                    object_id=ticket.pk, object_repr=f"Remote backfill: {ticket}",
                     changes={'source': 'remote_backfill', 'requested_by': req.requested_by_name},
                 )
                 req.status = 'APPLIED'

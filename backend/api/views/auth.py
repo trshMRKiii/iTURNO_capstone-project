@@ -40,7 +40,7 @@ def forgot_password(request):
         })
 
         email = EmailMultiAlternatives(
-            subject='Reset your iTURNO password',
+            subject='Reset your North Central Terminal password',
             body=text_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.username],

@@ -100,11 +100,13 @@ def _resolve_row(row, existing_ids_in_batch):
     if err:
         return None, 'error', err
 
-    route = None
     if get(F_ROUTE):
         route = Route.objects.filter(origin__iexact=get(F_ROUTE)).first()
         if not route:
             return None, 'error', f"Route not found: {F_ROUTE}='{get(F_ROUTE)}'"
+    else:
+        # No explicit override — use whatever route the vehicle itself is assigned to.
+        route = vehicle.route
 
     collection_amount = None
     if get(F_AMOUNT):
@@ -182,7 +184,7 @@ def backfill_manual(request):
         ticket = _create_ticket(resolved)
         record_audit_log(
             user=request.user, action='CREATE', model_name='Ticket',
-            object_id=ticket.pk, object_repr=f"Manual backfill: {ticket.pk}",
+            object_id=ticket.pk, object_repr=f"Manual backfill: {ticket}",
             changes={'source': 'manual_backfill'},
         )
     return Response({

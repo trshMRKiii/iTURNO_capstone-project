@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
-import { formatChanges, matchesAuditRow, useDebouncedSearchAll } from "../reportHook";
+import { formatAuditItem, formatAuditDetails, matchesAuditRow, useDebouncedSearchAll } from "../reportHook";
 
 const AUDIT_COLUMNS = ["Timestamp", "Action", "Item", "Details", "User"];
 // Main card shows a short preview like the other report cards (FleetRecords) —
@@ -95,8 +95,8 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onA
           {l.action_display || l.action}
         </span>
       </td>
-      <td className={cellClass}>{l.model_name} #{l.object_id}</td>
-      <td className={cellClass}>{l.object_repr || formatChanges(l.changes)}</td>
+      <td className={cellClass}>{formatAuditItem(l)}</td>
+      <td className={cellClass}>{formatAuditDetails(l)}</td>
       <td className={`${cellClass} rpt-muted`}>{l.user_name || "System"}</td>
     </tr>
   );

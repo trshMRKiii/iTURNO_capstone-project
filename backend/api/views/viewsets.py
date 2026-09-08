@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 
 from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, RoamingLog, TerminalPrice, WipMode
 from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
+from ..sms import send_sms_async, queue_next_message
 from .helpers import record_audit_log, expire_stale_queue_tickets, parse_date_start, parse_date_end, paginate_request
 from .remittance_export import remittance_xlsx_response
 
@@ -108,7 +109,7 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         login_link = settings.FRONTEND_URL
         text_body = (
             f"Hi {user_name},\n\n"
-            "An account was created for you on the iTURNO terminal management system.\n\n"
+            "An account was created for you on the North Central Terminal management system.\n\n"
             f"Email: {user.username}\n"
             f"Temporary password: {raw_password}\n\n"
             "Sign in and you'll be asked to choose your own password right away.\n"
@@ -121,7 +122,7 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
             'login_link': login_link,
         })
         email = EmailMultiAlternatives(
-            subject='Your iTURNO account has been created',
+            subject='Your North Central Terminal account has been created',
             body=text_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.username],
@@ -357,6 +358,18 @@ class TicketViewSet(viewsets.ModelViewSet):
             vehicle.status = 'AVAILABLE'
             vehicle.save(update_fields=['status', 'updated_at'])
 
+            # Whoever is now first in line for this route (if anyone) just
+            # became #1 as a result of this dispatch — let them know. Sent
+            # async, after commit, so this request doesn't block on
+            # PhilSMS's HTTP round trip.
+            if route:
+                new_first = Ticket.objects.filter(
+                    route=route, mode='QUEUE', status='QUEUED',
+                ).order_by('issued_at').first()
+                if new_first:
+                    message = queue_next_message(route.full_name)
+                    transaction.on_commit(lambda: send_sms_async(new_first.driver.contact, message))
+
         return Response(
             TicketSerializer(new_tickets, many=True, context={'request': request}).data
         )
@@ -452,7 +465,7 @@ class TicketViewSet(viewsets.ModelViewSet):
                 action='UPDATE',
                 model_name='Ticket',
                 object_id=ticket.id,
-                object_repr=f"Verified ticket {ticket.id}",
+                object_repr=f"Verified {ticket}",
                 changes={'is_verified': True, 'status': ticket.status},
             )
 
@@ -498,7 +511,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             action='UPDATE',
             model_name='Ticket',
             object_id=ticket.id,
-            object_repr=f"Reassigned driver on ticket {ticket.id}",
+            object_repr=f"Reassigned driver on {ticket}",
             changes={'driver': f"{old_driver} -> {new_driver}"},
         )
 

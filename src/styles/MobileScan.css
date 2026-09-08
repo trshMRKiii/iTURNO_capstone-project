@@ -2,6 +2,7 @@
 .ms-page {
   min-height: 100dvh;
   padding: 16px;
+  padding-bottom: 100px;
   background: var(--color-bg, #f5f7fa);
   font-family: system-ui, -apple-system, sans-serif;
   max-width: 480px;
@@ -59,14 +60,15 @@
 /* ── Alerts ── */
 .ms-notice-stack {
   position: fixed;
-  top: max(12px, env(safe-area-inset-top));
+  bottom: max(12px, env(safe-area-inset-bottom));
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateZ(0);
+  will-change: transform;
   width: calc(100% - 32px);
   max-width: 480px;
   z-index: 1000;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 8px;
   pointer-events: none;
 }
@@ -81,7 +83,7 @@
 @keyframes ms-notice-in {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;

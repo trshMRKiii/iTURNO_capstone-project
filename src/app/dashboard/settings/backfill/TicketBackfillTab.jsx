@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useToast, useConfirm } from "../../../../components/ui/ToastConfirmContext";
 import { IS_REMOTE } from "../../../../lib/api-service";
 import { useTicketBackfill } from "./useTicketBackfill";
@@ -30,7 +30,7 @@ const CSV_COLUMN_REFERENCE = [
   { name: F_DRIVER_IWP, required: true, example: "12345", note: "The driver's IWP Number (same as on the Fleet & Driver page)." },
   { name: F_DRIVER_LAST, required: true, example: "Dela Cruz", note: "Used together with the IWP Number to find the driver." },
   { name: F_DRIVER_FIRST, required: false, example: "Juan", note: "Only needed if that IWP Number + last name matches more than one driver." },
-  { name: F_ROUTE, required: false, example: "San Fernando", note: "Just the origin town — leave blank if unknown." },
+  { name: F_ROUTE, required: false, example: "San Fernando", note: "Just the origin town. Leave blank to use the vehicle's own assigned route automatically." },
   { name: F_TICKET_TYPE, required: false, example: "Cash Tickets@10", note: "The ticket type name — used to set the price if Amount is blank." },
   { name: F_AMOUNT, required: false, example: "10.00", note: "The peso amount collected. If given, it overrides Ticket Type's price." },
   { name: F_ISSUED_AT, required: false, example: "2026-08-20 09:15", note: "When the paper ticket was actually issued. Format: YYYY-MM-DD HH:MM (24-hour clock). Leave blank to use right now." },
@@ -57,7 +57,7 @@ export default function TicketBackfillTab() {
   const showConfirm = useConfirm();
   const {
     wipMode, wipLoading, togglingWip, toggleWipMode,
-    vehicles, drivers, routes, ticketForms,
+    vehicles, drivers, ticketForms,
     manualRow, manualPreview, manualBusy, updateManualField, resetManualRow, previewManualRow, confirmManualRow,
     csvFile, setCsvFile, csvReport, csvBusy, previewCsv, importCsv, resetCsv,
     remoteRequests, remoteRequestsLoading,
@@ -76,6 +76,19 @@ export default function TicketBackfillTab() {
   const driverResults = drivers.filter((d) =>
     d.name?.toLowerCase().includes(driverSearch.toLowerCase())
   ).slice(0, 20);
+
+  // The route isn't picked by hand — it's whatever route the selected vehicle
+  // is assigned to (Vehicle.route on the backend), so it's derived here rather
+  // than left as a manual dropdown.
+  const selectedVehicle = vehicles.find(
+    (v) => v.plate_number?.toLowerCase() === vehicleSearch.trim().toLowerCase()
+  );
+  const selectedVehicleRoute = selectedVehicle?.route_detail || null;
+
+  useEffect(() => {
+    updateManualField(F_ROUTE, selectedVehicleRoute?.origin || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVehicleRoute?.id]);
 
   const handleSelectVehicle = (vehicle) => {
     updateManualField(F_PLATE, vehicle.plate_number);
@@ -328,44 +341,17 @@ export default function TicketBackfillTab() {
 
           <div className="set-add-row">
             <label className="set-field">
-              <span className="set-field-label">Route</span>
-              <select
-                className="set-input"
-                value={manualRow[F_ROUTE]}
-                onChange={(e) => updateManualField(F_ROUTE, e.target.value)}
-              >
-                <option value="">— none —</option>
-                {routes.map((r) => (
-                  <option key={r.id} value={r.origin}>{r.full_name || r.origin}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="set-field">
               <span className="set-field-label">Ticket Type</span>
               <select
                 className="set-input"
                 value={manualRow[F_TICKET_TYPE]}
                 onChange={(e) => updateManualField(F_TICKET_TYPE, e.target.value)}
               >
-                <option value="">— use amount below —</option>
+                <option value="">— none (use terminal's default price) —</option>
                 {ticketForms.map((tf) => (
                   <option key={tf.id} value={tf.name}>{tf.name} (₱{Number(tf.price).toFixed(2)})</option>
                 ))}
               </select>
-            </label>
-
-            <label className="set-field">
-              <span className="set-field-label">Amount (₱)</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                className="set-input"
-                value={manualRow[F_AMOUNT]}
-                onChange={(e) => updateManualField(F_AMOUNT, e.target.value)}
-                placeholder="Overrides Ticket Type's price"
-              />
             </label>
           </div>
 

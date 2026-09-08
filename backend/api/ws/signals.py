@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
@@ -17,4 +18,9 @@ def notify_queue_changed(sender, **kwargs):
     # that didn't actually change locally.
     if kwargs.get('using') not in (None, 'default'):
         return
-    broadcast_queue_updated()
+    # Defer until the transaction actually commits — dispatch/backfill
+    # actions save several rows inside one atomic() block, and a client
+    # that re-fetches the instant it gets a mid-transaction ping can read
+    # pre-commit state, leaving it stuck showing a stale queue until some
+    # later, unrelated change corrects it.
+    transaction.on_commit(broadcast_queue_updated)

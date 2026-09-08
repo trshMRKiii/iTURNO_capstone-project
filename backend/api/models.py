@@ -134,8 +134,8 @@ class Vehicle(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['status', 'is_archived']),
-            models.Index(fields=['route', 'is_archived']),
+            models.Index(fields=['status', 'is_archived'], name='api_vehicle_status_9de6a2_idx'),
+            models.Index(fields=['route', 'is_archived'], name='api_vehicle_route_i_33d88b_idx'),
         ]
 
 class Ticket(models.Model):
@@ -192,6 +192,12 @@ class Ticket(models.Model):
             user = self.active_user
             self.active_user_name = f"{user.first_name} {user.last_name}".strip() or user.username
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        if self.queue_code:
+            return f"Ticket {self.queue_code}"
+        plate = self.vehicle.plate_number if self.vehicle_id else "?"
+        return f"Roaming ticket ({plate})"
 
 class Requisition(models.Model):
     STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('ISSUED', 'Issued')]
