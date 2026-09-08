@@ -20,13 +20,17 @@ export const STATUS_COLORS = {
 
 // Built from local date parts (not toISOString, which is UTC) so the max-selectable
 // date in the report filters always matches the user's actual local calendar day.
-const now = new Date();
-export const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+// Functions, not module-load-time consts — a report tab left open across midnight
+// (a terminal kiosk scenario) would otherwise keep showing yesterday's date forever.
+export const getToday = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
 
 // Default report window: Jan 1 of the current year through today. Keeps the
 // initial load bounded to the current year's data instead of the whole table
 // — older years are only pulled in when the user explicitly picks a wider range.
-export const yearStart = `${new Date().getFullYear()}-01-01`;
+export const getYearStart = () => `${new Date().getFullYear()}-01-01`;
 
 export const formatTime = (dateString) => {
   try {

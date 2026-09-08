@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { DataTable } from "../../../components/ui/dataTable";
 import {
   STATUS_COLORS,
-  today,
-  yearStart,
+  getToday,
+  getYearStart,
   exportCSV,
   matchesLogRow,
   matchesRoamingRow,
@@ -46,8 +46,8 @@ const mapTicketToLogRow = (t) => ({
 
 export default function Report() {
   const [filters, setFilters] = useState({
-    startDate: yearStart,
-    endDate: today,
+    startDate: getYearStart(),
+    endDate: getToday(),
   });
   const [transactionData, setTransactionData] = useState([]);
   const [transactionMeta, setTransactionMeta] = useState(EMPTY_PAGE_META);
@@ -323,7 +323,7 @@ export default function Report() {
   };
 
   const handleClearFilter = () => {
-    setFilters({ startDate: yearStart, endDate: today });
+    setFilters({ startDate: getYearStart(), endDate: getToday() });
     setTimeout(refetchFiltered, 0);
   };
 
@@ -524,7 +524,7 @@ export default function Report() {
               type="date"
               className="rpt-date-input"
               value={filters.startDate}
-              max={today}
+              max={getToday()}
               onChange={(e) => handleDateChange("startDate", e.target.value)}
             />
           </div>
@@ -535,7 +535,7 @@ export default function Report() {
               className="rpt-date-input"
               value={filters.endDate}
               min={filters.startDate || undefined}
-              max={today}
+              max={getToday()}
               onChange={(e) => handleDateChange("endDate", e.target.value)}
             />
           </div>

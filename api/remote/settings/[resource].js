@@ -50,7 +50,11 @@ async function routesResource(req, res, supabase, payload) {
   if (req.method === "PATCH" || req.method === "PUT") {
     const id = req.query.id;
     if (!id) return void res.status(400).json({ detail: "id query param is required" });
-    const { data, error } = await supabase.from("api_route").update(req.body || {}).eq("id", id).select().single();
+    const { origin, is_active } = req.body || {};
+    const updates = {};
+    if (origin !== undefined) updates.origin = origin;
+    if (is_active !== undefined) updates.is_active = is_active;
+    const { data, error } = await supabase.from("api_route").update(updates).eq("id", id).select().single();
     if (error) throw error;
     res.status(200).json(data);
     return;
@@ -94,10 +98,16 @@ async function usersResource(req, res, supabase, payload) {
   if (req.method === "PATCH" || req.method === "PUT") {
     const id = req.query.id;
     if (!id) return void res.status(400).json({ detail: "id query param is required" });
-    const { new_password, ...fields } = req.body || {};
-    const updates = { ...fields };
-    if (new_password) {
-      updates.password = hashDjangoPassword(new_password);
+    // Allowlisted, not spread from req.body — a client sending an extra `password`
+    // or `is_superuser` field must never reach the update untouched.
+    const EDITABLE_USER_FIELDS = ["username", "first_name", "middle_name", "last_name", "role", "is_active"];
+    const body = req.body || {};
+    const updates = {};
+    for (const f of EDITABLE_USER_FIELDS) {
+      if (body[f] !== undefined) updates[f] = body[f];
+    }
+    if (body.new_password) {
+      updates.password = hashDjangoPassword(body.new_password);
       updates.must_reset_password = true;
     }
     const { data, error } = await supabase.from("api_user").update(updates).eq("id", id).select(SELECT).single();
@@ -118,14 +128,15 @@ async function usersResource(req, res, supabase, payload) {
 
 function simpleCrud(table, { createFields, requiredField = "name" }) {
   return async (req, res, supabase, payload) => {
+    // SUPERADMIN-only for every method, reads included — see the file-level comment.
+    requireRole(payload, CAN_EDIT_SETTINGS);
+
     if (req.method === "GET") {
       const { data, error } = await supabase.from(table).select("*").order(requiredField, { ascending: true });
       if (error) throw error;
       res.status(200).json(data);
       return;
     }
-
-    requireRole(payload, CAN_EDIT_SETTINGS);
 
     if (req.method === "POST") {
       const body = req.body || {};
@@ -142,7 +153,9 @@ function simpleCrud(table, { createFields, requiredField = "name" }) {
     if (req.method === "PATCH" || req.method === "PUT") {
       const id = req.query.id;
       if (!id) return void res.status(400).json({ detail: "id query param is required" });
-      const { data, error } = await supabase.from(table).update(req.body || {}).eq("id", id).select().single();
+      const body = req.body || {};
+      const updates = Object.fromEntries(createFields.filter((f) => body[f] !== undefined).map((f) => [f, body[f]]));
+      const { data, error } = await supabase.from(table).update(updates).eq("id", id).select().single();
       if (error) throw error;
       res.status(200).json(data);
       return;
@@ -160,6 +173,8 @@ function simpleCrud(table, { createFields, requiredField = "name" }) {
 }
 
 async function terminalPriceResource(req, res, supabase, payload) {
+  requireRole(payload, CAN_EDIT_SETTINGS);
+
   if (req.method === "GET") {
     let { data, error } = await supabase.from("api_terminalprice").select("*").eq("id", 1).maybeSingle();
     if (error) throw error;
@@ -171,10 +186,9 @@ async function terminalPriceResource(req, res, supabase, payload) {
     return;
   }
 
-  requireRole(payload, CAN_EDIT_SETTINGS);
-
   if (req.method === "PATCH" || req.method === "PUT") {
-    const { data, error } = await supabase.from("api_terminalprice").upsert({ id: 1, ...(req.body || {}) }).select().single();
+    const { amount } = req.body || {};
+    const { data, error } = await supabase.from("api_terminalprice").upsert({ id: 1, amount }).select().single();
     if (error) throw error;
     res.status(200).json(data);
     return;
@@ -231,11 +245,31 @@ async function backfillResource(req, res, supabase, payload) {
       return;
     }
 
+    const ticketId = String(row["Ticket Number"]).trim();
+    // A retried POST (flaky connection, double tab, back-button resubmit) must not
+    // queue a second request for the same ticket — the LAN sync worker would apply
+    // one and permanently fail the other with a confusing "already exists" error.
+    const { data: dup, error: dupErr } = await supabase
+      .from("api_remotebackfillrequest")
+      .select("id,status")
+      .eq("ticket_id", ticketId)
+      .in("status", ["PENDING", "APPLIED"])
+      .maybeSingle();
+    if (dupErr) throw dupErr;
+    if (dup) {
+      res.status(409).json({
+        detail: dup.status === "APPLIED"
+          ? `Ticket ${ticketId} has already been backfilled.`
+          : `Ticket ${ticketId} was already submitted and is still pending.`,
+      });
+      return;
+    }
+
     const { data, error } = await supabase
       .from("api_remotebackfillrequest")
       .insert({
         payload: row,
-        ticket_id: String(row["Ticket Number"]).trim(),
+        ticket_id: ticketId,
         requested_by_name: payload.username || "",
         status: "PENDING",
       })

@@ -191,9 +191,12 @@ export default async function handler(req, res) {
         if (vehicleMatches?.length) orParts.push(`vehicle_id.in.(${vehicleMatches.map((v) => v.id).join(",")})`);
         if (driverMatches?.length) orParts.push(`driver_id.in.(${driverMatches.map((d) => d.id).join(",")})`);
 
+        // Prefix match, mirrors TicketViewSet.get_queryset (backend/api/views/viewsets.py)
+        // — matching a short substring anywhere in the word (the old ".includes") let
+        // e.g. "an" or "el" flood results with every cancelled ticket.
         const lowered = term.toLowerCase();
-        if ("cancelled".includes(lowered)) orParts.push("status.eq.CANCELLED");
-        if ("collected".includes(lowered)) orParts.push("status.neq.CANCELLED");
+        if (lowered.length >= 3 && "cancelled".startsWith(lowered)) orParts.push("status.eq.CANCELLED");
+        if (lowered.length >= 3 && "collected".startsWith(lowered)) orParts.push("status.neq.CANCELLED");
 
         query = query.or(orParts.join(","));
       }

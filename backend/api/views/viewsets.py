@@ -197,10 +197,11 @@ def _consume_series_fifo(ticket_form_id, quantity):
     series_list = list(
         TicketSeries.objects.select_for_update()
         .filter(ticket_form_id=ticket_form_id, requisition__is_archived=False)
+        .annotate(_issued_count=Count('tickets'))
         .order_by('requisition_id', 'id')
     )
     already_issued = {
-        s.id: s.tickets.count() for s in series_list
+        s.id: s._issued_count for s in series_list
     }
     total_available = sum(
         max(int(s.end_no) - int(s.start_no) + 1 - already_issued[s.id], 0) for s in series_list
@@ -269,9 +270,13 @@ class TicketViewSet(viewsets.ModelViewSet):
                 | Q(active_user_name__icontains=search)
             )
             lowered = search.lower()
-            if lowered in 'cancelled':
+            # Prefix match (not "is search a substring of the word", which was backwards
+            # and made any short substring of "cancelled" like "an"/"el" pull in every
+            # cancelled ticket) — min length 3 so it only kicks in once the term is
+            # unambiguously heading toward one of these two words.
+            if len(lowered) >= 3 and 'cancelled'.startswith(lowered):
                 condition |= Q(status='CANCELLED')
-            if lowered in 'collected':
+            if len(lowered) >= 3 and 'collected'.startswith(lowered):
                 condition |= ~Q(status='CANCELLED')
             qs = qs.filter(condition)
         return qs

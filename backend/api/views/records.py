@@ -6,37 +6,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from ..models import Ticket, TicketPrice, Vehicle, Driver, Route, RemittanceBatch, Collection, Deposit, AuditLog, TerminalPrice, TicketSeries
+from ..models import Ticket, TicketPrice, Vehicle, Route, RemittanceBatch, Collection, Deposit, AuditLog, TerminalPrice, TicketSeries
 from ..serializers import TicketSerializer, RemittanceBatchSerializer, AuditLogSerializer, TerminalPriceSerializer
 from .helpers import summarize, parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_queue_tickets, paginate_request
-
-
-@api_view(['GET'])
-def transaction_logs(request):
-    show_all = request.query_params.get('all', 'false').lower() == 'true'
-
-    tickets = Ticket.objects.select_related('vehicle', 'driver', 'active_user').order_by('-created_at')
-
-    data = []
-    for t in tickets:
-        local_dt = t.created_at + timedelta(hours=8)
-        data.append({
-            'id': t.id,
-            'action': t.status,
-            'ticket_id': t.id,
-            'driver': str(t.driver) if t.driver else '',
-            'vehicle': t.vehicle.plate_number if t.vehicle else '',
-            'route': t.route_name,
-            'amount': float(t.collection_amount or 0),
-            'timestamp': local_dt.strftime('%Y-%m-%d %H:%M:%S'),
-            'user': t.active_user.get_full_name() or t.active_user.username if t.active_user else 'System',
-        })
-
-    total = len(data)
-    if not show_all:
-        data = data[:10]
-
-    return Response({'logs': data, 'total': total})
 
 
 @api_view(['GET'])
@@ -159,53 +131,6 @@ def dashboard_stats(request):
         'fleet_status': fleet_status,
         'ticket_stock_remaining': ticket_stock_remaining,
     })
-
-
-@api_view(['GET'])
-def vehicle_records(request):
-    try:
-        vehicles = Vehicle.objects.select_related('route', 'active_driver').order_by('plate_number')
-
-        data = []
-        for v in vehicles:
-            try:
-                record = {
-                    'id': v.id,
-                    'plate_number': v.plate_number,
-                    'route': v.route.full_name if v.route else '—',
-                    'driver': v.active_driver.name if v.active_driver else '—',
-                    'status': v.get_status_display() if hasattr(v, 'get_status_display') else v.status,
-                }
-                data.append(record)
-            except Exception:
-                continue
-
-        return Response({'vehicles': data, 'total': len(data)})
-    except Exception as e:
-        return Response({'error': str(e), 'vehicles': [], 'total': 0}, status=500)
-
-
-@api_view(['GET'])
-def driver_records(request):
-    try:
-        drivers = Driver.objects.order_by('code')
-
-        data = []
-        for d in drivers:
-            try:
-                record = {
-                    'id': d.id,
-                    'code': d.code,
-                    'name': d.name,
-                    'contact_number': d.contact_number if d.contact_number else '—',
-                }
-                data.append(record)
-            except Exception:
-                continue
-
-        return Response({'drivers': data, 'total': len(data)})
-    except Exception as e:
-        return Response({'error': str(e), 'drivers': [], 'total': 0}, status=500)
 
 
 @api_view(['GET'])

@@ -8,7 +8,7 @@ from django.core import management
 from django.core.files.storage import default_storage
 from django.db import connection, transaction
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
 from ..models import BackupRecord
@@ -16,6 +16,13 @@ from ..serializers import BackupRecordSerializer
 from .helpers import record_audit_log
 
 BACKUPS_DIR = "backups"
+
+
+class IsSuperAdmin(BasePermission):
+    """Backup/restore can wipe and reload the entire database — SUPERADMIN only, reads included."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == "SUPERADMIN")
 
 
 def _backup_app_labels():
@@ -53,7 +60,7 @@ def _create_backup_file(user, label="", source="MANUAL"):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsSuperAdmin])
 def system_backups(request):
     if request.method == "POST":
         label = (request.data.get("label") or "").strip()
@@ -73,7 +80,7 @@ def system_backups(request):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsSuperAdmin])
 def system_backup_detail(request, backup_id):
     try:
         record = BackupRecord.objects.get(id=backup_id)
@@ -96,7 +103,7 @@ def system_backup_detail(request, backup_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsSuperAdmin])
 def system_backup_download(request, backup_id):
     try:
         record = BackupRecord.objects.get(id=backup_id)
@@ -139,7 +146,7 @@ def _restore_from_content(content_bytes):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsSuperAdmin])
 def system_backup_restore(request, backup_id):
     try:
         record = BackupRecord.objects.get(id=backup_id)
@@ -176,7 +183,7 @@ def system_backup_restore(request, backup_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsSuperAdmin])
 def system_backup_restore_upload(request):
     file_obj = request.FILES.get("file")
     if not file_obj:

@@ -71,8 +71,16 @@ export function signRefreshToken(user) {
 }
 
 export function verifyToken(token) {
-  return jwt.verify(token, getSecret());
+  // Pin the algorithm — every token this app issues is HS256 (see sign* below); accepting
+  // whatever `alg` the token claims would reopen algorithm-confusion attacks if an
+  // asymmetric key ever gets introduced alongside this shared secret.
+  return jwt.verify(token, getSecret(), { algorithms: ["HS256"] });
 }
+
+// A syntactically valid pbkdf2_sha256 hash that no real password will ever match, used
+// to make login() do the same amount of work (a full PBKDF2 derivation) whether the
+// username exists or not — otherwise response timing alone reveals valid usernames.
+export const DUMMY_PASSWORD_HASH = hashDjangoPassword(randomAlphanumeric(24));
 
 // Password-reset token: same idea as Django's PasswordResetTokenGenerator
 // (backend/api/views/auth.py) — a token that self-invalidates once used, but

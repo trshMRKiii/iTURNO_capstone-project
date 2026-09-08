@@ -1,4 +1,4 @@
-import { peso, today } from "../reportHook";
+import { peso, getToday } from "../reportHook";
 
 export default function EodReconciliation({
   eodDate,
@@ -21,7 +21,7 @@ export default function EodReconciliation({
             type="date"
             className="rpt-date-input"
             value={eodDate}
-            max={today}
+            max={getToday()}
             onChange={(e) => setEodDate(e.target.value)}
           />
         </div>

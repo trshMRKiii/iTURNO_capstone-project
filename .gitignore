@@ -1,6 +1,7 @@
 # Logs
 logs
 *.log
+*.log.*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -11,6 +12,11 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Python bytecode — regenerated on every run, version-specific (e.g. cpython-314),
+# and was previously committed by accident, doubling every backend commit's diff.
+__pycache__/
+*.pyc
 
 # Environment variables
 .env*

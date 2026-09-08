@@ -19,6 +19,16 @@ def apply_pending():
     )
     applied = failed = 0
     for req in pending:
+        # Claim the row first (atomic conditional UPDATE) so an overlapping sync
+        # cycle — e.g. this one is still waiting on Supabase network I/O when the
+        # next scheduled tick starts — can't pick up and double-process the same
+        # request.
+        claimed = RemoteBackfillRequest.objects.using('supabase').filter(
+            pk=req.pk, status='PENDING',
+        ).update(status='PROCESSING')
+        if not claimed:
+            continue
+
         resolved, outcome, reason = _resolve_row(req.payload, existing_ids_in_batch=set())
         if outcome == 'ok':
             try:
@@ -35,6 +45,16 @@ def apply_pending():
                 req.status = 'FAILED'
                 req.result_reason = f"Save failed: {exc}"[:500]
                 failed += 1
+        elif outcome == 'duplicate':
+            # The ticket already exists. The submission endpoint now rejects a second
+            # genuine request for the same ticket number (see the dedup check in
+            # api/remote/settings/[resource].js), so the remaining way to land here is
+            # a previous cycle that created the Ticket but crashed/lost connectivity
+            # before writing PENDING -> APPLIED back onto this row — treat that as
+            # success instead of a permanent, misleading FAILED.
+            req.status = 'APPLIED'
+            req.result_reason = 'Already applied (ticket already existed on retry).'
+            applied += 1
         else:
             req.status = 'FAILED'
             req.result_reason = reason or outcome

@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import UserViewSet, DriverViewSet, VehicleViewSet, RouteViewSet, TicketViewSet, CurrentUserView, TicketPriceViewSet, PUVTypeViewSet, RemittanceBatchViewSet, TicketFormViewSet, RequisitionViewSet, TicketSeriesViewSet, RoamingLogViewSet
-from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, transaction_logs, audit_logs, dashboard_stats, public_queue,vehicle_records,driver_records, server_time, export_collections_csv, remittance_batches, terminal_price_config, system_backups, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password, change_password, wip_mode_config, backfill_manual, backfill_preview, backfill_import
+from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, audit_logs, dashboard_stats, public_queue, server_time, export_collections_csv, remittance_batches, terminal_price_config, system_backups, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password, change_password, wip_mode_config, backfill_manual, backfill_preview, backfill_import
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -25,10 +25,7 @@ urlpatterns = [
     path('report/collections/', report_collections),
     path('report/chart/', report_daily_chart),
     path('report/eod-reconciliation/', eod_reconciliation),
-    path('logs/', transaction_logs),
     path('audit-logs/', audit_logs),
-    path('vehicles/records/', vehicle_records),
-    path('drivers/records/', driver_records),
     path('dashboard/stats/', dashboard_stats),
     path('queue/', public_queue),
     path('current-user/', CurrentUserView.as_view(), name='current-user'),

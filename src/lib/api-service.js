@@ -258,6 +258,17 @@ export const apiService = {
   },
 
   async refreshToken() {
+    // Several requests can 401 at once (e.g. Mobile Scan's fetchData fires 5 in
+    // parallel) — without sharing one in-flight refresh, each would fire its own
+    // /token/refresh/ call using the same refresh token.
+    if (this._refreshPromise) return this._refreshPromise;
+    this._refreshPromise = this._doRefreshToken().finally(() => {
+      this._refreshPromise = null;
+    });
+    return this._refreshPromise;
+  },
+
+  async _doRefreshToken() {
     const refresh = sessionStorage.getItem("refreshToken");
     if (!refresh) {
       this.logout();

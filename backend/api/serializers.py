@@ -198,9 +198,17 @@ class TicketSerializer(serializers.ModelSerializer):
                 # (e.g. "SJ-1"), counted per route and reset every midnight.
                 route = vehicle.route
                 if route:
-                    today = timezone.localtime().date()
+                    # PH local day boundaries, not server-local (server TIME_ZONE is UTC)
+                    # or issued_at__date (which extracts the date in the active/UTC
+                    # timezone, not PH) — matches parse_date_start/parse_date_end in
+                    # views/helpers.py.
+                    now_ph = timezone.now() + timedelta(hours=8)
+                    day_start = timezone.make_aware(
+                        datetime(now_ph.year, now_ph.month, now_ph.day) - timedelta(hours=8)
+                    )
+                    day_end = day_start + timedelta(days=1)
                     count_today = Ticket.objects.filter(
-                        mode='QUEUE', route=route, issued_at__date=today,
+                        mode='QUEUE', route=route, issued_at__gte=day_start, issued_at__lt=day_end,
                     ).count()
                     validated_data['queue_code'] = f"{route.acronym}-{count_today + 1}"
 

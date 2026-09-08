@@ -8,6 +8,7 @@ import {
   signPasswordResetToken,
   verifyPasswordResetToken,
   verifyToken,
+  DUMMY_PASSWORD_HASH,
 } from "../../_lib/auth.js";
 import { sendPasswordResetEmail } from "../../_lib/mailer.js";
 
@@ -34,7 +35,11 @@ async function login(req, res) {
       .eq("username", username)
       .maybeSingle();
     if (error) throw error;
-    if (!user || !user.is_active || !verifyDjangoPassword(password, user.password)) {
+    // Always run the full PBKDF2 verification, even for an unknown username — a real
+    // account's hash if the user exists, a dummy one otherwise — so response time
+    // doesn't leak which usernames are registered.
+    const passwordOk = verifyDjangoPassword(password, user ? user.password : DUMMY_PASSWORD_HASH);
+    if (!user || !user.is_active || !passwordOk) {
       res.status(401).json({ detail: "No active account found with the given credentials" });
       return;
     }

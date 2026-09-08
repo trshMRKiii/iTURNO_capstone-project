@@ -5,7 +5,7 @@ import ViewRemittance from "./viewRemittance";
 import { useRemittance } from "./useRemittance";
 import { useToast, useConfirm } from "../../../components/ui/ToastConfirmContext";
 import { apiService } from "../../../lib/api-service";
-import { today } from "../report/reportHook";
+import { getToday } from "../report/reportHook";
 import { getPhDateString } from "../../../lib/phDate";
 import EodReconciliation from "../report/tables/EodReconciliation";
 import "../../../styles/Remittance.css";
@@ -35,7 +35,7 @@ export default function Remittance() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewBatch, setViewBatch] = useState(null);
-  const [eodDate, setEodDate] = useState(today);
+  const [eodDate, setEodDate] = useState(getToday);
   const [eod, setEod] = useState(null);
   const [eodLoading, setEodLoading] = useState(false);
   const [batchTab, setBatchTab] = useState("active");

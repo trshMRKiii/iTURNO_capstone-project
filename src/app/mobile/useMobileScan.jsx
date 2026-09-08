@@ -283,9 +283,13 @@ export function useMobileScan() {
 
         const quantity = Math.max(1, parseInt(ticketQuantity) || 1);
         const cap = Number(terminalPrice?.amount || 0);
-        if (cap > 0 && ticketFee * quantity !== cap) {
+        const totalCollected = ticketFee * quantity;
+        // Compare in whole centavos — ticketFee/cap come from backend decimal strings,
+        // and multiplying them in floating point (e.g. 10.10 * 5) can land a hair off
+        // an exact peso amount, which would wrongly block a legitimate match.
+        if (cap > 0 && Math.round(totalCollected * 100) !== Math.round(cap * 100)) {
           throw new Error(
-            `Total collection amount (₱${(ticketFee * quantity).toFixed(2)}) must match the terminal price of ₱${cap.toFixed(2)}.`
+            `Total collection amount (₱${totalCollected.toFixed(2)}) must match the terminal price of ₱${cap.toFixed(2)}.`
           );
         }
 
@@ -309,6 +313,7 @@ export function useMobileScan() {
       setScannedVehicle(null);
       setSelectedDriver(null);
       setTicketQuantity(1);
+      setDispatchQuantity(1);
     } catch (err) {
       setError(err.message || "Submission failed");
     } finally {
@@ -322,6 +327,7 @@ export function useMobileScan() {
     setError(null);
     setResult(null);
     setTicketQuantity(1);
+    setDispatchQuantity(1);
   };
 
   return {

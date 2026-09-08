@@ -66,19 +66,24 @@ def expire_stale_queue_tickets(actor=None):
 
         vehicle_ids = set()
         reason = 'Auto-cancelled: vehicle was not dispatched before end of day.'
+        now = timezone.now()
+        logs = []
         for ticket in stale:
             ticket.status = 'CANCELLED'
             ticket.reason = reason
-            ticket.save(update_fields=['status', 'reason', 'updated_at'])
+            ticket.updated_at = now  # bulk_update bypasses auto_now, so set it explicitly
             vehicle_ids.add(ticket.vehicle_id)
-            record_audit_log(
-                user=actor,
+            logs.append(AuditLog(
+                user=actor if actor and getattr(actor, 'is_authenticated', False) else None,
                 action='UPDATE',
                 model_name='Ticket',
-                object_id=ticket.id,
-                object_repr=str(ticket),
+                object_id=str(ticket.id),
+                object_repr=str(ticket)[:255],
                 changes={'status': 'CANCELLED', 'reason': reason, 'auto_expired': True},
-            )
+            ))
+
+        Ticket.objects.bulk_update(stale, ['status', 'reason', 'updated_at'])
+        AuditLog.objects.bulk_create(logs)
 
         Vehicle.objects.filter(id__in=vehicle_ids, status='QUEUED').update(
             status='AVAILABLE', updated_at=timezone.now()
