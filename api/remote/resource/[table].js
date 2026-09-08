@@ -11,6 +11,35 @@ import {
   shapeAuditLog,
 } from "../../_lib/shapes.js";
 
+// Mirrors TicketSeries._get_tickets_issued (backend/api/serializers.py:331) —
+// counts real Ticket rows per series instead of trusting a stored balance,
+// so remote's stock figures actually reflect tickets issued via LAN and
+// pushed to Supabase (see api/sync/push.py).
+async function getTicketStatsBySeries(seriesIds) {
+  const ids = [...new Set(seriesIds)].filter((id) => id != null);
+  if (!ids.length) return {};
+
+  const { data, error } = await supabaseAdmin()
+    .from("api_ticket")
+    .select("series_id, issued_at")
+    .in("series_id", ids);
+  if (error) throw error;
+
+  // Django's TIME_ZONE is UTC (backend/backend/settings.py), so "today"
+  // for the beginning-of-day balance is the UTC calendar day.
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const stats = {};
+  for (const row of data) {
+    const entry = stats[row.series_id] || { totalIssued: 0, issuedBeforeToday: 0 };
+    entry.totalIssued += 1;
+    if (row.issued_at && new Date(row.issued_at) < todayStart) entry.issuedBeforeToday += 1;
+    stats[row.series_id] = entry;
+  }
+  return stats;
+}
+
 const VEHICLE_SELECT =
   "*, route:api_route(*), transportation:api_puvtype(id,name), driver_obj:api_driver(id,last_name,first_name)";
 const TICKET_SELECT =
@@ -52,14 +81,16 @@ const RESOURCES = {
     select: "*, ticket_form:api_ticketform(id,name,price), issued_to:api_user(id,username)",
     order: { column: "created_at", ascending: false },
     filters: ["requisition"],
-    shape: (rows) => rows.map(shapeTicketSeries),
+    withTicketStats: true,
+    shape: (rows, stats) => rows.map((s) => shapeTicketSeries(s, stats[s.id])),
   },
   requisitions: {
     table: "api_requisition",
     select: "*, ticket_series:api_ticketseries(*, ticket_form:api_ticketform(id,name,price))",
     order: { column: "date_requested", ascending: false },
     filters: ["is_archived", "status"],
-    shape: (rows) => rows.map(shapeRequisition),
+    withTicketStats: true,
+    shape: (rows, stats) => rows.map((r) => shapeRequisition(r, stats)),
   },
   "remittance-batches": {
     table: "api_remittancebatch",
@@ -141,12 +172,20 @@ export default async function handler(req, res) {
     const { data, error, count } = await query;
     if (error) throw error;
 
+    let stats = {};
+    if (resource.withTicketStats) {
+      const seriesIds = key === "requisitions"
+        ? data.flatMap((r) => (r.ticket_series || []).map((s) => s.id))
+        : data.map((s) => s.id);
+      stats = await getTicketStatsBySeries(seriesIds);
+    }
+
     if (page) {
-      res.status(200).json({ results: resource.shape ? resource.shape(data) : data, count });
+      res.status(200).json({ results: resource.shape ? resource.shape(data, stats) : data, count });
       return;
     }
 
-    res.status(200).json(resource.shape ? resource.shape(data) : data);
+    res.status(200).json(resource.shape ? resource.shape(data, stats) : data);
   } catch (err) {
     console.error(`remote/resource/${key} error:`, err);
     res.status(500).json({ detail: "Failed to load data" });

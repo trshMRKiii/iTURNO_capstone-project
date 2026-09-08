@@ -132,7 +132,7 @@ export function shapeRoutesWithStats(routes, tickets) {
   });
 }
 
-export function shapeRequisition(r) {
+export function shapeRequisition(r, ticketStatsBySeries = {}) {
   if (!r) return null;
   return {
     id: r.id,
@@ -143,15 +143,21 @@ export function shapeRequisition(r) {
     status: r.status,
     total_value: r.total_value,
     is_archived: r.is_archived,
-    ticket_series: (r.ticket_series || []).map(shapeTicketSeries),
+    ticket_series: (r.ticket_series || []).map((s) => shapeTicketSeries(s, ticketStatsBySeries[s.id])),
     created_at: r.created_at,
     updated_at: r.updated_at,
   };
 }
 
-export function shapeTicketSeries(s) {
+// stats = { totalIssued, issuedBeforeToday }, from getTicketStatsBySeries in
+// remote/resource/[table].js — mirrors TicketSeriesSerializer.get_remaining /
+// get_beginning (serializers.py:337-352), which count actual Ticket rows
+// against the series rather than trusting a stored "remaining" column.
+export function shapeTicketSeries(s, stats = null) {
   if (!s) return null;
   const originalPcs = Math.max((Number(s.end_no) || 0) - (Number(s.start_no) || 0) + 1, 0);
+  const totalIssued = stats?.totalIssued ?? 0;
+  const issuedBeforeToday = stats?.issuedBeforeToday ?? 0;
   return {
     id: s.id,
     series_no: s.series_no,
@@ -168,12 +174,8 @@ export function shapeTicketSeries(s) {
     issued_to: s.issued_to?.id ?? s.issued_to ?? null,
     issued_to_name: s.issued_to?.username ?? null,
     date_issued: s.date_issued,
-    // beginning/remaining (serializers.py:304-319) need "tickets issued
-    // before today" / "total tickets issued" against this series, which
-    // isn't practical to compute generically here — left at the original
-    // pcs count as a reasonable approximation, not exact parity.
-    beginning: originalPcs,
-    remaining: originalPcs,
+    beginning: Math.max(originalPcs - issuedBeforeToday, 0),
+    remaining: Math.max(originalPcs - totalIssued, 0),
     created_at: s.created_at,
     updated_at: s.updated_at,
   };
