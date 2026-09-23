@@ -116,7 +116,7 @@ async function me(req, res) {
   try {
     const { data: user, error } = await supabaseAdmin()
       .from("api_user")
-      .select("id, username, first_name, last_name, middle_name, role, is_active")
+      .select("id, username, first_name, last_name, middle_name, role, is_active, must_reset_password, email_verified")
       .eq("id", payload.sub)
       .maybeSingle();
     if (error) throw error;
@@ -274,6 +274,58 @@ async function verifyEmail(req, res) {
   }
 }
 
+// Mirrors backend/api/views/auth.py's change_password — reached when a
+// signed-in user (typically one still flagged must_reset_password after
+// verify-email's temp password) sets their own new password. Requires the
+// same requireAuth() bearer check every other authenticated remote action
+// uses, then clears must_reset_password so ForcePasswordChange stops
+// reappearing on next login.
+async function changePassword(req, res) {
+  if (req.method !== "POST") {
+    res.status(405).json({ detail: "Method not allowed" });
+    return;
+  }
+  let payload;
+  try {
+    payload = requireAuth(req);
+  } catch (err) {
+    res.status(err.status || 401).json({ detail: err.message || "Not authenticated" });
+    return;
+  }
+  const newPassword = req.body?.new_password;
+  if (!newPassword) {
+    res.status(400).json({ detail: "New password is required." });
+    return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ detail: "Password must be at least 8 characters." });
+    return;
+  }
+  try {
+    const { data: user, error } = await supabaseAdmin()
+      .from("api_user")
+      .select("id, is_active")
+      .eq("id", payload.sub)
+      .maybeSingle();
+    if (error) throw error;
+    if (!user || !user.is_active) {
+      res.status(401).json({ detail: "Account no longer active" });
+      return;
+    }
+
+    const { error: updateError } = await supabaseAdmin()
+      .from("api_user")
+      .update({ password: hashDjangoPassword(newPassword), must_reset_password: false })
+      .eq("id", payload.sub);
+    if (updateError) throw updateError;
+
+    res.status(200).json({ detail: "Password changed successfully." });
+  } catch (err) {
+    console.error("remote/auth/change-password error:", err);
+    res.status(500).json({ detail: "Failed to change password." });
+  }
+}
+
 const ACTIONS = {
   token: login,
   "token-refresh": refresh,
@@ -281,6 +333,7 @@ const ACTIONS = {
   "forgot-password": forgotPassword,
   "reset-password": resetPasswordRemote,
   "verify-email": verifyEmail,
+  "change-password": changePassword,
 };
 
 export default async function handler(req, res) {

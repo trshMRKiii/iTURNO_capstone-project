@@ -48,7 +48,8 @@ function User({ userRole }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
-  const [progressUser, setProgressUser] = useState(null);
+  const [progressUserId, setProgressUserId] = useState(null);
+  const progressUser = progressUserId ? users.find((u) => u.id === progressUserId) || null : null;
   const [resending, setResending] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +60,15 @@ function User({ userRole }) {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Poll while the onboarding progress modal is open so it reflects the
+  // staff member verifying their email / changing their password in
+  // real time, instead of the snapshot taken when the modal was opened.
+  useEffect(() => {
+    if (!progressUserId) return;
+    const interval = setInterval(fetchUsers, 4000);
+    return () => clearInterval(interval);
+  }, [progressUserId]);
 
   const fetchUsers = async () => {
     try {
@@ -142,7 +152,7 @@ function User({ userRole }) {
 
   const handleEdit = (user) => {
     if (isOnboarding(user)) {
-      setProgressUser(user);
+      setProgressUserId(user.id);
       return;
     }
     setEditing(user);
@@ -592,7 +602,7 @@ function User({ userRole }) {
 
       {/* Onboarding progress modal */}
       {progressUser && (
-        <div className="usr-overlay" onClick={() => setProgressUser(null)}>
+        <div className="usr-overlay" onClick={() => setProgressUserId(null)}>
           <div className="usr-modal" onClick={(e) => e.stopPropagation()}>
             <div className="usr-modal-header">
               <div className="usr-modal-header-left">
@@ -600,7 +610,7 @@ function User({ userRole }) {
               </div>
               <button
                 className="usr-modal-close"
-                onClick={() => setProgressUser(null)}
+                onClick={() => setProgressUserId(null)}
                 aria-label="Close"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -679,7 +689,7 @@ function User({ userRole }) {
               <button
                 type="button"
                 className="usr-modal-btn usr-modal-btn--submit"
-                onClick={() => setProgressUser(null)}
+                onClick={() => setProgressUserId(null)}
               >
                 Close
               </button>

@@ -62,6 +62,7 @@ const REMOTE_WRITABLE = [
   { prefix: "/auth/forgot-password/", remote: "/auth/forgot-password", methods: ["POST"] },
   { prefix: "/auth/reset-password/", remote: "/auth/reset-password", methods: ["POST"] },
   { prefix: "/auth/verify-email/", remote: "/auth/verify-email", methods: ["POST"] },
+  { prefix: "/auth/change-password/", remote: "/auth/change-password", methods: ["POST"] },
   { prefix: "/routes/", remote: "/settings/routes", methods: ["POST", "PATCH", "PUT", "DELETE"] },
   { prefix: "/users/", remote: "/settings/users", methods: ["POST", "PATCH", "PUT", "DELETE"] },
   { prefix: "/puvtypes/", remote: "/settings/puv-types", methods: ["POST", "PATCH", "PUT", "DELETE"] },

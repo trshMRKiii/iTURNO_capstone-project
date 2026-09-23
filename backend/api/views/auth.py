@@ -133,7 +133,14 @@ def change_password(request):
     except DjangoValidationError as exc:
         return Response({'detail': ' '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
 
-    request.user.set_password(new_password)
-    request.user.must_reset_password = False
-    request.user.save()
+    # Supabase is the source of truth for User (see forgot_password above).
+    # request.user comes from JWTAuthentication's default lookup, which reads
+    # the local sync mirror, not supabase — saving that instance directly
+    # would silently strand the change there until the next pull cycle,
+    # while the Staff Registry (which reads straight from supabase) keeps
+    # showing the account as still needing a password change.
+    user = User.objects.using('supabase').get(pk=request.user.pk)
+    user.set_password(new_password)
+    user.must_reset_password = False
+    user.save(using='supabase')
     return Response({'detail': 'Password changed successfully.'})

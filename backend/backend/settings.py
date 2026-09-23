@@ -124,7 +124,17 @@ DATABASES = {
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        # Transaction-mode pooler (6543), not session mode (5432): session mode
+        # caps concurrent clients at 15 project-wide, and every regular request
+        # that touches User (staff registry, login, email verification) plus
+        # the sync worker all open their own connection — that exhausts 15
+        # almost immediately. Transaction mode shares a much larger backend
+        # pool across short-lived connections instead.
+        'PORT': os.getenv('DB_PORT', '6543'),
+        # Required with the transaction pooler: it can hand different backend
+        # connections to the same client across queries, so a server-side
+        # cursor opened on one backend can't be read from on another.
+        'DISABLE_SERVER_SIDE_CURSORS': True,
         'OPTIONS': {'sslmode': 'require'},
         'CONN_MAX_AGE': 60,
     },
