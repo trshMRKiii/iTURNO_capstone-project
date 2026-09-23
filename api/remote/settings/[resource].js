@@ -78,7 +78,7 @@ async function routesResource(req, res, supabase, payload) {
 
 async function usersResource(req, res, supabase, payload) {
   requireRole(payload, CAN_EDIT_SETTINGS); // whole resource is SUPERADMIN-only, reads included
-  const SELECT = "id, username, first_name, middle_name, last_name, role, is_active, must_reset_password";
+  const SELECT = "id, username, first_name, middle_name, last_name, role, is_active, must_reset_password, email_verified";
 
   if (req.method === "GET") {
     const { data, error } = await supabase.from("api_user").select(SELECT).order("username", { ascending: true });

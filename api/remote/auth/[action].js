@@ -116,7 +116,7 @@ async function me(req, res) {
   try {
     const { data: user, error } = await supabaseAdmin()
       .from("api_user")
-      .select("id, username, first_name, last_name, middle_name, role, is_active")
+      .select("id, username, first_name, last_name, middle_name, role, is_active, must_reset_password, email_verified")
       .eq("id", payload.sub)
       .maybeSingle();
     if (error) throw error;
