@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from ..models import Ticket, TicketPrice, AuditLog, Vehicle, Route
+from ..models import Ticket, TicketPrice, AuditLog, Vehicle, Route, User
 
 
 def parse_date_start(date_str):
@@ -29,6 +29,18 @@ def parse_iso_datetime(value):
     if timezone.is_naive(dt):
         return timezone.make_aware(dt, dt_timezone.utc)
     return dt.astimezone(dt_timezone.utc)
+
+
+def expire_stale_unverified_accounts():
+    """Drops admin-added staff accounts that never verified their email within
+    30 days — the point of verification is to keep a bad/fake email from
+    sitting around as a permanent unusable account, so it's dropped instead
+    of nagging forever. Called lazily from UserViewSet.get_queryset (same
+    no-scheduler-needed convention as expire_stale_queue_tickets above).
+    Targets 'supabase' directly — User is Supabase-authoritative (see
+    api/sync/registry.py), so that's the copy that actually needs cleaning."""
+    cutoff = timezone.now() - timedelta(days=30)
+    User.objects.using('supabase').filter(email_verified=False, created_at__lt=cutoff).delete()
 
 
 def filter_collected(start_date=None, end_date=None):

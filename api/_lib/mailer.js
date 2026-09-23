@@ -103,3 +103,90 @@ export async function sendPasswordResetEmail(toEmail, userName, resetLink) {
     html: passwordResetHtml(userName, resetLink),
   });
 }
+
+// Mirrors backend/api/templates/emails/new_account.html so the remote and LAN
+// "you're verified, here's your temp password" emails look the same.
+function newAccountHtml(userName, username, tempPassword, loginLink) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your North Central Terminal account</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef1f6; font-family:Segoe UI, Roboto, Helvetica, Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f6; padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(26,39,68,0.12);">
+          <tr>
+            <td style="background:linear-gradient(135deg, #1a2744 0%, #243258 100%); background-color:#1a2744; padding:28px 32px; text-align:center;">
+              <div style="font-size:18px; font-weight:700; color:#ffffff; letter-spacing:0.3px;">North Central Terminal</div>
+              <div style="font-size:12px; color:#c7cfe0; margin-top:4px;">City Government of San Fernando</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <h1 style="margin:0 0 16px; font-size:20px; color:#1a2744;">Your North Central Terminal account has been created</h1>
+              <p style="margin:0 0 16px; font-size:14px; line-height:1.6; color:#333333;">
+                Hi ${userName},
+              </p>
+              <p style="margin:0 0 16px; font-size:14px; line-height:1.6; color:#333333;">
+                An account was created for you on the North Central Terminal management system. Use the temporary credentials below to sign in — you'll be asked to choose your own password right after logging in.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px; background:#f5f6f9; border-radius:8px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <div style="font-size:12px; color:#777777; margin-bottom:4px;">Email</div>
+                    <div style="font-size:14px; color:#1a2744; font-weight:600; margin-bottom:12px;">${username}</div>
+                    <div style="font-size:12px; color:#777777; margin-bottom:4px;">Temporary password</div>
+                    <div style="font-size:15px; color:#1a2744; font-weight:700; letter-spacing:0.5px; font-family:'Courier New', monospace;">${tempPassword}</div>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+                <tr>
+                  <td style="border-radius:8px; background:linear-gradient(135deg, #1a2744 0%, #243258 100%); background-color:#1a2744;">
+                    <a href="${loginLink}" target="_blank"
+                       style="display:inline-block; padding:12px 32px; font-size:14px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:8px;">
+                      Sign In
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0; font-size:12px; line-height:1.6; color:#999999;">
+                If you weren't expecting this account, please contact your administrator.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px; background-color:#f5f6f9; text-align:center;">
+              <p style="margin:0; font-size:11px; color:#999999;">
+                This is an automated message from North Central Terminal. Please don't reply to this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendNewAccountEmail(toEmail, userName, username, tempPassword, loginLink) {
+  const from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER;
+  await getTransporter().sendMail({
+    from,
+    to: toEmail,
+    subject: "Your North Central Terminal account is ready",
+    text:
+      `Hi ${userName},\n\n` +
+      "Your email has been verified. Use the temporary credentials below to sign in — " +
+      "you'll be asked to choose your own password right after logging in.\n\n" +
+      `Email: ${username}\n` +
+      `Temporary password: ${tempPassword}\n\n` +
+      `${loginLink}`,
+    html: newAccountHtml(userName, username, tempPassword, loginLink),
+  });
+}

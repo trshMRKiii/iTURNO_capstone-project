@@ -42,6 +42,7 @@ from .system import (
 from .auth import (
     forgot_password,
     reset_password,
+    verify_email,
     change_password,
 )
 

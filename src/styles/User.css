@@ -200,6 +200,72 @@
 .usr-status--active   { background: rgba(34,197,94,0.12); color: #15803d; }
 .usr-status--inactive { background: rgba(239,68,68,0.1);  color: #b91c1c; }
 .usr-status--new      { background: rgba(201,168,76,0.15); color: #92720f; }
+.usr-status--pending  { background: rgba(59,130,246,0.12); color: #1d4ed8; }
+
+/* ── Onboarding progress stepper ── */
+.usr-progress-steps {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 4px 4px;
+}
+
+.usr-progress-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+  text-align: center;
+}
+
+.usr-progress-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--bg-page);
+  border: 2px solid var(--border);
+  color: var(--text-secondary);
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.usr-progress-step-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.usr-progress-step-line {
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+}
+
+.usr-progress-step--done .usr-progress-step-dot {
+  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  border-color: #1a2744;
+  color: #fff;
+}
+
+.usr-progress-step--done .usr-progress-step-label { color: var(--text-primary); }
+.usr-progress-step--done .usr-progress-step-line  { background: #1a2744; }
+
+.usr-progress-step--current .usr-progress-step-dot {
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.18);
+}
+
+.usr-progress-step--current .usr-progress-step-label { color: var(--text-primary); }
 
 /* Action buttons */
 .usr-actions {

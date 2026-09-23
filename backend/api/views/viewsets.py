@@ -18,7 +18,8 @@ from rest_framework.views import APIView
 from ..models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, RoamingLog, TerminalPrice, WipMode
 from ..serializers import UserSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, RoamingLogSerializer
 from ..sms import send_sms_async, queue_next_message
-from .helpers import record_audit_log, expire_stale_queue_tickets, parse_date_start, parse_date_end, paginate_request, promote_queue_front
+from ..tokens import sign_email_verification_token
+from .helpers import record_audit_log, expire_stale_queue_tickets, expire_stale_unverified_accounts, parse_date_start, parse_date_end, paginate_request, promote_queue_front
 from .remittance_export import remittance_xlsx_response
 
 
@@ -97,38 +98,94 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsSuperAdminOrReadOnly]
 
+    def get_queryset(self):
+        # Lazy cleanup, same convention as expire_stale_queue_tickets — the
+        # first Staff Registry fetch after an invite's 30-day window closes
+        # self-heals it, no scheduler needed.
+        expire_stale_unverified_accounts()
+        # Reads (and, via the auto-routing below, every write this viewset makes)
+        # target Supabase directly rather than the local pulled cache — User is
+        # Supabase-authoritative (see api/sync/registry.py), so a user created
+        # here has to actually land there or the next pull cycle deletes the
+        # LAN-only row before anyone can click its verification link. Fetching
+        # via .using('supabase') also means perform_update/perform_destroy's
+        # plain instance.save()/.delete() (AuditLogMixin) route to 'supabase'
+        # automatically — Django's router falls back to the instance's own
+        # _state.db when no custom router is configured.
+        return User.objects.using('supabase').all()
+
     def perform_create(self, serializer):
         instance = super().perform_create(serializer)
-        raw_password = getattr(instance, '_generated_password', None)
-        if raw_password:
-            self._send_new_account_email(instance, raw_password)
+        if not instance.email_verified:
+            send_verification_email(instance)
         return instance
 
-    def _send_new_account_email(self, user, raw_password):
-        user_name = user.first_name or user.username
-        login_link = settings.FRONTEND_URL
-        text_body = (
-            f"Hi {user_name},\n\n"
-            "An account was created for you on the North Central Terminal management system.\n\n"
-            f"Email: {user.username}\n"
-            f"Temporary password: {raw_password}\n\n"
-            "Sign in and you'll be asked to choose your own password right away.\n"
-            f"{login_link}"
-        )
-        html_body = render_to_string('emails/new_account.html', {
-            'user_name': user_name,
-            'username': user.username,
-            'temp_password': raw_password,
-            'login_link': login_link,
-        })
-        email = EmailMultiAlternatives(
-            subject='Your North Central Terminal account has been created',
-            body=text_body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[user.username],
-        )
-        email.attach_alternative(html_body, 'text/html')
-        email.send(fail_silently=False)
+    @action(detail=True, methods=['post'])
+    def resend_verification(self, request, pk=None):
+        user = self.get_object()
+        if user.email_verified:
+            return Response({'detail': 'This account is already verified.'}, status=400)
+        send_verification_email(user)
+        return Response({'detail': 'Verification email resent.'})
+
+
+def send_verification_email(user):
+    user_name = user.first_name or user.username
+    # Raw pk, not base64 — matches the uid format api/remote/auth/[action].js's
+    # verifyEmail expects, since this link always opens on Vercel (see
+    # settings.PUBLIC_APP_URL) and that's what verifies it.
+    uid = str(user.pk)
+    token = sign_email_verification_token(user)
+    verify_link = f"{settings.PUBLIC_APP_URL}/verify-email?uid={uid}&token={token}"
+    text_body = (
+        f"Hi {user_name},\n\n"
+        "An account was created for you on the North Central Terminal management system. "
+        "Verify your email to activate it:\n\n"
+        f"{verify_link}\n\n"
+        "This link is only good for this one account and expires if left unverified for 30 days."
+    )
+    html_body = render_to_string('emails/verify_account.html', {
+        'user_name': user_name,
+        'username': user.username,
+        'verify_link': verify_link,
+    })
+    email = EmailMultiAlternatives(
+        subject='Verify your North Central Terminal account',
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.username],
+    )
+    email.attach_alternative(html_body, 'text/html')
+    email.send(fail_silently=False)
+
+
+def send_new_account_email(user, raw_password):
+    """Sent right after verify_email() confirms the address is real —
+    hands over the temp password so the account can actually sign in."""
+    user_name = user.first_name or user.username
+    login_link = settings.PUBLIC_APP_URL
+    text_body = (
+        f"Hi {user_name},\n\n"
+        "Your email has been verified. Use the temporary credentials below to sign in — "
+        "you'll be asked to choose your own password right after logging in.\n\n"
+        f"Email: {user.username}\n"
+        f"Temporary password: {raw_password}\n\n"
+        f"{login_link}"
+    )
+    html_body = render_to_string('emails/new_account.html', {
+        'user_name': user_name,
+        'username': user.username,
+        'temp_password': raw_password,
+        'login_link': login_link,
+    })
+    email = EmailMultiAlternatives(
+        subject='Your North Central Terminal account is ready',
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.username],
+    )
+    email.attach_alternative(html_body, 'text/html')
+    email.send(fail_silently=False)
 
 
 class DriverViewSet(AuditLogMixin, viewsets.ModelViewSet):

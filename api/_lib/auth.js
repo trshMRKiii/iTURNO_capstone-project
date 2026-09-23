@@ -52,6 +52,18 @@ function getSecret() {
   return secret;
 }
 
+// Separate from REMOTE_JWT_SECRET (login/session tokens, Node-only) because
+// password-reset and email-verification links can be issued by EITHER this
+// file or backend/api/tokens.py (same shared secret, same JWT shape on both
+// sides) — whichever side sent the email, the link always opens the Vercel
+// deployment (see settings.PUBLIC_APP_URL), so this side has to be able to
+// verify a token Django signed just as often as one signed here.
+function getEmailLinkSecret() {
+  const secret = process.env.EMAIL_LINK_SECRET;
+  if (!secret) throw new Error("EMAIL_LINK_SECRET is not configured");
+  return secret;
+}
+
 // Mirrors SIMPLE_JWT's lifetimes in backend/backend/settings.py so remote
 // sessions behave the same as LAN ones.
 export function signAccessToken(user) {
@@ -82,26 +94,53 @@ export function verifyToken(token) {
 // username exists or not — otherwise response timing alone reveals valid usernames.
 export const DUMMY_PASSWORD_HASH = hashDjangoPassword(randomAlphanumeric(24));
 
-// Password-reset token: same idea as Django's PasswordResetTokenGenerator
-// (backend/api/views/auth.py) — a token that self-invalidates once used, but
-// as a signed JWT instead of Django's algorithm (which needs Django's own
-// SECRET_KEY/hasher and can't be replicated here). Binding a fragment of the
-// *current* password hash into the payload means the token stops verifying
-// the moment the password actually changes, without needing a DB-side
-// used/unused flag. 3-day expiry matches Django's PASSWORD_RESET_TIMEOUT default.
+function verifyEmailLinkToken(token) {
+  // Same algorithm pin as verifyToken above, but against EMAIL_LINK_SECRET —
+  // this token may have been signed by Django (api/tokens.py) instead of here.
+  return jwt.verify(token, getEmailLinkSecret(), { algorithms: ["HS256"] });
+}
+
+// Password-reset token: a signed JWT that self-invalidates once used, sharable
+// with Django's sign_password_reset_token (backend/api/tokens.py) via the same
+// EMAIL_LINK_SECRET — either side can issue one, either side can verify it.
+// Binding a fragment of the *current* password hash into the payload means the
+// token stops verifying the moment the password actually changes, without
+// needing a DB-side used/unused flag. 3-day expiry matches Django's
+// PASSWORD_RESET_TIMEOUT default.
 export function signPasswordResetToken(user) {
   return jwt.sign(
     { sub: String(user.id), type: "password-reset", pwd: String(user.password).slice(-12) },
-    getSecret(),
+    getEmailLinkSecret(),
     { expiresIn: "3d" },
   );
 }
 
 export function verifyPasswordResetToken(token, user) {
-  const payload = verifyToken(token);
+  const payload = verifyEmailLinkToken(token);
   if (payload.type !== "password-reset") throw new Error("Not a password-reset token");
   if (payload.sub !== String(user.id)) throw new Error("Token does not match user");
   if (payload.pwd !== String(user.password).slice(-12)) throw new Error("Token already used");
+  return payload;
+}
+
+// Email-verification token: same shared-secret scheme as above, mirrored by
+// Django's sign_email_verification_token/verify_email_verification_token.
+// No extra binding needed to self-invalidate — verifyEmail (api/remote/auth/
+// [action].js) and Django's verify_email both reject outright once
+// email_verified is already true, before the token is even checked. 30-day
+// expiry matches the invite email's copy and expire_stale_unverified_accounts.
+export function signEmailVerificationToken(user) {
+  return jwt.sign(
+    { sub: String(user.id), type: "email-verification" },
+    getEmailLinkSecret(),
+    { expiresIn: "30d" },
+  );
+}
+
+export function verifyEmailVerificationToken(token, user) {
+  const payload = verifyEmailLinkToken(token);
+  if (payload.type !== "email-verification") throw new Error("Not an email-verification token");
+  if (payload.sub !== String(user.id)) throw new Error("Token does not match user");
   return payload;
 }
 

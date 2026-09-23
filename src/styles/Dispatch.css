@@ -244,7 +244,7 @@
 
 /* Gap between route groups */
 .dispatch-route-group--gap {
-  margin-top: 0; /* gap is visual via the route label stripe */
+  margin-top: 14px;
 }
 
 /* Route label row — mirrors lp-row--route-label / lp-route-label-badge--active */
@@ -425,13 +425,14 @@
 
 /* Swap Driver — outline amber */
 .dispatch-btn--swap {
-  background: transparent;
-  color: #b7791f;
-  border: 1.5px solid rgba(183,121,31,0.35);
+  background: rgba(183,121,31,0.08);
+  color: #9a6414;
+  border: 1.5px solid rgba(183,121,31,0.55);
   box-shadow: none;
 }
+.dark .dispatch-btn--swap { color: #e0ad4f; }
 .dispatch-btn--swap:hover {
-  background: rgba(183,121,31,0.08);
+  background: rgba(183,121,31,0.16);
   border-color: #b7791f;
   opacity: 1;
   transform: translateY(-1px);

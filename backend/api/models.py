@@ -22,7 +22,12 @@ class User(AbstractUser):
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
     must_reset_password = models.BooleanField(default=False)
-    
+    # default=True so existing/self-created accounts are unaffected — only
+    # UserSerializer.create() (admin-added staff accounts) sets this False,
+    # gating login until the verification email link is clicked. See
+    # views/viewsets.py's _send_verification_email / views/auth.py's verify_email.
+    email_verified = models.BooleanField(default=True)
+
     class Meta:
         ordering = ['-created_at']
         indexes = [models.Index(fields=['role', 'is_active'])]

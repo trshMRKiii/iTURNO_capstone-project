@@ -3,14 +3,16 @@ import {
   requireAuth,
   verifyDjangoPassword,
   hashDjangoPassword,
+  generateTempPassword,
   signAccessToken,
   signRefreshToken,
   signPasswordResetToken,
   verifyPasswordResetToken,
+  verifyEmailVerificationToken,
   verifyToken,
   DUMMY_PASSWORD_HASH,
 } from "../../_lib/auth.js";
-import { sendPasswordResetEmail } from "../../_lib/mailer.js";
+import { sendPasswordResetEmail, sendNewAccountEmail } from "../../_lib/mailer.js";
 
 // Merges token/token-refresh/current-user into one function, dispatched by
 // the [action] URL segment — Vercel's Hobby plan caps a deployment at 12
@@ -31,7 +33,7 @@ async function login(req, res) {
   try {
     const { data: user, error } = await supabaseAdmin()
       .from("api_user")
-      .select("id, username, password, role, first_name, last_name, is_active")
+      .select("id, username, password, role, first_name, last_name, is_active, email_verified")
       .eq("username", username)
       .maybeSingle();
     if (error) throw error;
@@ -41,6 +43,16 @@ async function login(req, res) {
     const passwordOk = verifyDjangoPassword(password, user ? user.password : DUMMY_PASSWORD_HASH);
     if (!user || !user.is_active || !passwordOk) {
       res.status(401).json({ detail: "No active account found with the given credentials" });
+      return;
+    }
+    // Mirrors VerifiedTokenObtainPairSerializer (backend/api/views/token.py) — staff
+    // accounts invited by email can't sign in until they click their verification
+    // link. Accounts created directly through this remote settings UI (api/remote/
+    // settings/[resource].js) default email_verified=true, so this never blocks them.
+    if (!user.email_verified) {
+      res.status(401).json({
+        detail: "Please verify your email before signing in. Check your inbox for the verification link.",
+      });
       return;
     }
     res.status(200).json({ access: signAccessToken(user), refresh: signRefreshToken(user) });
@@ -203,12 +215,66 @@ async function resetPasswordRemote(req, res) {
   }
 }
 
+// Mirrors backend/api/views/auth.py's verify_email — reached whenever a staff
+// invite's email link is opened, since that link always points at
+// settings.PUBLIC_APP_URL (this deployment), whether Django or this same
+// function signed the token (see verifyEmailVerificationToken).
+async function verifyEmail(req, res) {
+  if (req.method !== "POST") {
+    res.status(405).json({ detail: "Method not allowed" });
+    return;
+  }
+  const { uid, token } = req.body || {};
+  if (!uid || !token) {
+    res.status(400).json({ detail: "Missing required fields." });
+    return;
+  }
+  try {
+    const { data: user, error } = await supabaseAdmin()
+      .from("api_user")
+      .select("id, username, first_name, password, email_verified")
+      .eq("id", uid)
+      .maybeSingle();
+    if (error) throw error;
+    if (!user) {
+      res.status(400).json({ detail: "Invalid or expired verification link." });
+      return;
+    }
+    if (user.email_verified) {
+      res.status(400).json({ detail: "This account is already verified." });
+      return;
+    }
+
+    verifyEmailVerificationToken(token, user);
+
+    const tempPassword = generateTempPassword();
+    const { error: updateError } = await supabaseAdmin()
+      .from("api_user")
+      .update({ email_verified: true, password: hashDjangoPassword(tempPassword), must_reset_password: true })
+      .eq("id", uid);
+    if (updateError) throw updateError;
+
+    const loginLink = `https://${req.headers.host}`;
+    await sendNewAccountEmail(user.username, user.first_name || user.username, user.username, tempPassword, loginLink);
+
+    res.status(200).json({ detail: "Email verified. Check your inbox for your temporary password." });
+  } catch (err) {
+    if (err?.message?.includes("Token") || err?.name === "JsonWebTokenError" || err?.name === "TokenExpiredError") {
+      res.status(400).json({ detail: "Invalid or expired verification link." });
+      return;
+    }
+    console.error("remote/auth/verify-email error:", err);
+    res.status(500).json({ detail: "Failed to verify email." });
+  }
+}
+
 const ACTIONS = {
   token: login,
   "token-refresh": refresh,
   "current-user": me,
   "forgot-password": forgotPassword,
   "reset-password": resetPasswordRemote,
+  "verify-email": verifyEmail,
 };
 
 export default async function handler(req, res) {

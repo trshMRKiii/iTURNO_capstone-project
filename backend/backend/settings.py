@@ -209,8 +209,23 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
-# Base URL of the frontend app, used to build the password-reset link sent by email
-FRONTEND_URL = 'http://localhost:5173'
+# Base URL used to build the password-reset and verify-email links sent by
+# email. This has to be reachable from wherever the recipient opens their
+# inbox (their phone, a different network entirely) — not just localhost or
+# this machine's LAN IP — so it points at the Vercel deployment. Whichever
+# side actually verifies the click-through link (see api/_lib/auth.js's
+# verifyPasswordResetToken/verifyEmailVerificationToken on Vercel, or this
+# same pair in api/tokens.py here) both trust EMAIL_LINK_SECRET below, so the
+# link works no matter which one ends up serving it.
+PUBLIC_APP_URL = os.getenv('PUBLIC_APP_URL', 'https://northcentralterminal-capstone-project.vercel.app')
+
+# Shared with the Vercel project's EMAIL_LINK_SECRET env var — signs/verifies
+# the password-reset and email-verification JWTs above so either side (this
+# Django backend or the Vercel serverless functions in api/remote/auth/) can
+# issue a link the other side is able to verify. Deliberately a separate
+# secret from Vercel's own REMOTE_JWT_SECRET (login/session tokens), which
+# this backend never needs to know.
+EMAIL_LINK_SECRET = os.getenv('EMAIL_LINK_SECRET')
 
 
 # SMS queue alerts (PhilSMS — https://philsms.com). Both alerts are wired in:

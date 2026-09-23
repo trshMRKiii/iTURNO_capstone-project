@@ -61,6 +61,7 @@ const REMOTE_WRITABLE = [
   // Public (no login yet) — handled by api/remote/auth/[action].js alongside token/refresh.
   { prefix: "/auth/forgot-password/", remote: "/auth/forgot-password", methods: ["POST"] },
   { prefix: "/auth/reset-password/", remote: "/auth/reset-password", methods: ["POST"] },
+  { prefix: "/auth/verify-email/", remote: "/auth/verify-email", methods: ["POST"] },
   { prefix: "/routes/", remote: "/settings/routes", methods: ["POST", "PATCH", "PUT", "DELETE"] },
   { prefix: "/users/", remote: "/settings/users", methods: ["POST", "PATCH", "PUT", "DELETE"] },
   { prefix: "/puvtypes/", remote: "/settings/puv-types", methods: ["POST", "PATCH", "PUT", "DELETE"] },
@@ -446,6 +447,14 @@ export const apiService = {
     return this.delete(`/users/${id}/`);
   },
 
+  resendVerification(id) {
+    return this.post(`/users/${id}/resend_verification/`);
+  },
+
+  verifyEmail({ uid, token }) {
+    return this.post("/auth/verify-email/", { uid, token });
+  },
+
   getCurrentUser() {
     return this.get("/current-user/");
   },
@@ -706,7 +715,8 @@ export const handleLogin = async (
     });
 
     if (!response.ok) {
-      throw new Error("Invalid credentials");
+      const errData = await response.json().catch(() => null);
+      throw new Error(errData?.detail || "Invalid credentials");
     }
 
     const data = await response.json();

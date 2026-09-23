@@ -48,6 +48,9 @@ function User({ userRole }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
+  const [progressUser, setProgressUser] = useState(null);
+  const [resending, setResending] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
 
   const showConfirm = useConfirm();
@@ -131,7 +134,17 @@ function User({ userRole }) {
     }
   };
 
+  // While an account hasn't finished onboarding, clicking it opens the
+  // progress stepper instead of the edit form — once verified AND the temp
+  // password has been changed, status shows Active and this branch is never
+  // taken again for that account, so the stepper stays permanently hidden.
+  const isOnboarding = (user) => !user.email_verified || user.must_reset_password;
+
   const handleEdit = (user) => {
+    if (isOnboarding(user)) {
+      setProgressUser(user);
+      return;
+    }
     setEditing(user);
     setForm({
       username: user.username,
@@ -142,6 +155,18 @@ function User({ userRole }) {
       is_active: user.is_active,
     });
     setIsModalOpen(true);
+  };
+
+  const handleResendVerification = async (user) => {
+    setResending(true);
+    try {
+      await apiService.resendVerification(user.id);
+      showToast("Verification email resent");
+    } catch (err) {
+      showToast(err.message || "Failed to resend verification email", "info");
+    } finally {
+      setResending(false);
+    }
   };
 
   const handleAdd = () => {
@@ -309,14 +334,22 @@ function User({ userRole }) {
                     <td>
                       <span
                         className={`usr-status ${
-                          user.must_reset_password
+                          !user.email_verified
+                            ? "usr-status--pending"
+                            : user.must_reset_password
                             ? "usr-status--new"
                             : user.is_active
                             ? "usr-status--active"
                             : "usr-status--inactive"
                         }`}
                       >
-                        {user.must_reset_password ? "New" : user.is_active ? "Active" : "Inactive"}
+                        {!user.email_verified
+                          ? "Pending Verification"
+                          : user.must_reset_password
+                          ? "New"
+                          : user.is_active
+                          ? "Active"
+                          : "Inactive"}
                       </span>
                     </td>
                     <td>
@@ -336,7 +369,7 @@ function User({ userRole }) {
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                           </svg>
-                          Edit
+                          {isOnboarding(user) ? "View Progress" : "Edit"}
                         </button>
                         <button
                           className="usr-btn usr-btn--delete"
@@ -411,38 +444,12 @@ function User({ userRole }) {
             <form onSubmit={handleSubmit} className="usr-modal-body">
               {/* Staff hero section */}
               <div className="usr-profile-hero">
-                <div className="usr-profile-avatar">
-                  {(form.first_name?.[0] || "") + (form.last_name?.[0] || "") || (
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  )}
-                </div>
                 <div className="usr-profile-hero-info">
                   <span className="usr-profile-hero-name">
                     {[form.first_name, form.middle_name, form.last_name]
                       .filter(Boolean)
                       .join(" ") || "New Staff"}
                   </span>
-                  <div className="usr-profile-hero-tags">
-                    <span
-                      className={`usr-role ${ROLE_CLASS[form.role] || "usr-role--personnel"}`}
-                    >
-                      {form.role}
-                    </span>
-                    <span
-                      className={`usr-status ${
-                        editing?.must_reset_password
-                          ? "usr-status--new"
-                          : form.is_active
-                          ? "usr-status--active"
-                          : "usr-status--inactive"
-                      }`}
-                    >
-                      {editing?.must_reset_password ? "New" : form.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -579,6 +586,104 @@ function User({ userRole }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Onboarding progress modal */}
+      {progressUser && (
+        <div className="usr-overlay" onClick={() => setProgressUser(null)}>
+          <div className="usr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="usr-modal-header">
+              <div className="usr-modal-header-left">
+                <h2 className="usr-modal-title">Account Setup Progress</h2>
+              </div>
+              <button
+                className="usr-modal-close"
+                onClick={() => setProgressUser(null)}
+                aria-label="Close"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="usr-modal-body">
+              <div className="usr-profile-hero-name" style={{ fontSize: 18 }}>
+                {[progressUser.first_name, progressUser.middle_name, progressUser.last_name]
+                  .filter(Boolean)
+                  .join(" ") || progressUser.username}
+              </div>
+              <p className="usr-field-hint" style={{ margin: 0 }}>{progressUser.username}</p>
+
+              {(() => {
+                const verifyDone = progressUser.email_verified;
+                const passwordDone = verifyDone && !progressUser.must_reset_password;
+                const steps = [
+                  { label: "Verify Email", done: verifyDone },
+                  { label: "Change Password", done: passwordDone },
+                  { label: "Complete", done: passwordDone },
+                ];
+                return (
+                  <div className="usr-progress-steps">
+                    {steps.map((step, i) => (
+                      <div
+                        key={step.label}
+                        className={`usr-progress-step ${step.done ? "usr-progress-step--done" : ""} ${
+                          !step.done && (i === 0 || steps[i - 1].done) ? "usr-progress-step--current" : ""
+                        }`}
+                      >
+                        <div className="usr-progress-step-dot">
+                          {step.done ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : (
+                            i + 1
+                          )}
+                        </div>
+                        <span className="usr-progress-step-label">{step.label}</span>
+                        {i < steps.length - 1 && <div className="usr-progress-step-line" />}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {!progressUser.email_verified ? (
+                <p className="usr-field-hint" style={{ margin: 0 }}>
+                  Waiting for {progressUser.first_name || "this staff member"} to click the verification link
+                  emailed to them. Unverified accounts are automatically removed after 30 days.
+                </p>
+              ) : (
+                <p className="usr-field-hint" style={{ margin: 0 }}>
+                  Verified — waiting for {progressUser.first_name || "this staff member"} to sign in with their
+                  temporary password and choose their own.
+                </p>
+              )}
+            </div>
+
+            <div className="usr-modal-footer">
+              {!progressUser.email_verified && (
+                <button
+                  type="button"
+                  className="usr-modal-btn usr-modal-btn--cancel"
+                  disabled={resending}
+                  onClick={() => handleResendVerification(progressUser)}
+                >
+                  {resending ? "Resending…" : "Resend Verification Email"}
+                </button>
+              )}
+              <button
+                type="button"
+                className="usr-modal-btn usr-modal-btn--submit"
+                onClick={() => setProgressUser(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
