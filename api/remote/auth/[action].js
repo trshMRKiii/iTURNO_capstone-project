@@ -237,6 +237,7 @@ async function verifyEmail(req, res) {
       .maybeSingle();
     if (error) throw error;
     if (!user) {
+      console.warn("remote/auth/verify-email: no api_user row for uid", uid);
       res.status(400).json({ detail: "Invalid or expired verification link." });
       return;
     }
@@ -245,7 +246,12 @@ async function verifyEmail(req, res) {
       return;
     }
 
-    verifyEmailVerificationToken(token, user);
+    try {
+      verifyEmailVerificationToken(token, user);
+    } catch (tokenErr) {
+      console.warn("remote/auth/verify-email: token rejected for uid", uid, "-", tokenErr.name, tokenErr.message);
+      throw tokenErr;
+    }
 
     const tempPassword = generateTempPassword();
     const { error: updateError } = await supabaseAdmin()
