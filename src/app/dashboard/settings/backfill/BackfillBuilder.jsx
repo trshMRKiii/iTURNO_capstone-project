@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useFeedback } from "../../../../components/ui/kit";
 import { IS_REMOTE } from "../../../../lib/api-service";
+import { focusFirstError } from "../../../../lib/focusFirstError";
 import "../../../../styles/FormModal.css";
 import {
   F_PLATE, F_TICKET_TYPE, F_SERIES, F_QUANTITY, F_ISSUED_AT, F_MODE, F_NOTES,
@@ -125,6 +126,7 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
   const incomplete = () => {
     if (missing.length === 0) return false;
     setShowErrors(true);
+    focusFirstError(".tbf-manual-form");
     notify.error({ title: "Still needed", message: missing.join(", ") });
     return true;
   };

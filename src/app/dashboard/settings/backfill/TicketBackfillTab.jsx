@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useFeedback } from "../../../../components/ui/kit";
+import { useFeedback, SkeletonList } from "../../../../components/ui/kit";
 import { IS_REMOTE } from "../../../../lib/api-service";
 import { useTicketBackfill } from "./useTicketBackfill";
 import BackfillBuilder from "./BackfillBuilder";
@@ -51,7 +51,7 @@ export default function TicketBackfillTab() {
       {/* Two pages: the pause gate while issuance is live, the backfill form only while paused. */}
       {!isPaused ? (
         <div className="tbf-gate">
-          <span className="tbf-pill tbf-pill--active">{wipLoading ? "…" : "Active"}</span>
+          <span className="tbf-pill tbf-pill--active">{wipLoading ? "…" : "Terminal Process is active"}</span>
           <h4>Pause ticket issuance first</h4>
           <p className="set-rewards-note">
             While paused, terminals can't check in or dispatch. This keeps backfilled ticket
@@ -60,7 +60,7 @@ export default function TicketBackfillTab() {
           {IS_REMOTE ? (
             <p className="set-rewards-note">Switching issuance on or off only works from the LAN terminal itself.</p>
           ) : (
-            <button className="set-add-btn" onClick={handleToggleWip} disabled={wipLoading || togglingWip}>
+            <button className="set-add-btn set-add-btn--danger" onClick={handleToggleWip} disabled={wipLoading || togglingWip}>
               Pause issuance &amp; start backfill
             </button>
           )}
@@ -113,7 +113,7 @@ export default function TicketBackfillTab() {
         <div className="tbf-remote-requests">
           <h4>Recent remote backfill requests</h4>
           {remoteRequestsLoading ? (
-            <p className="set-rewards-note">Loading…</p>
+            <SkeletonList rows={3} h={32} />
           ) : remoteRequests.length === 0 ? (
             <p className="set-rewards-note">No requests queued yet.</p>
           ) : (

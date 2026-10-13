@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiService, IS_REMOTE } from "../../../../lib/api-service";
+import { publishWipMode } from "../../../../lib/useWipMode";
 
 export function useTicketBackfill() {
   const [wipMode, setWipMode] = useState(null);
@@ -36,6 +37,13 @@ export function useTicketBackfill() {
       .finally(() => setWipLoading(false));
   };
 
+  // Banner's "Resume Process" (or another terminal) can flip WIP while this tab is open.
+  useEffect(() => {
+    const onChange = (e) => setWipMode(e.detail);
+    window.addEventListener("wip-mode-changed", onChange);
+    return () => window.removeEventListener("wip-mode-changed", onChange);
+  }, []);
+
   useEffect(() => {
     fetchWipMode();
     fetchRemoteRequests();
@@ -48,6 +56,7 @@ export function useTicketBackfill() {
     try {
       const updated = await apiService.updateWipMode(nextActive);
       setWipMode(updated);
+      publishWipMode(updated);
       return updated;
     } finally {
       setTogglingWip(false);

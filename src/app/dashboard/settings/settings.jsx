@@ -285,7 +285,7 @@ function SettingsPage() {
     }
     setAddingRoute(true);
     try {
-      const created = await apiService.createRoute({ origin: newOrigin });
+      const created = await apiService.createRoute({ origin: newOrigin.trim().toUpperCase() });
       setRoutes((prev) => [...prev, created]);
       setNewOrigin("");
       setRouteModalOpen(false);
@@ -641,7 +641,7 @@ function SettingsPage() {
         title="Add Route"
         fields={[{ name: "origin", label: "Route Origin", placeholder: "New Route Origin" }]}
         values={{ origin: newOrigin }}
-        onChange={(_, value) => setNewOrigin(value)}
+        onChange={(_, value) => setNewOrigin(value.toUpperCase())}
         onClose={() => setRouteModalOpen(false)}
         onSubmit={addRoute}
         saving={addingRoute}

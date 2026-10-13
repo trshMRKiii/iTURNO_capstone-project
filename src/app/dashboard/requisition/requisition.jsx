@@ -78,7 +78,7 @@ function Requisition() {
       <div className="req-header">
         <h1 className="req-title">Ticket Requisition</h1>
         <button type="button" className="req-new-btn" onClick={() => setShowForm(true)}>
-          + New requisition
+          + Add requisition
         </button>
       </div>
 
@@ -107,10 +107,10 @@ function Requisition() {
           <input
             type="search"
             className="rq-search"
-            placeholder="Find a ticket number"
+            placeholder="Search ticket series number"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Find a ticket number"
+            aria-label="Search ticket series number"
           />
         </div>
 
@@ -132,7 +132,7 @@ function Requisition() {
           </div>
         ) : groups.length === 0 ? (
           <p className="rq-empty">
-            {query ? `No series contains ticket ${search.trim()}` : 'No ticket stock — click "+ New requisition" to add stock'}
+            {query ? `No series contains ticket ${search.trim()}` : 'No ticket stock — click "+ Add requisition" to add stock'}
           </p>
         ) : (
           groups.map((g) => {
@@ -146,7 +146,10 @@ function Requisition() {
                   aria-expanded={open}
                 >
                   <span className="rq-denom-name">
-                    <Chevron open={open} />
+                    <span className="rq-toggle">
+                      <Chevron open={open} />
+                      <span className="rq-toggle-label">{open ? "Hide" : "View"}</span>
+                    </span>
                     <span>
                       <strong>{g.denom}</strong>
                       <small>{g.seriesCount} series</small>

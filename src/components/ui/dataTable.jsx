@@ -1,10 +1,10 @@
-export const DataTable = ({ columns, data, rowRenderer }) => (
+export const DataTable = ({ columns, data, rowRenderer, centeredColumns = [] }) => (
   <div className="rpt-table-wrap">
     <table className="rpt-table">
       <thead>
         <tr className="rpt-thead-row">
           {columns.map((h) => (
-            <th key={h} className="rpt-th">{h}</th>
+            <th key={h} className={`rpt-th${centeredColumns.includes(h) ? " rpt-th--center" : ""}`}>{h}</th>
           ))}
         </tr>
       </thead>

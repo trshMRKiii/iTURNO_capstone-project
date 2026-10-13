@@ -153,7 +153,7 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: var(--gold);
   border-radius: 6px;
   font-size: 10.5px;
@@ -657,7 +657,6 @@
 .queue-alert--error {
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.25);
-  border-left: 4px solid #ef4444;
   color: #b91c1c;
 }
 
@@ -669,7 +668,7 @@
   gap: 8px;
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
   border: none;
   border-radius: 9px;
@@ -681,13 +680,13 @@
     opacity 0.15s,
     transform 0.15s,
     box-shadow 0.15s;
-  box-shadow: 0 3px 12px rgba(26, 39, 68, 0.28);
+  box-shadow: none;
 }
 
 .queue-issue-btn:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(26, 39, 68, 0.32);
+  box-shadow: none;
 }
 
 .queue-issue-btn:active:not(:disabled) {
@@ -812,7 +811,7 @@
 .queue-plate {
   display: inline-block;
   background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
-  color: var(--gold);
+  color: #fff;
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 11.5px;
@@ -1112,9 +1111,9 @@
 }
 
 .queue-modal-btn--submit {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(26, 39, 68, 0.25);
+  box-shadow: none;
 }
 
 @media (max-width: 480px) {

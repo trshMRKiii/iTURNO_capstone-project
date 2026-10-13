@@ -94,10 +94,10 @@
 
 .set-tab-active,
 .set-tab-active:hover {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
 }
 
 .set-tab-active .set-tab-icon {
@@ -487,7 +487,7 @@
   align-items: center;
   gap: 6px;
   padding: 9px 16px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -495,18 +495,24 @@
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
   white-space: nowrap;
 }
 
 .set-add-btn:hover {
   opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 5px 16px rgba(26,39,68,0.3);
+  box-shadow: none;
 }
 
 .set-add-btn:active {
   transform: translateY(0);
+}
+
+.dark .set-add-btn--danger,
+.set-add-btn--danger {
+  background: #b42318;
+  color: #fff;
 }
 
 .set-delete-btn {
@@ -697,9 +703,9 @@
 }
 
 .setm-btn--submit {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
 }
 
 .setm-btn--submit:hover {
@@ -846,12 +852,13 @@
 }
 
 .tbf-pill--wip {
-  background: rgba(201, 168, 76, 0.18);
-  color: #92702a;
+  background: rgba(180, 35, 24, 0.12);
+  color: #b42318;
 }
 
 .dark .tbf-pill--wip {
-  color: var(--gold);
+  background: rgba(248, 113, 113, 0.16);
+  color: #f87171;
 }
 
 .tbf-meta {

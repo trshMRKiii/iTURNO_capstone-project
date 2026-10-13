@@ -1,4 +1,5 @@
 import { peso, getToday } from "../reportHook";
+import { Skel } from "../../../../components/ui/kit";
 import PaperNotice from "../../../../components/notices/PaperNotice";
 
 export default function EodReconciliation({
@@ -30,11 +31,11 @@ export default function EodReconciliation({
       <div className="rpt-summary-row">
         <div className="rpt-summary-card">
           <span className="rpt-summary-label">Check-outs</span>
-          <div className="rpt-summary-count">{eodLoading ? "…" : checkoutCount}</div>
+          <div className="rpt-summary-count">{eodLoading ? <Skel w={60} h={22} /> : checkoutCount}</div>
         </div>
         <div className="rpt-summary-card">
           <span className="rpt-summary-label">Expected Cash</span>
-          <div className="rpt-summary-total">{eodLoading ? "…" : peso(expectedCash)}</div>
+          <div className="rpt-summary-total">{eodLoading ? <Skel w={120} h={22} /> : peso(expectedCash)}</div>
         </div>
       </div>
       {!eodLoading && <PaperNotice count={eod?.paper_count} amount={eod?.paper_amount} />}

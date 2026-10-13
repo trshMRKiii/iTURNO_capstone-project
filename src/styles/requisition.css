@@ -781,6 +781,15 @@
   transform: rotate(-90deg);
   transition: transform 0.15s ease;
 }
+.rq-toggle { display: inline-flex; align-items: center; gap: 6px; min-width: 64px; }
+.rq-toggle-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.rq-denom:hover .rq-toggle-label { color: var(--text-primary); }
 .rq-chevron--open { transform: none; background: var(--navy); color: #fff; }
 .dark .rq-chevron--open { background: var(--gold); color: var(--navy); }
 

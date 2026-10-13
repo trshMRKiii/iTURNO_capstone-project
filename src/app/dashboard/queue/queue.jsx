@@ -146,7 +146,7 @@ function Queue({ userRole }) {
     <>
             {/* Vehicle search / select */}
             <div className="queue-field queue-vehicle-combobox">
-              <label className="queue-label">Vehicle (Plate Number)</label>
+              <label className="queue-label">Plate Number</label>
               <div className="queue-search-wrap">
                 <SearchIcon className="queue-search-icon" />
                 <input

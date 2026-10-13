@@ -58,7 +58,6 @@
   font-weight: 500;
   background: rgba(239,68,68,0.08);
   border: 1px solid rgba(239,68,68,0.25);
-  border-left: 4px solid #ef4444;
   color: #b91c1c;
 }
 
@@ -128,9 +127,9 @@
 .rpt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .rpt-btn--primary {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
 }
 
 .rpt-btn--secondary {
@@ -164,10 +163,10 @@
 .rpt-btn-export:hover  { opacity: 0.85; transform: translateY(-1px); }
 .rpt-btn-export:active { transform: translateY(0); }
 
-.rpt-btn-export--green { background: linear-gradient(135deg, #166534 0%, #15803d 100%); }
-.rpt-btn-export--navy  { background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%); }
-.rpt-btn-export--blue  { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
-.rpt-btn-export--amber { background: linear-gradient(135deg, #b45309 0%, #d97706 100%); }
+.rpt-btn-export--green { background: #166534; }
+.rpt-btn-export--navy  { background: #1a2744; }
+.rpt-btn-export--blue  { background: #1d4ed8; }
+.rpt-btn-export--amber { background: #b45309; }
 
 /* Spinner */
 .rpt-spinner {
@@ -392,7 +391,7 @@
 .rpt-batch-btn + .rpt-batch-btn { border-left: 1px solid var(--border); }
 
 .rpt-batch-btn--active {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
 }
 
@@ -480,7 +479,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: var(--white, #fff);
+  border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
 }
 
@@ -492,17 +492,11 @@
 }
 
 .rpt-modal-title {
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.01em;
-}
-
-.rpt-modal-subtitle {
-  font-size: 11.5px;
-  color: rgba(255,255,255,0.65);
-  margin: 2px 0 0;
 }
 
 .rpt-modal-header-right {
@@ -513,13 +507,9 @@
 }
 
 .rpt-modal-count {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
-  color: var(--gold);
-  background: rgba(201,168,76,0.15);
-  border: 1px solid rgba(201,168,76,0.3);
-  padding: 4px 10px;
-  border-radius: 20px;
+  color: var(--text-muted, #666);
   white-space: nowrap;
 }
 
@@ -531,14 +521,14 @@
   height: 28px;
   border-radius: 8px;
   border: none;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .rpt-modal-close:hover {
-  background: rgba(255,255,255,0.2);
+  background: var(--border-soft);
 }
 
 .rpt-modal-body {
@@ -577,7 +567,7 @@
     align-items: flex-start;
   }
   .rpt-modal-header-left { width: 100%; }
-  .rpt-modal-title { font-size: 14px; }
+  .rpt-modal-title { font-size: 18px; }
   .rpt-modal-header-right {
     width: 100%;
     flex-wrap: wrap;
@@ -588,7 +578,6 @@
     order: 3;
     min-width: 0;
   }
-  .rpt-modal-count { order: 1; }
   .rpt-modal-close {
     order: 2;
     margin-left: auto;
@@ -689,7 +678,7 @@
 .rpt-plate {
   display: inline-block;
   background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
-  color: var(--gold);
+  color: #fff;
   padding: 3px 10px;
   border-radius: 20px;
   font-size: 11px;
@@ -770,7 +759,7 @@
 }
 
 .rpt-tab--active {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
   border-color: transparent;
 }
@@ -802,9 +791,10 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  gap: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 .rpt-link-btn {
   background: none;
@@ -816,8 +806,12 @@
   text-decoration: underline;
   cursor: pointer;
 }
+.rpt-filter-range .rpt-link-btn { color: #b42318; }
+.dark .rpt-filter-range .rpt-link-btn { color: #f87171; }
 .rpt-spinner--dark { border-color: var(--border); border-top-color: var(--navy); }
 
 /* ── Row actions (View + download) ── */
 .rpt-row-actions { display: flex; gap: 8px; align-items: center; }
-.rpt-btn--icon { padding: 8px 10px; }
+.rpt-row-actions--center { justify-content: center; }
+.rpt-th--center { text-align: center; }
+.rpt-btn--icon { padding: 8px 10px; display: inline-flex; align-items: center; gap: 6px; }

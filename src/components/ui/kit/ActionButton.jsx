@@ -4,6 +4,7 @@ import ButtonLabel from "./ButtonLabel";
 const VARIANT_CLASS = {
   primary: "ui-primary-btn",
   danger: "ui-danger-btn",
+  success: "ui-success-btn",
   secondary: "ui-outline-btn ui-outline-btn--auto",
 };
 
@@ -11,7 +12,7 @@ const VARIANT_CLASS = {
  * Button with the shared working state: while `busy` it is disabled, and after
  * 150 ms it swaps to a spinner and `busyLabel` ("Saving...", "Archiving...").
  *
- * variant: "primary" | "danger" | "secondary"
+ * variant: "primary" | "danger" | "success" | "secondary"
  */
 function ActionButton({ variant = "primary", busy = false, busyLabel, icon, onClick, disabled = false, type = "button", children }) {
   return (

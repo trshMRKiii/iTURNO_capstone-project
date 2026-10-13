@@ -67,14 +67,12 @@
 .col-alert--error {
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.25);
-  border-left: 4px solid #ef4444;
   color: #b91c1c;
 }
 
 .col-alert--success {
   background: rgba(34, 197, 94, 0.1);
   border: 1px solid rgba(34, 197, 94, 0.25);
-  border-left: 4px solid #22c55e;
   color: #15803d;
 }
 
@@ -139,7 +137,7 @@
   gap: 8px;
   width: 100%;
   padding: 10px;
-  background: linear-gradient(135deg, #166534 0%, #15803d 100%);
+  background: #166534;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -150,14 +148,14 @@
     opacity 0.15s,
     transform 0.15s,
     box-shadow 0.15s;
-  box-shadow: 0 3px 10px rgba(21, 128, 61, 0.25);
+  box-shadow: none;
   letter-spacing: 0.01em;
 }
 
 .col-collect-btn:hover {
   opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 5px 16px rgba(21, 128, 61, 0.3);
+  box-shadow: none;
 }
 
 .col-collect-btn:active {
@@ -378,7 +376,7 @@
 .col-plate {
   display: inline-block;
   background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
-  color: var(--gold);
+  color: #fff;
   padding: 3px 10px;
   border-radius: 20px;
   font-size: 11px;
@@ -731,7 +729,7 @@
   gap: 7px;
   width: 100%;
   padding: 10px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -743,13 +741,13 @@
     opacity 0.15s,
     transform 0.15s,
     box-shadow 0.15s;
-  box-shadow: 0 3px 10px rgba(26, 39, 68, 0.25);
+  box-shadow: none;
 }
 
 .bc-verify-btn:hover:not(:disabled) {
   opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 5px 16px rgba(26, 39, 68, 0.3);
+  box-shadow: none;
 }
 
 .bc-verify-btn:active:not(:disabled) {
@@ -807,7 +805,7 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: var(--gold);
   border-radius: 6px;
   font-size: 10.5px;
@@ -1093,9 +1091,9 @@
 }
 
 .col-sched-modal-btn--submit {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(26, 39, 68, 0.25);
+  box-shadow: none;
 }
 
 @media (max-width: 480px) {

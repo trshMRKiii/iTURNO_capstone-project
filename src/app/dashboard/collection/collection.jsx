@@ -6,6 +6,7 @@ import {
 } from "./useCollection";
 import { getTicketDisplayId } from "../queue/useQueue";
 import "../../../styles/Collection.css";
+import { SkeletonRows } from "../../../components/ui/kit";
 
 function Collection() {
   const {
@@ -172,15 +173,7 @@ function Collection() {
                   </thead>
                   <tbody>
                     {loading ? (
-                      <tr>
-                        <td colSpan="6" className="col-table-state">
-                          <div className="col-loading-dots">
-                            <div />
-                            <div />
-                            <div />
-                          </div>
-                        </td>
-                      </tr>
+                      <SkeletonRows cols={6} />
                     ) : error ? (
                       <tr>
                         <td
@@ -307,11 +300,7 @@ function Collection() {
                   </thead>
                   <tbody>
                     {roamingLoading ? (
-                      <tr>
-                        <td colSpan="6" className="col-table-state">
-                          <div className="col-loading-dots"><div /><div /><div /></div>
-                        </td>
-                      </tr>
+                      <SkeletonRows cols={6} />
                     ) : roamingError ? (
                       <tr>
                         <td colSpan="6" className="col-table-state col-table-state--error">

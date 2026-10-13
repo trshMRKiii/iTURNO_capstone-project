@@ -4,7 +4,7 @@ import { useQueueSocket } from "../../../lib/useQueueSocket";
 import { getDriverPhotoUrl } from "../driver/driver-utils";
 import { ticketsNeeded } from "../queue/useQueue";
 import SeriesPicker from "../queue/SeriesPicker";
-import { useFeedback } from "../../../components/ui/kit";
+import { useFeedback, SkeletonList } from "../../../components/ui/kit";
 import "../../../styles/Dispatch.css";
 
 // Mirrors DEFAULT_ESTIMATED_LOADING_MINUTES in backend/api/views/records.py —
@@ -197,17 +197,23 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
 
   // Plate search narrows the "up next" rows; the front vehicle always stays
   // visible so a route's dispatch order is never misrepresented.
-  const visibleRoutes = sortedRoutes.filter((name) => {
-    if (routeFilter && routeFilter !== name) return false;
-    const term = plateSearch.trim().toLowerCase();
-    return !term || groupedByRoute[name].vehicles.some((v) => v.plate_number.toLowerCase().includes(term));
-  });
-
   const getDriverName = (vehicle) => {
     if (vehicle.active_driver_name) return vehicle.active_driver_name;
     const ticket = openTicketByVehicleId.get(vehicle.id);
     return ticket?.driver?.name || "—";
   };
+
+  const matchesSearch = (vehicle, routeName, term) =>
+    !term ||
+    [vehicle.plate_number, routeName, getDriverName(vehicle)].some((text) =>
+      String(text || "").toLowerCase().includes(term),
+    );
+
+  const visibleRoutes = sortedRoutes.filter((name) => {
+    if (routeFilter && routeFilter !== name) return false;
+    const term = plateSearch.trim().toLowerCase();
+    return !term || groupedByRoute[name].vehicles.some((v) => matchesSearch(v, name, term));
+  });
 
   const quantityFor = (vehicle) => ticketsNeeded(vehicle, Number(selected?.ticket_form_price || 0));
 
@@ -435,7 +441,7 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
             </svg>
             <input
               type="text"
-              placeholder="Find a plate"
+              placeholder="Search plate number, route, driver name"
               value={plateSearch}
               onChange={(e) => setPlateSearch(e.target.value)}
             />
@@ -485,13 +491,7 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
 
         <div className="dispatch-panel-body">
           {loading ? (
-            <div className="dispatch-state-wrap">
-              <div className="dispatch-loading-dots">
-                <div />
-                <div />
-                <div />
-              </div>
-            </div>
+            <SkeletonList rows={4} h={72} />
           ) : queue.length === 0 ? (
             <div className="dispatch-state-wrap dispatch-state-wrap--empty">
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
@@ -504,7 +504,7 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
             </div>
           ) : visibleRoutes.length === 0 ? (
             <div className="dispatch-state-wrap dispatch-state-wrap--empty">
-              <span>No plates match “{plateSearch}”</span>
+              <span>No vehicles match “{plateSearch}”</span>
             </div>
           ) : (
             <div className="dispatch-board">
@@ -512,7 +512,7 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
                 const { routeId, vehicles: routeVehicles } = groupedByRoute[routeName];
                 const [head, ...upNext] = routeVehicles;
                 const term = plateSearch.trim().toLowerCase();
-                const shownNext = upNext.filter((v) => !term || v.plate_number.toLowerCase().includes(term));
+                const shownNext = upNext.filter((v) => matchesSearch(v, routeName, term));
                 const win = getLoadingWindow(head);
                 const overdue = win != null && win.deadline < now;
                 const ticket = openTicketByVehicleId.get(head.id);
@@ -634,7 +634,10 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
 
                     {shownNext.length > 0 && (
                       <div className="dispatch-upnext">
-                        <span className="dispatch-eyebrow">Up next · {upNext.length}</span>
+                        <div className="dispatch-upnext-head">
+                          <span className="dispatch-upnext-hint">Drag (⠿) to move queue position</span>
+                          <span className="dispatch-eyebrow">Up next · {upNext.length}</span>
+                        </div>
                         {shownNext.map((vehicle) => (
                           <div
                             key={vehicle.id}

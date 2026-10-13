@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { useDriver } from "./useDriver";
 import DriverFormModal from "./DriverFormModal";
 import { getDriverCode, getDriverDisplayName, getIwpStatus } from "./driver-utils";
-import { useFeedback } from "../../../components/ui/kit";
+import { useFeedback, SkeletonRows } from "../../../components/ui/kit";
 import { exportDriversPDF } from "../registry/registryExport";
 import "../../../styles/Driver.css";
 import "../../../styles/FormModal.css";
@@ -226,15 +226,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan="6" className="drv-table-state">
-                    <div className="drv-loading-dots">
-                      <div />
-                      <div />
-                      <div />
-                    </div>
-                  </td>
-                </tr>
+                <SkeletonRows cols={6} />
               ) : filteredDrivers.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="drv-table-state">

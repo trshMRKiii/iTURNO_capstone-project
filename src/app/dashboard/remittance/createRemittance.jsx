@@ -272,10 +272,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
           {/* Collections */}
           <div>
             <h3 className="rem-section-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                <line x1="1" y1="10" x2="23" y2="10" />
-              </svg>
               Collections
             </h3>
           </div>
@@ -335,10 +331,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
           {/* Deposits */}
           <div>
             <h3 className="rem-section-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="1" x2="12" y2="23" />
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
               Remittances / Deposits
             </h3>
           </div>
@@ -358,16 +350,35 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
                   <td>{d.type === "coin" ? "—" : formatCurrency(d.denomination)}</td>
                   <td>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={7}
+                      autoComplete="off"
                       className="rem-input"
                       value={d.quantity}
                       disabled={saving}
-                      onChange={(e) => updateDeposit(i, "quantity", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey || e.altKey) return;
+                        if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+                      }}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 7);
+                        if (digits) updateDeposit(i, "quantity", String(Number(digits)));
+                      }}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
+                        updateDeposit(i, "quantity", digits === "" ? "" : String(Number(digits)));
+                      }}
+                      onBlur={() => {
+                        if (d.quantity === "") updateDeposit(i, "quantity", "0");
+                      }}
                     />
                   </td>
                   <td>
                     <input
-                      type="number"
+                      type="text"
                       className="rem-input"
                       value={d.depositAmount}
                       readOnly

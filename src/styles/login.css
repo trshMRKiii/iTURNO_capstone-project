@@ -194,18 +194,18 @@ body {
 .lp-btn:active { transform: translateY(0); }
 
 .lp-btn--gold {
-  background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
+  background: var(--gold);
   color: var(--navy);
-  box-shadow: 0 4px 18px rgba(201,168,76,0.35);
+  box-shadow: none;
 }
-.lp-btn--gold:hover { box-shadow: 0 8px 28px rgba(201,168,76,0.45); }
+.lp-btn--gold:hover { box-shadow: none; }
 
 .lp-btn--navy {
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+  background: var(--navy);
   color: var(--white);
-  box-shadow: 0 4px 18px rgba(26,39,68,0.3);
+  box-shadow: none;
 }
-.lp-btn--navy:hover { box-shadow: 0 8px 28px rgba(26,39,68,0.4); }
+.lp-btn--navy:hover { box-shadow: none; }
 
 .lp-btn--outline {
   background: transparent;
@@ -256,7 +256,7 @@ body {
   width: 100%;
   max-width: 420px;
   box-shadow: 0 24px 80px rgba(0,0,0,0.35);
-  animation: lp-slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  animation: lp-slide-up 0.3s cubic-bezier(0.25,1,0.5,1);
 }
 
 @keyframes lp-slide-up {
@@ -330,7 +330,7 @@ body {
 .lp-error {
   padding: 11px 14px;
   background: #fff0f0;
-  border-left: 4px solid #e53935;
+  border: 1px solid rgba(229,57,53,0.25);
   border-radius: 5px;
   font-size: 13px;
   color: #c62828;
@@ -340,7 +340,7 @@ body {
 .lp-success {
   padding: 11px 14px;
   background: #f0f9f0;
-  border-left: 4px solid #43a047;
+  border: 1px solid rgba(67,160,71,0.25);
   border-radius: 5px;
   font-size: 13px;
   color: #2e7d32;

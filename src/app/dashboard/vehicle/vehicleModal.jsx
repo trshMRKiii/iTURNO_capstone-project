@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../../lib/api-service";
+import { SkeletonList } from "../../../components/ui/kit";
 
 const MAX_RECORDS = 20;
 
@@ -112,9 +113,7 @@ function VehicleModal({ vehicle, onClose }) {
         {/* Body */}
         <div className="veh-ledger-body">
           {loading ? (
-            <div className="veh-table-state">
-              <div className="veh-loading-dots"><div /><div /><div /></div>
-            </div>
+            <SkeletonList rows={4} h={40} />
           ) : filtered.length === 0 ? (
             <div className="veh-table-state">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">

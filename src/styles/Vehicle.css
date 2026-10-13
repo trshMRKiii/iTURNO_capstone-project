@@ -57,7 +57,7 @@
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -65,14 +65,14 @@
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
   white-space: nowrap;
 }
 
 .veh-add-btn:hover {
   opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 5px 16px rgba(26,39,68,0.3);
+  box-shadow: none;
 }
 
 .veh-add-btn:active { transform: translateY(0); }
@@ -113,7 +113,6 @@
   margin-bottom: 20px;
   background: rgba(239,68,68,0.08);
   border: 1px solid rgba(239,68,68,0.25);
-  border-left: 4px solid #ef4444;
   color: #b91c1c;
 }
 
@@ -236,7 +235,7 @@
 .veh-plate {
   display: inline-block;
   background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
-  color: var(--gold);
+  color: #fff;
   padding: 4px 11px;
   border-radius: 20px;
   font-size: 11.5px;
@@ -305,6 +304,47 @@
 }
 
 .veh-btn--delete:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* Row overflow menu */
+.veh-btn--more {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 6px 7px;
+}
+
+.veh-btn--more:hover,
+.veh-btn--more.is-open { background: transparent; color: var(--text-primary); }
+
+.veh-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--bg-card, var(--bg-page));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.veh-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.veh-menu-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.veh-menu-item--danger:hover { color: #dc2626; }
 
 /* ── Loading dots ── */
 .veh-loading-dots {

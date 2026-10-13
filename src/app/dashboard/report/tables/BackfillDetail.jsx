@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import { apiService } from "../../../../lib/api-service";
-import { useFeedback } from "../../../../components/ui/kit";
+import { useFeedback, SkeletonList } from "../../../../components/ui/kit";
 
 const peso = (n) => `₱${Number(n || 0).toFixed(2)}`;
 
@@ -20,7 +20,7 @@ export default function BackfillDetail({ id }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!record) return <div className="rpt-muted">Loading…</div>;
+  if (!record) return <SkeletonList rows={5} h={32} />;
 
   const download = () =>
     apiService.downloadBackfillCsv(record.id, record.csv_filename).catch((err) => notify.error({

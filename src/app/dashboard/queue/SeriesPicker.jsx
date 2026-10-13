@@ -26,7 +26,7 @@ function SeriesPicker({
     <div className="queue-roam-series">
       <div className="queue-roam-series-row">
         <div>
-          <span className="queue-label">Roaming ticket</span>
+          <span className="queue-label">Cash ticket</span>
           <div className="queue-roam-series-name">
             {selected ? labelOf(selected) : "No series with stock"}
           </div>

@@ -41,7 +41,7 @@ function Registry() {
       <div className="reg-header">
         <div className="reg-header-left">
           <div>
-            <h1 className="reg-title">Fleet &amp; Driver Registry</h1>
+            <h1 className="reg-title">Vehicle and Driver</h1>
             
           </div>
         </div>

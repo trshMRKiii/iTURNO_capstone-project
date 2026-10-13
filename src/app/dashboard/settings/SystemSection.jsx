@@ -64,6 +64,24 @@ function SystemSection({
   const [dateFilter, setDateFilter] = useState("");
   const [page, setPage] = useState(1);
 
+  // Row overflow menu (Download / Delete), positioned from the clicked button
+  const [menu, setMenu] = useState(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e) => e.key === "Escape" && close();
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [menu]);
+
   // Roll back dialog
   const [rollbackTarget, setRollbackTarget] = useState(null);
   const [phrase, setPhrase] = useState("");
@@ -189,8 +207,25 @@ function SystemSection({
         return (
           <div className="ui-cell-actions">
             <IconButton icon={<RestoreIcon />} text="Roll back" label={`Roll back to ${name}`} onClick={() => setRollbackTarget(b)} />
-            <IconButton icon={<DownloadIcon />} text="Download" label={`Download ${name}`} onClick={() => onDownload(b)} />
-            <IconButton icon={<TrashIcon />} text="Delete" label={`Delete ${name}`} tone="danger" onClick={() => onDelete(b)} />
+            <button
+              type="button"
+              className={`ui-more-btn${menu?.backup.id === b.id ? " is-open" : ""}`}
+              aria-label={`More actions for ${name}`}
+              aria-haspopup="menu"
+              aria-expanded={menu?.backup.id === b.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (menu?.backup.id === b.id) return setMenu(null);
+                const r = e.currentTarget.getBoundingClientRect();
+                setMenu({ backup: b, top: r.bottom + 4, right: window.innerWidth - r.right });
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
           </div>
         );
       },
@@ -199,6 +234,31 @@ function SystemSection({
 
   return (
     <>
+      {menu && (
+        <div
+          className="ui-row-menu"
+          role="menu"
+          style={{ top: menu.top, right: menu.right }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="ui-row-menu-item"
+            onClick={() => { onDownload(menu.backup); setMenu(null); }}
+          >
+            <DownloadIcon /> Download
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="ui-row-menu-item ui-row-menu-item--danger"
+            onClick={() => { onDelete(menu.backup); setMenu(null); }}
+          >
+            <TrashIcon /> Delete
+          </button>
+        </div>
+      )}
       <SectionHeader
         title="Backups & restore"
       />

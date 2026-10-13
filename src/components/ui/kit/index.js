@@ -24,3 +24,4 @@ export { default as FeedbackProvider } from "./FeedbackProvider";
 export { useFeedback } from "./feedbackContext";
 export { default as ButtonLabel } from "./ButtonLabel";
 export { default as BusyOverlay } from "./BusyOverlay";
+export { Skel, SkeletonRows, SkeletonList } from "./Skeleton";

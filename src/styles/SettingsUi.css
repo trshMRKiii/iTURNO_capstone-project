@@ -203,7 +203,51 @@
 .ui-align-right { text-align: right; }
 
 .ui-cell-strong { font-weight: 600; }
-.ui-cell-actions { display: inline-flex; gap: 8px; justify-content: flex-end; }
+.ui-cell-actions { display: inline-flex; gap: 8px; justify-content: flex-end; align-items: center; }
+
+/* Row overflow menu (mirrors the vehicle table's) */
+.ui-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.ui-more-btn:hover,
+.ui-more-btn.is-open { background: transparent; color: var(--text-primary); }
+
+.ui-row-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--bg-card, var(--bg-page));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.ui-row-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.ui-row-menu-item svg { width: 14px; height: 14px; }
+.ui-row-menu-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.ui-row-menu-item--danger:hover { color: #dc2626; }
 
 .ui-empty {
   padding: 40px 20px;
@@ -793,6 +837,29 @@
 .ui-danger-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .ui-danger-btn:focus-visible { outline: 2px solid #b42318; outline-offset: 2px; }
 
+.ui-success-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--ui-control-h);
+  padding: 0 22px;
+  border: 0;
+  border-radius: 10px;
+  background: #16a34a;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-success-btn:hover:not(:disabled) { background: #15803d; }
+.ui-success-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ui-success-btn.ui-btn--busy:disabled { opacity: 1; background: #4ade80; color: #14532d; }
+.ui-success-btn:focus-visible { outline: 2px solid #16a34a; outline-offset: 2px; }
+.ui-success-btn .ui-btn-label { color: inherit; }
+
 /* Dialog content pieces */
 .ui-summary {
   display: flex;
@@ -983,6 +1050,9 @@
   background-size: 200% 100%;
   animation: ui-shimmer 1.3s ease-in-out infinite;
 }
+
+.ui-skel-list { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; }
+@media (prefers-reduced-motion: reduce) { .ui-skel { animation: none; } }
 
 @keyframes ui-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 

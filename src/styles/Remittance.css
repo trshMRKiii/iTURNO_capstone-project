@@ -111,7 +111,7 @@
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -119,14 +119,14 @@
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
   white-space: nowrap;
 }
 
 .rem-add-btn:hover {
   opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 5px 16px rgba(26,39,68,0.3);
+  box-shadow: none;
 }
 
 .rem-add-btn:active { transform: translateY(0); }
@@ -155,14 +155,12 @@
   margin-bottom: 20px;
   background: rgba(239,68,68,0.08);
   border: 1px solid rgba(239,68,68,0.25);
-  border-left: 4px solid #ef4444;
   color: #b91c1c;
 }
 
 .rem-alert--info {
   background: rgba(201,168,76,0.1);
   border: 1px solid rgba(201,168,76,0.3);
-  border-left: 4px solid #c9a84c;
   color: #8a6d1f;
   flex-wrap: wrap;
 }
@@ -295,9 +293,9 @@
 .rem-btn:active { transform: translateY(0); }
 
 .rem-btn--view {
-  background: linear-gradient(135deg, var(--gold) 0%, #e2be6e 100%);
+  background: var(--gold);
   color: #1a2744;
-  box-shadow: 0 2px 8px rgba(201,168,76,0.25);
+  box-shadow: none;
 }
 
 .rem-btn--delete {
@@ -641,6 +639,11 @@
   gap: 14px;
 }
 
+/* Two cards, right-aligned within the 3-column grid */
+.rem-summary-grid > .rem-summary-card:first-child {
+  grid-column: 2;
+}
+
 .rem-summary-card {
   background: var(--bg-page);
   border: 1px solid var(--border);
@@ -720,9 +723,9 @@
 }
 
 .rem-modal-btn--submit {
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
 }
 
 /* ── Export button ── */
@@ -869,7 +872,7 @@
 .rem-combo input { width: 100%; padding-right: 30px; }
 .rem-combo-toggle { position: absolute; top: 0; right: 0; bottom: 0; width: 30px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 14px; }
 .rem-combo-toggle:disabled { cursor: default; opacity: 0.5; }
-.rem-combo-list { position: absolute; z-index: 20; right: 0; bottom: 100%; min-width: 220px; max-width: 100%; margin: 0 0 4px; padding: 4px; list-style: none; max-height: 200px; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15); }
+.rem-combo-list { position: absolute; z-index: 20; left: 0; right: 0; bottom: 100%; margin: 0 0 4px; padding: 4px; list-style: none; max-height: 200px; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15); }
 .rem-combo-option { display: block; width: 100%; padding: 7px 10px; text-align: left; font: inherit; font-size: 13px; color: var(--text-primary); background: transparent; border: none; border-radius: 6px; cursor: pointer; }
 .rem-combo-option:hover { background: var(--bg-hover); }
 .rem-report-sig span { font-size: 10px; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: 4px; }
@@ -889,6 +892,7 @@
 
   .rem-add-btn { width: 100%; justify-content: center; }
   .rem-info-grid, .rem-summary-grid { grid-template-columns: 1fr; }
+  .rem-summary-grid > .rem-summary-card:first-child { grid-column: auto; }
   .rem-actions { flex-wrap: wrap; }
 }
 

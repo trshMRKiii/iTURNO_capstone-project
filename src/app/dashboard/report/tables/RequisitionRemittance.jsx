@@ -187,7 +187,7 @@ export default function RequisitionRemittance({
       <td className={`${cellClass} rpt-bold`}>{b.issued_by_name || "—"}</td>
       <td className={cellClass}>{peso(b.total_amount)}</td>
       <td className={cellClass}>
-        <div className="rpt-row-actions">
+        <div className="rpt-row-actions rpt-row-actions--center">
           <button className="rpt-btn rpt-btn--secondary" onClick={() => setViewBatch(b)}>
             View
           </button>
@@ -207,6 +207,7 @@ export default function RequisitionRemittance({
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
             )}
+            Download
           </button>
         </div>
       </td>
@@ -265,7 +266,7 @@ export default function RequisitionRemittance({
         </div>
       </div>
 
-      <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} />
+      <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} centeredColumns={["Actions"]} />
 
       {showModal && (
         <ReportTableModal
@@ -287,7 +288,7 @@ export default function RequisitionRemittance({
             />
           }
         >
-          <DataTable columns={columns} data={modalSearched} rowRenderer={rowRenderer} />
+          <DataTable columns={columns} data={modalSearched} rowRenderer={rowRenderer} centeredColumns={["Actions"]} />
         </ReportTableModal>
       )}
 

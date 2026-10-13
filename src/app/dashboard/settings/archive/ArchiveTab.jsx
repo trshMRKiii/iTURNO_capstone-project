@@ -142,9 +142,16 @@ export default function ArchiveTab({ onRestored }) {
   };
 
   // One entry per archived record, carrying its record type so the "All" view can mix them.
-  const entries = (isAll ? SECTIONS : [section]).flatMap((sec) =>
-    (rows[sec.key] || []).map((item) => ({ id: `${sec.key}-${item.id}`, sec, item, cells: sec.cells(item) })),
-  );
+  // Newest first: by the record's own timestamp when it has one, else by id (higher = newer).
+  const stamp = (item) => {
+    const t = Date.parse(item.archived_at || item.issued_at || item.created_at || item.updated_at);
+    return Number.isNaN(t) ? 0 : t;
+  };
+  const entries = (isAll ? SECTIONS : [section])
+    .flatMap((sec) =>
+      (rows[sec.key] || []).map((item) => ({ id: `${sec.key}-${item.id}`, sec, item, cells: sec.cells(item) })),
+    )
+    .sort((a, b) => stamp(b.item) - stamp(a.item) || Number(b.item.id) - Number(a.item.id));
   const q = search.trim().toLowerCase();
   const matches = entries.filter((e) => !q || `${e.sec.label} ${e.cells.join(" ")}`.toLowerCase().includes(q));
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));

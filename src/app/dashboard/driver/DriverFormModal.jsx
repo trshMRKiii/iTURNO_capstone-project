@@ -178,7 +178,7 @@ function DriverFormModal({
     <div className="drv-overlay" onClick={onClose}>
       <div className="drv-modal drv-modal--registry" onClick={(e) => e.stopPropagation()}>
         <div className="drv-modal-header">
-          <h2 className="drv-modal-title">{editing ? "Driver profile" : "Register new driver"}</h2>
+          <h2 className="drv-modal-title">{editing ? "Driver profile" : "Register Driver"}</h2>
           <button className="drv-modal-close" onClick={onClose} aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M18 6 6 18" />
@@ -190,22 +190,19 @@ function DriverFormModal({
         <form onSubmit={onSubmit} noValidate className="drv-modal-form">
           <div className="drv-modal-split">
             <aside className="drv-side">
-              <div className={`drv-photo${showPhoto ? "" : " drv-photo--empty"}`}>
+              <label className={`drv-photo${showPhoto ? "" : " drv-photo--empty"}`} title={showPhoto ? "Change photo" : "Upload photo"}>
                 {showPhoto ? (
-                  <img src={photoPreview} alt="Driver" onClick={() => setPhotoViewOpen(true)} onError={() => setBrokenSrc(photoPreview)} />
+                  <img src={photoPreview} alt="Driver" onError={() => setBrokenSrc(photoPreview)} />
                 ) : (
-                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
+                  <span className="drv-photo-placeholder">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>Upload photo</span>
+                  </span>
                 )}
-              </div>
-              <label className="drv-photo-btn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-                {showPhoto ? "Change photo" : "Upload photo"}
+                {showPhoto && <span className="drv-photo-overlay">Change photo</span>}
                 <input
                   type="file"
                   accept="image/*"
@@ -213,6 +210,26 @@ function DriverFormModal({
                   onChange={(e) => setForm({ ...form, photo: e.target.files?.[0] || form.photo })}
                 />
               </label>
+              {showPhoto && (
+                <>
+                  <label className="drv-photo-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    Edit photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => setForm({ ...form, photo: e.target.files?.[0] || form.photo })}
+                    />
+                  </label>
+                  <button type="button" className="drv-photo-view" onClick={() => setPhotoViewOpen(true)}>
+                    View full photo
+                  </button>
+                </>
+              )}
 
               <div className="drv-preview">
                 <span className="drv-preview-tag">Preview</span>
@@ -324,7 +341,7 @@ function DriverFormModal({
               <small>{doneCount} of {REQUIRED_FIELD_COUNT} required fields done</small>
             </div>
             <button type="button" className="drv-modal-btn drv-modal-btn--cancel" onClick={onClose}>Cancel</button>
-            <button type="submit" className="drv-modal-btn drv-modal-btn--submit">{editing ? "Update driver" : "Register driver"}</button>
+            <button type="submit" className="drv-modal-btn drv-modal-btn--submit">{editing ? "Save changes" : "Register driver"}</button>
           </div>
         </form>
       </div>

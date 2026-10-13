@@ -20,7 +20,7 @@ import {
 } from "../../components/ui/NavIcon";
 import { apiService } from "../../lib/api-service";
 import { useConfirm } from "../../components/ui/ToastConfirmContext";
-import { BusyOverlay, FeedbackProvider } from "../../components/ui/kit";
+import { BusyOverlay, FeedbackProvider, Skel, SkeletonList } from "../../components/ui/kit";
 import ForcePasswordChange from "../../components/auth/ForcePasswordChange";
 import ProfileModal from "../../components/auth/ProfileModal";
 import GlobalNotices from "../../components/notices/GlobalNotices";
@@ -37,10 +37,10 @@ const NAV_GROUPS = [
     { to: "/dashboard/Remittance", label: "Remittance", Icon: RemittanceIcon },
   ],
   [
-    { to: "/dashboard/Registry", label: "Fleet & Driver", Icon: VehicleIcon },
+    { to: "/dashboard/Registry", label: "Vehicle and Driver", Icon: VehicleIcon },
     { to: "/dashboard/StaffRegistry", label: "User Management", Icon: UserIcon },
   ],
-  [{ to: "/dashboard/Reports", label: "Reports", Icon: ReportIcon }],
+  [{ to: "/dashboard/Reports", label: "Report Generation", Icon: ReportIcon }],
   [{ to: "/dashboard/Settings", label: "Settings", Icon: SettingsIcon }],
 ];
 
@@ -135,7 +135,21 @@ function mainIndex() {
   const canViewRemittance = allowedNav.includes("/dashboard/Remittance");
 
   if (!userLoaded) {
-    return null;
+    return (
+      <div className="shell" aria-busy="true" aria-label="Loading">
+        <aside className="sidebar">
+          <div className="sidebar-nav">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <Skel key={i} h={36} style={{ marginBottom: 14 }} />
+            ))}
+          </div>
+        </aside>
+        <main className="main-content">
+          <Skel w={220} h={30} style={{ marginBottom: 24 }} />
+          <SkeletonList rows={4} h={90} />
+        </main>
+      </div>
+    );
   }
 
   if (currentUser.must_reset_password) {

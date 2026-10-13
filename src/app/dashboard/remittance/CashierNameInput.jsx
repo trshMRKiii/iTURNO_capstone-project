@@ -25,7 +25,10 @@ export default function CashierNameInput({ name, setName, names, disabled, class
         className={className}
         value={name}
         disabled={disabled}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) => setName(e.target.value.toUpperCase())}
+        style={{ textTransform: "uppercase" }}
+        spellCheck={false}
+        onFocus={() => setOpen(true)}
         onClick={() => setOpen(true)}
         onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
         placeholder="Type or pick a name"

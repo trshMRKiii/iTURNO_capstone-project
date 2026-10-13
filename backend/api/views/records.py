@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from django.db.models import Sum, Count, Min, Q
+from django.db.models import Sum, Count, Min, Q, F
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -114,15 +114,41 @@ def dashboard_stats(request):
     for row in Vehicle.objects.filter(is_archived=False).values('status').annotate(n=Count('id')):
         fleet_status[row['status']] = row['n']
 
+    # Vehicles waiting per route (top 3) + longest wait, from still-queued tickets.
+    queued_qs = Ticket.objects.filter(status='QUEUED', vehicle__is_archived=False)
+    queue_by_route = list(
+        queued_qs.values(name=F('route__origin'))
+        .annotate(count=Count('vehicle', distinct=True))
+        .order_by('-count', 'name')[:3]
+    )
+    for row in queue_by_route:
+        row['name'] = row['name'] or 'No Route'
+
     # Total physical ticket stock left across active (non-archived) requisitions —
     # same "remaining" math as TicketSeriesSerializer.get_remaining, aggregated.
     ticket_stock_remaining = 0
+    stock_by_form = {}
     paper = paper_numbers_by_series()
-    for series in TicketSeries.objects.filter(requisition__is_archived=False).annotate(issued_count=Count('tickets')):
+    for series in TicketSeries.objects.filter(requisition__is_archived=False).select_related('ticket_form').annotate(issued_count=Count('tickets')):
         original = max(int(series.end_no or 0) - int(series.start_no or 0) + 1, 0)
-        ticket_stock_remaining += max(original - series.issued_count - len(paper.get(series.id, ())), 0)
+        remaining = max(original - series.issued_count - len(paper.get(series.id, ())), 0)
+        ticket_stock_remaining += remaining
+        form_name = series.ticket_form.name if series.ticket_form else 'Unspecified'
+        stock_by_form[form_name] = stock_by_form.get(form_name, 0) + remaining
+
+    # Per-denomination split of the collections card, on the same dispatched_at basis.
+    collections_by_form = {}
+    for t in range_dispatched.select_related('series__ticket_form'):
+        form_name = t.series.ticket_form.name if (t.series and t.series.ticket_form) else 'Unspecified'
+        amount = float(t.collection_amount) if (t.collection_amount and float(t.collection_amount) > 0) else fallback_amount
+        row = collections_by_form.setdefault(form_name, {'name': form_name, 'count': 0, 'total': 0.0})
+        row['count'] += 1
+        row['total'] = round(row['total'] + amount, 2)
 
     return Response({
+        'queue_by_route': queue_by_route,
+        'collections_by_form': list(collections_by_form.values()),
+        'stock_by_form': [{'name': n, 'remaining': r} for n, r in stock_by_form.items()],
         'today_total': summarize(range_dispatched, fallback_amount),
         'total_tickets': Ticket.objects.count(),
         'total_dispatched': Ticket.objects.filter(dispatched_at__isnull=False).count(),

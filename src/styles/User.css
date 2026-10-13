@@ -58,7 +58,7 @@
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
-  background: linear-gradient(135deg, #1a2744 0%, #2d3e5f 100%);
+  background: #1a2744;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -66,14 +66,14 @@
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 3px 10px rgba(26,39,68,0.25);
+  box-shadow: none;
   white-space: nowrap;
 }
 
 .usr-add-btn:hover {
   opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 5px 16px rgba(26,39,68,0.3);
+  box-shadow: none;
 }
 
 .usr-add-btn:active { transform: translateY(0); }
@@ -90,7 +90,6 @@
   margin-bottom: 20px;
   background: rgba(239,68,68,0.08);
   border: 1px solid rgba(239,68,68,0.25);
-  border-left: 4px solid #ef4444;
   color: #b91c1c;
 }
 

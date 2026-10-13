@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { apiService } from "../../../lib/api-service";
+import { focusFirstError } from "../../../lib/focusFirstError";
 import { useFeedback } from "../../../components/ui/kit";
 import { buildDriverPayload, normalizeDriverForm, validateDriverForm } from "./driver-utils";
 
@@ -48,6 +49,7 @@ export function useDriver() {
   const [editing, setEditing] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const initialFormRef = useRef(EMPTY_FORM);
 
   const fieldErrors = submitAttempted ? validateDriverForm(form) : {};
 
@@ -87,6 +89,7 @@ export function useDriver() {
     const errors = validateDriverForm(form);
     if (Object.keys(errors).length > 0) {
       setSubmitAttempted(true);
+      focusFirstError(".drv-modal");
       setError("Please fill in the highlighted fields.");
       return;
     }
@@ -103,7 +106,7 @@ export function useDriver() {
     }
     confirmAction({
       title: editing ? "Update driver?" : "Register driver?",
-      confirmLabel: editing ? "Update" : "Register",
+      confirmLabel: editing ? "Save changes" : "Register",
       busyLabel: "Saving…",
       tone: "primary",
       run: async () => {
@@ -115,7 +118,7 @@ export function useDriver() {
             await apiService.createDriver(payload);
           }
           fetchDrivers();
-          closeModal();
+          resetModal();
           return { success: { title: editing ? "Driver updated" : "Driver registered", message: `${form.first_name} ${form.last_name} was saved.` } };
         } catch (err) {
           setError(err.message);
@@ -127,24 +130,40 @@ export function useDriver() {
 
   const handleEdit = (driver) => {
     setEditing(driver);
-    setForm(normalizeDriverForm(driver));
+    initialFormRef.current = normalizeDriverForm(driver);
+    setForm(initialFormRef.current);
     setSubmitAttempted(false);
     setIsModalOpen(true);
   };
 
   const handleAdd = () => {
     setEditing(null);
+    initialFormRef.current = EMPTY_FORM;
     setForm(EMPTY_FORM);
     setSubmitAttempted(false);
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {
+  const resetModal = () => {
     setIsModalOpen(false);
     setEditing(null);
     setForm(EMPTY_FORM);
     setError(null);
     setSubmitAttempted(false);
+  };
+
+  const isDirty = () => JSON.stringify(form) !== JSON.stringify(initialFormRef.current);
+
+  // Closing with unsaved input asks first; resetModal closes without asking (used after a save).
+  const closeModal = () => {
+    if (!isDirty()) return resetModal();
+    return confirmAction({
+      title: editing ? "Discard changes?" : "Discard registration?",
+      message: editing ? "Your edits haven't been saved and will be lost." : "What you've entered won't be saved.",
+      confirmLabel: "Discard",
+      busyLabel: "Discarding…",
+      run: async () => { resetModal(); return null; },
+    });
   };
 
   const handleArchive = (id) => {
