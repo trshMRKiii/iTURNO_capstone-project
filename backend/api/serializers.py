@@ -5,7 +5,7 @@ from django.db.models import Max, Sum
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, PaperIssuance, RoamingLog, AuditLog, BackupRecord, BackfillRecord, WipMode
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, PaperIssuance, AuditLog, BackupRecord, BackfillRecord, WipMode
 from .sms import send_sms_async, queue_position_message
 
 
@@ -520,7 +520,7 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
         model = TicketSeries
         fields = [
             'id', 'series_no', 'ticket_form', 'ticket_form_label', 'ticket_form_price',
-            'pad_no', 'box_no', 'start_no', 'end_no',
+            'start_no', 'end_no',
             'unit_value', 'total_value', 'requisition',
             'issued_to', 'issued_to_name', 'date_issued',
             'beginning', 'remaining', 'last_used_no',
@@ -547,30 +547,6 @@ class RequisitionSerializer(serializers.ModelSerializer):
             'ticket_series', 'created_at', 'updated_at',
         ]
 
-
-class RoamingLogSerializer(serializers.ModelSerializer):
-    vehicle_plate = serializers.CharField(source='vehicle.plate_number', read_only=True)
-    driver_name = serializers.SerializerMethodField()
-    recorded_by_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = RoamingLog
-        fields = ['id', 'vehicle', 'vehicle_plate', 'driver', 'driver_name', 'recorded_by', 'recorded_by_name', 'notes', 'recorded_at']
-        extra_kwargs = {
-            'recorded_by': {'read_only': True},
-        }
-
-    def get_recorded_by_name(self, obj):
-        user = obj.recorded_by
-        if not user:
-            return None
-        full = f"{user.first_name} {user.last_name}".strip()
-        return full or user.username
-
-    def get_driver_name(self, obj):
-        if obj.driver:
-            return f"{obj.driver.last_name}, {obj.driver.first_name}".strip()
-        return None
 
 class AuditLogSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
@@ -625,13 +601,12 @@ class BackupRecordSerializer(serializers.ModelSerializer):
 
 
 class BackfillRecordSerializer(serializers.ModelSerializer):
-    source_display = serializers.CharField(source='get_source_display', read_only=True)
     has_csv = serializers.SerializerMethodField()
 
     class Meta:
         model = BackfillRecord
         fields = [
-            'id', 'source', 'source_display', 'created_by', 'created_by_name',
+            'id', 'created_by', 'created_by_name',
             'ticket_count', 'reason', 'issued_at', 'csv_filename', 'has_csv', 'entries', 'created_at',
         ]
 

@@ -16,8 +16,8 @@ from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_MET
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import LOCAL_ADMIN_PK_BASE, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, RoamingLog, WipMode
-from ..serializers import UserSerializer, SelfProfileSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, PaperIssuanceSerializer, RoamingLogSerializer
+from ..models import LOCAL_ADMIN_PK_BASE, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, WipMode
+from ..serializers import UserSerializer, SelfProfileSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, PaperIssuanceSerializer
 from ..sync.fleet_access import flush_fleet_access
 from ..sync.settings_outbox import flush_settings, next_offline_pk, park
 from ..sms import send_sms_async, queue_next_message
@@ -1022,17 +1022,6 @@ class PaperIssuanceViewSet(AuditLogMixin, viewsets.ModelViewSet):
         if instance.remittance_batch_id:
             raise ValidationError("This range is already part of a remittance batch and can't be removed.")
         super().perform_destroy(instance)
-
-
-class RoamingLogViewSet(viewsets.ModelViewSet):
-    queryset = RoamingLog.objects.all()
-    serializer_class = RoamingLogSerializer
-
-    def perform_create(self, serializer):
-        vehicle = serializer.validated_data.get("vehicle")
-        if vehicle and vehicle.status == "QUEUED":
-            raise ValidationError("Vehicle is already in the queue — cannot log roaming.")
-        serializer.save(recorded_by=self.request.user)
 
 
 class RemittanceBatchViewSet(AuditLogMixin, viewsets.ModelViewSet):

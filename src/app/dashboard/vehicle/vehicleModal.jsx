@@ -7,7 +7,6 @@ const STATUS_COLORS = {
   QUEUED: "#3b82f6",
   COLLECTED: "#22c55e",
   CANCELLED: "#ef4444",
-  ROAMING: "#f97316",
 };
 
 function VehicleModal({ vehicle, onClose }) {
@@ -19,27 +18,13 @@ function VehicleModal({ vehicle, onClose }) {
   useEffect(() => {
     if (!vehicle) return;
     setLoading(true);
-    Promise.all([apiService.getTickets({ vehicle_id: vehicle.id }), apiService.getRoamingLogs()])
-      .then(([ticketData, roamingData]) => {
+    apiService.getTickets({ vehicle_id: vehicle.id })
+      .then((ticketData) => {
         const vehicleTickets = (ticketData || [])
           .filter((t) => t.vehicle_id === vehicle.id || t.vehicle?.id === vehicle.id)
-          .map((t) => ({ ...t, _date: t.issued_at }));
-
-        const vehicleRoaming = (roamingData || [])
-          .filter((r) => r.vehicle === vehicle.id)
-          .map((r) => ({
-            id: `R-${r.id}`,
-            _date: r.recorded_at,
-            issued_at: r.recorded_at,
-            driver: { name: r.driver_name || null },
-            status: "ROAMING",
-            collection_amount: null,
-            notes: r.notes,
-          }));
-
-        const combined = [...vehicleTickets, ...vehicleRoaming]
+          .map((t) => ({ ...t, _date: t.issued_at }))
           .sort((a, b) => new Date(b._date) - new Date(a._date));
-        setTickets(combined);
+        setTickets(vehicleTickets);
       })
       .catch(() => setTickets([]))
       .finally(() => setLoading(false));
@@ -112,7 +97,7 @@ function VehicleModal({ vehicle, onClose }) {
             />
           </div>
           <div className="veh-ledger-pills">
-            {["ALL", "COLLECTED", "CANCELLED", "ROAMING"].map((s) => (
+            {["ALL", "COLLECTED", "CANCELLED"].map((s) => (
               <button
                 key={s}
                 className={`veh-ledger-pill ${filter === s ? "veh-ledger-pill--active" : ""}`}

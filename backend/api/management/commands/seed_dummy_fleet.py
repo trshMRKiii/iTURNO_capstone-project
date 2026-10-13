@@ -130,13 +130,6 @@ def _rand_contact():
 # wait fallback for a route with no estimated_loading_minutes configured.
 DEFAULT_ESTIMATED_LOADING_MINUTES = 5
 
-CANCELLATION_REASONS = [
-    "Driver backed out before loading",
-    "Wrong route selected at check-in",
-    "Vehicle pulled out for mechanical issue",
-    "Duplicate check-in",
-]
-
 
 def _denominate(total):
     """Split a peso amount into a plausible bill/coin breakdown, greedy by denomination."""
@@ -398,8 +391,6 @@ class Command(BaseCommand):
                     series = TicketSeries(
                         series_no=str(start_no),
                         ticket_form=form,
-                        pad_no=f"PAD-{i}{s}",
-                        box_no=f"BOX-{i}{s}",
                         start_no=str(start_no),
                         end_no=str(end_no),
                         unit_value=form.price,
@@ -613,8 +604,6 @@ class Command(BaseCommand):
                     mode=mode,
                     status="CANCELLED",
                     is_verified=False,
-                    reason=random.choice(CANCELLATION_REASONS),
-                    nullified_at=issued_at + timedelta(minutes=random.randint(1, 15)),
                     issued_at=issued_at,
                     dispatched_at=None,
                     issuance_group=issuance_group,
@@ -688,7 +677,6 @@ class Command(BaseCommand):
             batch_code=batch_code,
             issued_by=random.choice(staff_users),
             total_amount=total_amount,
-            status="OPEN" if day == today else "CLOSED",
             covers_date=day,
         )
         for form_id, (amount, min_no, max_no) in day_form_totals.items():

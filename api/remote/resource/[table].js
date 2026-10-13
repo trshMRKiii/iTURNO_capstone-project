@@ -7,7 +7,6 @@ import {
   shapeRequisition,
   shapeTicketSeries,
   shapeRemittanceBatch,
-  shapeRoamingLog,
   shapeAuditLog,
 } from "../../_lib/shapes.js";
 
@@ -124,16 +123,8 @@ const RESOURCES = {
     table: "api_remittancebatch",
     select: "*, deposits:api_deposit(*), collections:api_collection(*)",
     order: { column: "issued_at", ascending: false },
-    filters: ["is_archived", "status"],
+    filters: ["is_archived"],
     shape: (rows) => rows.map(shapeRemittanceBatch),
-  },
-  "roaming-logs": {
-    table: "api_roaminglog",
-    select: "*, vehicle:api_vehicle(id,plate_number), driver:api_driver(id,last_name,first_name), recorded_by:api_user(id,first_name,last_name,username)",
-    order: { column: "recorded_at", ascending: false },
-    filters: [],
-    limit: 200,
-    shape: (rows) => rows.map(shapeRoamingLog),
   },
   "audit-logs": {
     table: "api_auditlog",

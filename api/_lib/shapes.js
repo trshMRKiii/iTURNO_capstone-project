@@ -105,8 +105,6 @@ export function shapeTicket(t) {
     is_verified: t.is_verified,
     issued_at: t.issued_at,
     dispatched_at: t.dispatched_at,
-    nullified_at: t.nullified_at,
-    reason: t.reason,
     issuance_group: t.issuance_group,
     queue_code: t.queue_code,
     created_at: t.created_at,
@@ -169,8 +167,6 @@ export function shapeTicketSeries(s, stats = null) {
     ticket_form: s.ticket_form?.id ?? s.ticket_form ?? null,
     ticket_form_label: s.ticket_form?.name ?? null,
     ticket_form_price: s.ticket_form?.price ?? null,
-    pad_no: s.pad_no,
-    box_no: s.box_no,
     start_no: s.start_no,
     end_no: s.end_no,
     unit_value: s.unit_value,
@@ -194,23 +190,6 @@ export function shapeRemittanceBatch(b) {
     deposits: b.deposits || [],
     collections: b.collections || [],
     issued_by_name: b.issued_by_name_computed || null,
-  };
-}
-
-export function shapeRoamingLog(l) {
-  if (!l) return null;
-  return {
-    id: l.id,
-    vehicle: l.vehicle?.id ?? l.vehicle ?? null,
-    vehicle_plate: l.vehicle?.plate_number ?? null,
-    driver: l.driver?.id ?? l.driver ?? null,
-    driver_name: l.driver ? `${l.driver.last_name}, ${l.driver.first_name}`.trim() : null,
-    recorded_by: l.recorded_by?.id ?? l.recorded_by ?? null,
-    recorded_by_name: l.recorded_by
-      ? (`${l.recorded_by.first_name} ${l.recorded_by.last_name}`.trim() || l.recorded_by.username)
-      : null,
-    notes: l.notes,
-    recorded_at: l.recorded_at,
   };
 }
 

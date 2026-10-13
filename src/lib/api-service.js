@@ -36,7 +36,6 @@ const REMOTE_GET_MAP = {
   "/users/": "/settings/users",
   "/puvtypes/": "/settings/puv-types",
   "/ticket-forms/": "/settings/ticket-forms",
-  "/roaming-logs/": "/resource/roaming-logs",
   "/audit-logs/": "/resource/audit-logs",
   "/requisitions/": "/resource/requisitions",
   "/ticket-series/": "/resource/ticket-series",
@@ -547,14 +546,6 @@ export const apiService = {
 
   deleteTicketForm(id) {
     return this.delete(`/ticket-forms/${id}/`);
-  },
-
-  getRoamingLogs() {
-    return this.get("/roaming-logs/");
-  },
-
-  createRoamingLog(data) {
-    return this.post("/roaming-logs/", data);
   },
 
   // WIP mode: toggling stays LAN-only (see the model's docstring in

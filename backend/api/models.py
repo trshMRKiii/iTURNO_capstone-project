@@ -279,8 +279,6 @@ class Ticket(models.Model):
     # reorder-queue action.
     queue_rank = models.IntegerField(null=True, blank=True, db_index=True)
     dispatched_at = models.DateTimeField(null=True, blank=True)
-    nullified_at = models.DateTimeField(null=True, blank=True)
-    reason = models.TextField(blank=True)
 
     issuance_group = models.CharField(max_length=40, blank=True, db_index=True)
     queue_code = models.CharField(max_length=20, blank=True, db_index=True)
@@ -349,9 +347,6 @@ class TicketSeries(models.Model):
     series_no = models.CharField(max_length=50, unique=True, db_index=True)
     ticket_form = models.ForeignKey('TicketForm', on_delete=models.SET_NULL, null=True, blank=True)
 
-    pad_no = models.CharField(max_length=50, blank=True)
-    box_no = models.CharField(max_length=50, blank=True)
-
     start_no = models.CharField(max_length=20)
     end_no = models.CharField(max_length=20)
     unit_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -360,8 +355,6 @@ class TicketSeries(models.Model):
     requisition = models.ForeignKey(Requisition, on_delete=models.CASCADE, related_name='ticket_series')
     issued_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='issued_ticket_series')
     date_issued = models.DateTimeField(null=True, blank=True)
-    beginning_balance = models.PositiveIntegerField(null=True, blank=True)
-    beginning_balance_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -488,7 +481,6 @@ class RemittanceBatch(models.Model):
     issued_at = models.DateTimeField(auto_now_add=True)
     covers_date = models.DateField(null=True, blank=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    status = models.CharField(max_length=20, default="OPEN")
     is_archived = models.BooleanField(default=False, db_index=True)
 
 class Deposit(models.Model):
@@ -551,9 +543,6 @@ class BackfillRecord(models.Model):
     that was imported. created_by_name mirrors Ticket.active_user_name: stored as
     plain text at creation time so display never depends on the User FK still
     resolving (a remote submitter may not have a matching LAN account)."""
-    SOURCE_CHOICES = [('MANUAL', 'Manual Entry'), ('CSV', 'CSV Import'), ('REMOTE', 'Remote Request')]
-
-    source = models.CharField(max_length=10, choices=SOURCE_CHOICES)
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='backfill_records')
     created_by_name = models.CharField(max_length=150, blank=True, default="")
     ticket_count = models.PositiveIntegerField(default=0)
@@ -573,7 +562,7 @@ class BackfillRecord(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.get_source_display()} backfill ({self.ticket_count} ticket(s)) by {self.created_by_name or 'System'}"
+        return f"Backfill ({self.ticket_count} ticket(s)) by {self.created_by_name or 'System'}"
 
 
 class PendingFleetAccess(models.Model):
@@ -639,17 +628,3 @@ class SyncQueue(models.Model):
         else:
             state = f'pending ({self.attempts} attempts)'
         return f"{self.model_label}#{self.object_id} - {state}"
-
-
-class RoamingLog(models.Model):
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='roaming_logs')
-    driver = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='roaming_logs')
-    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='roaming_logs')
-    notes = models.TextField(blank=True)
-    recorded_at = models.DateTimeField(auto_now_add=True, db_index=True)
-
-    class Meta:
-        ordering = ['-recorded_at']
-
-    def __str__(self):
-        return f"{self.vehicle} - Roaming at {self.recorded_at}"

@@ -4,18 +4,12 @@ import { IS_REMOTE } from "../../../../lib/api-service";
 import BackfillDetail from "./BackfillDetail";
 import Pager from "./Pager";
 import ReportTableModal from "./ReportTableModal";
-import { formatAuditItem, formatAuditDetails, matchesAuditRow, useDebouncedSearchAll } from "../reportHook";
+import { formatAuditAction, formatAuditItem,formatAuditDetails, matchesAuditRow, useDebouncedSearchAll } from "../reportHook";
 
 const AUDIT_COLUMNS = ["Timestamp", "Action", "Item", "Details", "User"];
 // Main card shows a short preview like the other report cards (FleetRecords) —
 // "View All" opens the modal for the full paginated list.
 const PREVIEW_SIZE = 5;
-
-const ACTION_COLORS = {
-  CREATE: "#22c55e",
-  UPDATE: "#3b82f6",
-  DELETE: "#ef4444",
-};
 
 export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onAuditFetchAll, onExportPDF, pageSize }) {
   const [search, setSearch] = useState("");
@@ -111,17 +105,7 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onA
         {backfillId ? (isOpen ? "▾ " : "▸ ") : ""}
         {l.created_at ? new Date(l.created_at).toLocaleString() : "—"}
       </td>
-      <td className={cellClass}>
-        <span
-          className="rpt-action-pill"
-          style={{
-            background: `${ACTION_COLORS[l.action] || "#64748b"}22`,
-            color: ACTION_COLORS[l.action] || "#64748b",
-          }}
-        >
-          {l.action_display || l.action}
-        </span>
-      </td>
+      <td className={cellClass}>{formatAuditAction(l)}</td>
       <td className={cellClass}>{formatAuditItem(l)}</td>
       <td className={cellClass}>{formatAuditDetails(l)}</td>
       <td className={`${cellClass} rpt-muted`}>{l.user_name || "System"}</td>

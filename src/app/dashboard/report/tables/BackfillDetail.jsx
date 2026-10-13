@@ -32,7 +32,7 @@ export default function BackfillDetail({ id }) {
   return (
     <>
       <div className="rpt-muted" style={{ marginBottom: 8 }}>
-        {record.source_display} · {record.ticket_count} ticket(s) · {record.reason}
+        {record.ticket_count} ticket(s) · {record.reason}
         {record.has_csv && (
           <button className="rpt-btn rpt-btn--secondary" style={{ marginLeft: 12 }} onClick={download}>Download CSV</button>
         )}

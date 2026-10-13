@@ -205,7 +205,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
       id: batchId,
       issued_by: accountableOfficer,
       total_amount: totalCollections,
-      status: "OPEN",
       covers_date: dateIssued,
       collections,
       deposits,

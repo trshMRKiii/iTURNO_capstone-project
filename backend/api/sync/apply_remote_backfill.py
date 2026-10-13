@@ -42,7 +42,7 @@ def apply_pending():
                     object_repr=f"Remote backfill: {sum(len(r['ticket_ids']) for r in results)} ticket(s)",
                     changes={'source': 'remote_backfill', 'requested_by': req.requested_by_name},
                 )
-                record_batch_history('REMOTE', req.payload['rows'], results, None, req.requested_by_name)
+                record_batch_history(req.payload['rows'], results, None, req.requested_by_name)
                 req.status, req.result_reason = 'APPLIED', ''
                 applied += 1
             else:
@@ -63,7 +63,7 @@ def apply_pending():
                     changes={'source': 'remote_backfill', 'requested_by': req.requested_by_name},
                 )
                 BackfillRecord.objects.create(
-                    source='REMOTE', ticket_count=len(tickets),
+                    ticket_count=len(tickets),
                     reason=resolved['reason'], issued_at=resolved['historical_dt'],
                     created_by_name=req.requested_by_name,
                 )

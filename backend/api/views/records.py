@@ -207,7 +207,6 @@ def remittance_batches(request):
             batch_code=data.get('id'),
             issued_by=request.user if request.user.is_authenticated else None,
             total_amount=data.get('total_amount', 0),
-            status=data.get('status', 'OPEN'),
             covers_date=data.get('covers_date') or None,
         )
         for c in data.get('collections', []):

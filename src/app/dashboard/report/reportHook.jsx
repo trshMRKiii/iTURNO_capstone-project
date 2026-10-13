@@ -76,24 +76,24 @@ export const formatChanges = (changes) => {
   return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
 };
 
-// Some models (e.g. Ticket) use a long generated string as their primary key
-// instead of a small sequential number — showing that raw id next to the
-// model name is meaningless to a user, so it's dropped and left to the
-// Details column's object_repr to identify the record instead.
-export const formatAuditItem = (log) =>
-  log.object_id && String(log.object_id).length <= 12
-    ? `${log.model_name} #${log.object_id}`
-    : log.model_name;
+const AUDIT_ACTION_LABELS = { CREATE: "Created", UPDATE: "Updated", DELETE: "Deleted" };
+export const formatAuditAction = (log) => AUDIT_ACTION_LABELS[log.action] || log.action_display || log.action;
 
-// object_repr alone only names which record was touched (e.g. "Ticket SJ-1"),
-// not what happened to it — pair it with the submitted field changes so the
-// column reads as an instruction ("Ticket SJ-1 — status: CANCELLED, ...")
-// instead of just repeating the item's identity.
-export const formatAuditDetails = (log) => {
-  const changes = formatChanges(log.changes);
-  if (log.object_repr && changes !== "—") return `${log.object_repr} — ${changes}`;
-  return log.object_repr || changes;
+// Item names the record that was touched in human terms ("Vehicle: DSH-6456",
+// "Driver: Cruz, Amalia") rather than a database id like "Vehicle #133", which
+// tells a reader nothing. The id is only a fallback when there's no label, and
+// is skipped for models keyed by a long generated string.
+export const formatAuditItem = (log) => {
+  const label = (log.model_name || "").replace(/([a-z])([A-Z])/g, "$1 $2");
+  const repr = log.object_repr;
+  if (repr) return repr.toLowerCase().startsWith(label.toLowerCase()) ? repr : `${label}: ${repr}`;
+  return log.object_id && String(log.object_id).length <= 12 ? `${label} #${log.object_id}` : label;
 };
+
+// Details is only what changed (the Action column already says create / update
+// / delete and Item already says which record), so it no longer repeats the
+// record's name in front of the field changes.
+export const formatAuditDetails = (log) => formatChanges(log.changes);
 
 // Shared row-match predicates: used both by each report table's on-screen
 // search box (filtering the loaded preview/page) and by report.jsx's export

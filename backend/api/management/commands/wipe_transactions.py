@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from api.models import Ticket, RemittanceBatch, AuditLog, RoamingLog, SyncQueue
+from api.models import Ticket, RemittanceBatch, AuditLog, SyncQueue
 
 # RemittanceBatch cascades to Deposit/Collection on both 'default' and
 # 'supabase' (mirrored FK behavior), so they don't need to be listed here.
@@ -9,13 +9,12 @@ from api.models import Ticket, RemittanceBatch, AuditLog, RoamingLog, SyncQueue
 # TicketSeries.requisition is CASCADE, so wiping Requisition would take
 # TicketSeries down with it.
 SUPABASE_MODELS = [Ticket, RemittanceBatch, AuditLog]
-LAN_ONLY_MODELS = [RoamingLog]
 QUEUE_LABELS = ['api.Ticket', 'api.RemittanceBatch', 'api.Deposit', 'api.Collection', 'api.AuditLog']
 
 
 class Command(BaseCommand):
     help = ('Debug-stage reset: deletes Ticket/RemittanceBatch(+Deposit/Collection)/AuditLog '
-            'from both LAN (default) and Supabase (supabase), plus RoamingLog on LAN only. '
+            'from both LAN (default) and Supabase (supabase). '
             'Leaves User/Driver/Vehicle/TicketSeries/Requisition untouched. Also clears the '
             'matching SyncQueue backlog so nothing is left queued for the wiped rows.')
 
@@ -23,7 +22,7 @@ class Command(BaseCommand):
         parser.add_argument('--yes', action='store_true', help='Actually perform the deletion (otherwise dry-run).')
 
     def handle(self, *args, **options):
-        counts = {m.__name__: m.objects.using('default').count() for m in SUPABASE_MODELS + LAN_ONLY_MODELS}
+        counts = {m.__name__: m.objects.using('default').count() for m in SUPABASE_MODELS}
         supabase_counts = {m.__name__: m.objects.using('supabase').count() for m in SUPABASE_MODELS}
         queue_count = SyncQueue.objects.filter(model_label__in=QUEUE_LABELS).count()
 
@@ -38,7 +37,7 @@ class Command(BaseCommand):
         for model in SUPABASE_MODELS:
             with transaction.atomic(using='supabase'):
                 model.objects.using('supabase').all().delete()
-        for model in SUPABASE_MODELS + LAN_ONLY_MODELS:
+        for model in SUPABASE_MODELS:
             with transaction.atomic(using='default'):
                 model.objects.using('default').all().delete()
 

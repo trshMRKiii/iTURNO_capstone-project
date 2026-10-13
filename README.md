@@ -171,7 +171,7 @@ backend/
                                       # TicketSeries, TicketForm, TicketPrice, PUVType,
                                       # TerminalPrice, WipMode, RemittanceBatch, Deposit,
                                       # Collection, AuditLog, BackupRecord, BackfillRecord,
-                                      # SyncQueue, RoamingLog, RemoteBackfillRequest
+                                      # SyncQueue, RemoteBackfillRequest
         views/                        # API endpoints (viewsets, records, reports, backfill, auth)
         sync/                         # Supabase push/pull sync engine
         management/commands/         # sync_worker, seed_supabase, backfill_driver_qr, etc.

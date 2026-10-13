@@ -230,7 +230,7 @@ def _reserve_and_create(resolved):
                 status='COLLECTED', is_verified=True,
                 collection_amount=resolved['form'].price, active_user=resolved['active_user'],
                 active_user_name='' if resolved['active_user'] else 'Paper Backfill',
-                dispatched_at=resolved['historical_dt'], reason=resolved['reason'],
+                dispatched_at=resolved['historical_dt'],
             )
             # issued_at/created_at are auto_now_add=True — .create() always forces
             # them to now() regardless of what's passed in (Field.pre_save()). Only
@@ -302,7 +302,7 @@ def run_batch(rows, commit):
     return results, True
 
 
-def record_batch_history(source, rows, results, user, name=''):
+def record_batch_history(rows, results, user, name=''):
     """One history entry for the whole batch (not one per ticket); `entries` keeps every
     ticket so the history row can be opened to see exactly what was added."""
     times = {r.get(F_ISSUED_AT) for r in rows}
@@ -317,7 +317,6 @@ def record_batch_history(source, rows, results, user, name=''):
     ]
     authed = user and getattr(user, 'is_authenticated', False)
     return BackfillRecord.objects.create(
-        source=source,
         created_by=user if authed else None,
         created_by_name=str(user) if authed else name,
         ticket_count=len(entries),
@@ -339,7 +338,7 @@ def backfill_batch(request):
     results, ok = run_batch(rows, commit)
     if ok and commit:
         count = sum(len(r['ticket_ids']) for r in results)
-        record = record_batch_history('MANUAL', rows, results, request.user)
+        record = record_batch_history(rows, results, request.user)
         record_audit_log(
             user=request.user, action='CREATE', model_name='Ticket',
             object_id=','.join(i for r in results for i in r['ticket_ids']),
@@ -443,7 +442,6 @@ def backfill_import(request):
     record = None
     if result['imported_count']:
         record = BackfillRecord.objects.create(
-            source='CSV',
             created_by=request.user if request.user and request.user.is_authenticated else None,
             created_by_name=str(request.user) if request.user and request.user.is_authenticated else '',
             ticket_count=sum(r['quantity'] for r in result['imported']),

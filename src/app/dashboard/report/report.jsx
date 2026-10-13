@@ -12,6 +12,7 @@ import {
   matchesRemittanceRow,
   matchesAuditRow,
   formatAuditItem,
+  formatAuditAction,
   formatAuditDetails,
 } from "./reportHook";
 import { exportTablePDF } from "./exportPDF";
@@ -349,7 +350,7 @@ export default function Report() {
 
   const buildAuditExportRow = (l) => ({
     Timestamp: l.created_at ? new Date(l.created_at).toLocaleString() : "—",
-    Action: l.action_display || l.action,
+    Action: formatAuditAction(l),
     Item: formatAuditItem(l),
     Details: formatAuditDetails(l),
     User: l.user_name || "System",

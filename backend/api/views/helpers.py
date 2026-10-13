@@ -100,17 +100,15 @@ def expire_stale_queue_tickets():
 
         vehicle_ids = set()
         routes = set()
-        reason = 'Auto-cancelled: vehicle was not dispatched before end of day.'
         now = timezone.now()
         for ticket in stale:
             ticket.status = 'CANCELLED'
-            ticket.reason = reason
             ticket.updated_at = now  # bulk_update bypasses auto_now, so set it explicitly
             vehicle_ids.add(ticket.vehicle_id)
             if ticket.route_id:
                 routes.add(ticket.route_id)
 
-        Ticket.objects.bulk_update(stale, ['status', 'reason', 'updated_at'])
+        Ticket.objects.bulk_update(stale, ['status', 'updated_at'])
 
         # The driver checked in for that stale shift never got dispatched, so
         # the vehicle reverts to its registered owner rather than staying

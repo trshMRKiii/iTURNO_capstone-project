@@ -4,8 +4,6 @@ import { useFeedback } from "../../../components/ui/kit";
 
 const EMPTY_SERIES = {
   ticket_form: "",
-  pad_no: "",
-  box_no: "",
   start_no: "",
   end_no: "",
   total_value: "",
@@ -184,8 +182,6 @@ export function useRequisition() {
             body: JSON.stringify({
               series_no: `${item.start_no}-${item.end_no}`,
               ticket_form: item.ticket_form,
-              pad_no: item.pad_no || "",
-              box_no: item.box_no || "",
               start_no: item.start_no,
               end_no: item.end_no,
               unit_value: 0,
