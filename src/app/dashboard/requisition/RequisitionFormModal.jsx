@@ -120,6 +120,7 @@ const RequisitionFormModal = ({
                   <label className="req-label">Start No.</label>
                   <input
                     className="req-input"
+                    inputMode="numeric"
                     value={item.start_no}
                     onChange={(e) =>
                       updateSeriesItem(i, "start_no", e.target.value)
@@ -131,6 +132,7 @@ const RequisitionFormModal = ({
                   <label className="req-label">End No.</label>
                   <input
                     className="req-input"
+                    inputMode="numeric"
                     value={item.end_no}
                     onChange={(e) =>
                       updateSeriesItem(i, "end_no", e.target.value)

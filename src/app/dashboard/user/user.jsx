@@ -30,6 +30,97 @@ const ROLES = [
   ["MANAGER", "Manager"],
   ["SUPERADMIN", "Admin"],
 ];
+const ROLE_LABELS = Object.fromEntries(ROLES);
+
+const STATUSES = [
+  ["new", "New"],
+  ["active", "Active"],
+  ["inactive", "Inactive"],
+];
+const STATUS_LABELS = Object.fromEntries(STATUSES);
+const statusOf = (u) => (u.must_reset_password ? "new" : u.is_active ? "active" : "inactive");
+
+const fullNameOf = (u) => [u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ");
+
+// Name/email columns toggle A–Z / Z–A. Role and status open a menu to pick which value is
+// listed first (scales to any number of roles); the rest follow in the order listed above.
+const COLUMNS = [
+  { label: "Full Name", sortValue: (u) => fullNameOf(u).toLowerCase() },
+  { label: "Username (Email)", sortValue: (u) => (u.username || "").toLowerCase() },
+  { label: "Role", options: ROLES, valueOf: (u) => u.role },
+  { label: "Fleet & Driver access" },
+  { label: "Status", options: STATUSES, valueOf: statusOf },
+];
+
+const Chevrons = ({ dir }) => (
+  <svg className="usr-sort-icon" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    {dir !== -1 && <path d="m2 4 3-3 3 3" opacity={dir === 1 ? 1 : 0.45} />}
+    {dir !== 1 && <path d="m2 6 3 3 3-3" opacity={dir === -1 ? 1 : 0.45} />}
+  </svg>
+);
+
+function SortHeader({ column, sort, users, onToggle, onPin }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const active = sort.label === column.label;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  if (!column.options) {
+    return (
+      <button type="button" className={`usr-sort${active ? " is-active" : ""}`} onClick={() => onToggle(column.label)}>
+        {column.label}
+        <Chevrons dir={active ? sort.dir : 0} />
+      </button>
+    );
+  }
+
+  const pinnedText = active && column.options.find(([v]) => v === sort.pin)?.[1];
+  return (
+    <div className="usr-sort-wrap" ref={ref}>
+      <button
+        type="button"
+        className={`usr-sort${active ? " is-active" : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {column.label}
+        {pinnedText && <span className="usr-sort-pin">{pinnedText}</span>}
+        <Chevrons dir={-1} />
+      </button>
+      {open && (
+        <ul className="usr-sort-menu" role="listbox">
+          <li className="usr-sort-menu-title">Show first</li>
+          {column.options.map(([value, text]) => (
+            <li key={value}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={active && sort.pin === value}
+                className={active && sort.pin === value ? "is-active" : ""}
+                onClick={() => { onPin(column.label, value); setOpen(false); }}
+              >
+                <span>{text}</span>
+                <small>{users.filter((u) => column.valueOf(u) === value).length}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 // Drives the sidebar checklist; `fields` are the required keys in each section.
 const STAFF_SECTIONS = [
@@ -90,6 +181,7 @@ function User({ userRole }) {
   const initialFormRef = useRef(EMPTY_FORM);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [sort, setSort] = useState({ label: null, dir: 1, pin: null });
   // Field errors appear only after a failed submit, then clear as each field is fixed.
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const fieldErrors = submitAttempted ? validateStaffForm(form) : {};
@@ -100,7 +192,16 @@ function User({ userRole }) {
     fetchUsers();
     // The header's "My profile" editor changes a row in this list.
     window.addEventListener("profile-updated", fetchUsers);
-    return () => window.removeEventListener("profile-updated", fetchUsers);
+    // Status changes happen in other sessions (a new hire setting their password), so
+    // keep the list fresh while this tab is in view instead of only on mount.
+    const refreshIfVisible = () => document.visibilityState === "visible" && fetchUsers();
+    const timer = setInterval(refreshIfVisible, 10000);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      window.removeEventListener("profile-updated", fetchUsers);
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
   }, []);
 
   const fetchUsers = async () => {
@@ -147,7 +248,7 @@ function User({ userRole }) {
           if (!userData) throw new Error("Failed to save user");
           fetchUsers();
           resetModal();
-          return { success: { title: editing ? "Staff account updated" : "Staff account registered", message: `${payload.first_name} ${payload.last_name} was saved.` } };
+          return { success: { title: editing ? "Staff account updated" : "Staff account registered", message: userData.email_queued ? `${payload.first_name} ${payload.last_name} was saved. Their login email will be sent automatically once the system is back online.` : `${payload.first_name} ${payload.last_name} was saved.` } };
         } catch (err) {
           setError(err.message);
           return { error: { title: "Couldn't save staff account", message: err.message || "Nothing was changed. Try again." } };
@@ -233,19 +334,41 @@ function User({ userRole }) {
     }
   };
 
-  const filteredUsers = users.filter((u) => {
-    const q = searchTerm.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      ([u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ")).toLowerCase().includes(q) ||
-      (u.role || "").toLowerCase().includes(q)
-    );
-  });
+  // First click sorts ascending, clicking the same column again flips it.
+  const toggleSort = (label) =>
+    setSort((s) => (s.label === label ? { label, dir: -s.dir } : { label, dir: 1 }));
+  // Picking the already-pinned value un-pins it.
+  const pinValue = (label, pin) =>
+    setSort((s) => (s.label === label && s.pin === pin ? { label: null, dir: 1 } : { label, dir: 1, pin }));
+
+  const sortColumn = COLUMNS.find((c) => c.label === sort.label);
+  const sortValue = sortColumn?.options
+    ? (u) => {
+        const v = sortColumn.valueOf(u);
+        return v === sort.pin ? -1 : sortColumn.options.findIndex(([k]) => k === v);
+      }
+    : sortColumn?.sortValue;
+
+  const filteredUsers = users
+    .filter((u) => {
+      const q = searchTerm.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        fullNameOf(u).toLowerCase().includes(q) ||
+        (ROLE_LABELS[u.role] || u.role || "").toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (!sortValue) return 0;
+      const x = sortValue(a);
+      const y = sortValue(b);
+      return (x < y ? -1 : x > y ? 1 : 0) * sort.dir;
+    });
 
   const liveErrors = validateStaffForm(form);
   const doneCount = REQUIRED_FIELD_COUNT - Object.keys(liveErrors).length;
   const fullName = [form.first_name, form.middle_name, form.last_name].filter(Boolean).join(" ");
-  const roleLabel = ROLES.find(([value]) => value === form.role)?.[1];
+  const roleLabel = ROLE_LABELS[form.role];
 
   return (
     <div className="usr-page">
@@ -312,17 +435,19 @@ function User({ userRole }) {
           <table className="usr-table">
             <thead>
               <tr>
-                {[
-
-                  "Full Name",
-                  "Username (Email)",
-                  "Role",
-                  "Fleet & Driver access",
-                  "Status",
-                  ...(canManageStaff ? ["Actions"] : []),
-                ].map((h) => (
-                  <th key={h}>{h}</th>
+                {COLUMNS.map((column) => (
+                  <th
+                    key={column.label}
+                    aria-sort={!column.options && sort.label === column.label ? (sort.dir === 1 ? "ascending" : "descending") : undefined}
+                  >
+                    {column.sortValue || column.options ? (
+                      <SortHeader column={column} sort={sort} users={users} onToggle={toggleSort} onPin={pinValue} />
+                    ) : (
+                      column.label
+                    )}
+                  </th>
                 ))}
+                {canManageStaff && <th className="usr-th-center">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -355,14 +480,10 @@ function User({ userRole }) {
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="usr-row">
                    
-                    <td className="usr-td-name">
-                      {[user.first_name, user.middle_name, user.last_name]
-                        .filter(Boolean)
-                        .join(" ")}
-                    </td>
+                    <td className="usr-td-name">{fullNameOf(user)}</td>
                     <td className="usr-td-email">{user.username}</td>
                     <td>
-                      <span className="usr-role">{user.role}</span>
+                      <span className="usr-role">{ROLE_LABELS[user.role] || user.role}</span>
                     </td>
                     <td>
                       {user.role === "PERSONNEL" ? (
@@ -380,20 +501,8 @@ function User({ userRole }) {
                       )}
                     </td>
                     <td>
-                      <span
-                        className={`usr-status ${
-                          user.must_reset_password
-                            ? "usr-status--new"
-                            : user.is_active
-                            ? "usr-status--active"
-                            : "usr-status--inactive"
-                        }`}
-                      >
-                        {user.must_reset_password
-                          ? "New"
-                          : user.is_active
-                          ? "Active"
-                          : "Inactive"}
+                      <span className={`usr-status usr-status--${statusOf(user)}`}>
+                        {STATUS_LABELS[statusOf(user)]}
                       </span>
                     </td>
                     {canManageStaff && <td>

@@ -11,8 +11,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from ..models import BackupRecord
+from ..models import BackupRecord, SyncQueue
 from ..serializers import BackupRecordSerializer
+from ..sync.pause import paused
+from ..sync.registry import PUSH_MODELS
+from ..sync.signals import bulk_load
+from ..ws.broadcast import broadcast_queue_updated
 from .helpers import record_audit_log
 
 SCHEDULED_LABEL = "Scheduled daily backup"
@@ -120,6 +124,17 @@ def system_backup_download(request, backup_id):
     return response
 
 
+def _requeue_for_sync():
+    """Queue every restored row for push in one pass (the per-row signals are muted during a restore)."""
+    SyncQueue.objects.all().delete()
+    entries = [
+        SyncQueue(model_label=model._meta.label, object_id=str(pk))
+        for model in PUSH_MODELS
+        for pk in model.objects.values_list("pk", flat=True)
+    ]
+    SyncQueue.objects.bulk_create(entries, batch_size=500)
+
+
 def _restore_from_content(content_bytes):
     """Wipe all api-app data (except BackupRecord) and reload it from a dumpdata JSON payload."""
     tmp_path = f"_restore_tmp_{datetime.now().strftime('%Y%m%d_%H%M%S%f')}.json"
@@ -128,18 +143,22 @@ def _restore_from_content(content_bytes):
 
     api_models = [m for m in apps.get_app_config("api").get_models() if m is not BackupRecord]
 
-    with connection.cursor() as cursor:
-        cursor.execute("PRAGMA foreign_keys = OFF;")
-    try:
-        with transaction.atomic():
-            for model in api_models:
-                model.objects.all().delete()
-            management.call_command("loaddata", full_path)
-    finally:
+    with paused():
         with connection.cursor() as cursor:
-            cursor.execute("PRAGMA foreign_keys = ON;")
-        if backup_storage.exists(saved_name):
-            backup_storage.delete(saved_name)
+            cursor.execute("PRAGMA foreign_keys = OFF;")
+        try:
+            with transaction.atomic():
+                with bulk_load():
+                    for model in api_models:
+                        model.objects.all().delete()
+                    management.call_command("loaddata", full_path)
+                    _requeue_for_sync()
+                transaction.on_commit(broadcast_queue_updated)
+        finally:
+            with connection.cursor() as cursor:
+                cursor.execute("PRAGMA foreign_keys = ON;")
+            if backup_storage.exists(saved_name):
+                backup_storage.delete(saved_name)
 
 
 @api_view(["POST"])

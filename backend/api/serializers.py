@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Max, Sum
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, PaperIssuance, AuditLog, BackupRecord, BackfillRecord, WipMode
 from .sms import send_sms_async, queue_position_message
+from .sync.settings_outbox import next_offline_pk, park
 
 
 class SelfProfileSerializer(serializers.ModelSerializer):
@@ -26,12 +29,18 @@ class UserSerializer(serializers.ModelSerializer):
         error_messages={'invalid': 'Enter a valid email address.'},
         validators=[UniqueValidator(queryset=User.objects.all(), message='A user with that email already exists.')],
     )
+    # True while the login email is still parked (offline); set by UserViewSet.perform_create.
+    email_queued = serializers.SerializerMethodField()
+
+    def get_email_queued(self, obj):
+        return getattr(obj, 'email_queued', False)
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'first_name', 'middle_name', 'last_name', 'contact',
             'role', 'is_active', 'must_reset_password', 'email_verified', 'can_manage_fleet',
+            'email_queued',
         ]
         extra_kwargs = {
             'must_reset_password': {'read_only': True},
@@ -39,10 +48,10 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        # No password is generated yet — the account can't log in until the
-        # recipient clicks the verification link emailed to them (proves the
-        # address is real), at which point verify_email() in views/auth.py
-        # generates and emails the temp password. See UserViewSet.perform_create.
+        # Accounts are active immediately: a temp password is generated here and emailed by
+        # UserViewSet.perform_create — no verification step first.
+        from .views.helpers import save_user, supabase_reachable  # lazy: views imports this module
+        raw_password = get_random_string(12)
         user = User(
             username=validated_data['username'],
             first_name=validated_data.get('first_name', ''),
@@ -52,13 +61,20 @@ class UserSerializer(serializers.ModelSerializer):
             is_active=validated_data.get('is_active', True),
             can_manage_fleet=validated_data.get('can_manage_fleet', False),
             must_reset_password=True,
-            email_verified=False,
+            email_verified=True,
         )
-        user.set_unusable_password()
-        # User is Supabase-authoritative (see api/sync/registry.py) — saving to
-        # 'default' here would get deleted by the LAN's next pull cycle before
-        # anyone could click the verification email this create() triggers.
-        user.save(using='supabase')
+        user.set_password(raw_password)
+        user.raw_password = raw_password
+        # User is Supabase-authoritative (see api/sync/registry.py) — saving only to
+        # 'default' would be deleted by the LAN's next pull cycle (DEBUG: local db).
+        # Offline, it is saved locally under an id above LOCAL_ADMIN_PK_BASE and parked
+        # so it is pushed under that same id once Supabase is back (see settings_outbox).
+        if settings.DEBUG or supabase_reachable():
+            save_user(user)
+        else:
+            user.pk = next_offline_pk(User)
+            user.save(using='default')
+            park(user)
         return user
 
 

@@ -14,7 +14,8 @@ and syncing records to the cloud for remote (off-LAN) access.
 4. [Dashboard Modules](#dashboard-modules)
 5. [Core Workflows](#core-workflows)
 6. [LAN + Remote Architecture](#lan--remote-architecture)
-7. [Project Structure](#project-structure)
+7. [Running the Remote Sync](#running-the-remote-sync)
+8. [Project Structure](#project-structure)
 
 ## Tech Stack
 
@@ -61,12 +62,9 @@ pre-configured to trust `localhost:3000`, `5173`, and `5174`
 Copy `backend/.env.example` to `backend/.env` and fill in the values.
 `DEBUG=True` (default) uses `db.sqlite3` and never pushes data to Supabase;
 `DEBUG=False` uses `db_production.sqlite3` and enables the real sync worker.
-To keep the Supabase mirror (used by the remote/Vercel deployment) up to
-date, run the sync worker alongside the server:
-
-```bash
-python manage.py sync_worker
-```
+The Supabase mirror used by the remote/Vercel deployment is only kept current
+while the sync worker runs alongside the server. See
+[Running the Remote Sync](#running-the-remote-sync).
 
 ### Frontend
 
@@ -161,6 +159,71 @@ access before/after deploying the frontend to Vercel:
   deployed off-LAN (`VITE_API_MODE=remote`). Transactional modules are
   view-only remotely; Route/User/Settings/Staff/Vehicle-Driver registry
   fields support remote edits reserved for SUPERADMIN.
+
+## Running the Remote Sync
+
+The remote site (Vercel) only reads from Supabase, so it shows stale data
+unless the LAN backend is syncing. The sync is a separate process from
+`runserver` — start it in its own terminal on the **one PC that hosts the
+Django backend** (the terminal PC). Staff and remote users never run it; they
+just open the site in a browser. Run exactly one worker: a second one on
+another copy of the database would push conflicting data to Supabase.
+
+**One-time setup**
+
+1. In `backend/.env`, fill in the `DB_*` Supabase values (use the
+   **transaction pooler**, port 6543), set `DEBUG=False` and `SYNC_ENABLED=True`.
+2. Seed Supabase with existing reference data (Users, Routes, pricing, etc.).
+   It never overwrites rows already on Supabase:
+   ```bash
+   python manage.py seed_supabase --dry-run   # preview
+   python manage.py seed_supabase
+   ```
+3. Set the Vercel project env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `REMOTE_JWT_SECRET`, `EMAIL_LINK_SECRET` (same value as `backend/.env`),
+   `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`, and
+   `VITE_API_MODE=remote` for the frontend build.
+
+**Start it automatically (recommended, do this once)**
+
+`backend\run_sync_worker.bat` runs the worker through
+`..\.venv\Scripts\python.exe`, appends output to `backend\sync_worker.log`,
+and restarts it 10 seconds after any exit. To have it start at every login:
+
+1. Press `Win + R`, type `shell:startup`, press Enter.
+2. Right-click `run_sync_worker.bat` → *Create shortcut*, and move that
+   shortcut into the Startup folder that opened.
+
+After that, nobody needs to type anything after a reboot.
+
+**Starting it manually (testing only)**
+
+```bash
+cd backend
+python manage.py sync_worker                 # loops until Ctrl+C
+python manage.py sync_worker --interval 60   # optional: override SYNC_INTERVAL_SECONDS
+```
+
+Each cycle pulls admin edits from Supabase (Users, Routes, pricing), applies
+queued remote backfill requests, then pushes pending local changes.
+
+| Command | Use |
+| ------- | --- |
+| `sync_worker` | Continuous sync (the normal way) |
+| `sync_once` | Run a single cycle, e.g. to test the connection |
+| `drain_sync` | Push the whole `SyncQueue` backlog back-to-back (e.g. after a bulk seed) |
+| `seed_supabase` | One-time bootstrap of reference data |
+
+**Pausing and troubleshooting**
+
+- `SYNC_ENABLED=False` in `backend/.env` stops all Supabase traffic. It is
+  re-read every cycle, so no restart is needed; local changes keep queuing and
+  push when switched back to `True`.
+- Syncing also pauses automatically while a backup restore is running.
+- With `DEBUG=True`, nothing is pushed to Supabase, so test data can't reach
+  the shared mirror. If `drain_sync` stops with "pushed nothing", check this.
+- Sync logs go to the `sync` logger; with the `.bat` launcher see
+  `backend\sync_worker.log`.
 
 ## Project Structure
 

@@ -1,20 +1,25 @@
 import time
 from datetime import datetime, timedelta, timezone as dt_timezone
 
+from django.conf import settings
 from django.db import connections, transaction
 from django.db.models import F
 from django.utils import timezone
 
 from ..models import Ticket, TicketPrice, AuditLog, Vehicle, Route, User
+from ..sync.pause import sync_enabled
 
 _SUPABASE_PROBE_TTL = 10
 _supabase_probe = (0.0, False)
 
 
 def supabase_reachable():
-    """True if the Supabase mirror can be reached right now. Result is cached
-    briefly so an offline LAN doesn't pay a connect attempt on every request."""
+    """True if the Supabase mirror can be reached right now (always False while
+    SYNC_ENABLED is off). Result is cached briefly so an offline LAN doesn't pay
+    a connect attempt on every request."""
     global _supabase_probe
+    if not sync_enabled():
+        return False
     checked_at, ok = _supabase_probe
     if time.monotonic() - checked_at < _SUPABASE_PROBE_TTL:
         return ok
@@ -26,6 +31,29 @@ def supabase_reachable():
         ok = False
     _supabase_probe = (time.monotonic(), ok)
     return ok
+
+
+def can_write_remote():
+    """Gate for actions that normally need Supabase. DEBUG=True runs against the local
+    throwaway db with pushing disabled, so those actions are allowed offline."""
+    return settings.DEBUG or supabase_reachable()
+
+
+def remote_db():
+    """Alias to use for Supabase-authoritative rows: local under DEBUG, else 'supabase'."""
+    return 'default' if settings.DEBUG else 'supabase'
+
+
+def mirror_user(user):
+    """Copy a User just written to Supabase into the local db right away: login reads the
+    local copy, so it must not wait for the next pull."""
+    if remote_db() != 'default':
+        user.save(using='default')
+
+
+def save_user(user):
+    user.save(using=remote_db())
+    mirror_user(user)
 
 
 def parse_date_start(date_str):
@@ -61,7 +89,7 @@ def expire_stale_unverified_accounts():
     Targets 'supabase' directly — User is Supabase-authoritative (see
     api/sync/registry.py), so that's the copy that actually needs cleaning."""
     cutoff = timezone.now() - timedelta(days=30)
-    User.objects.using('supabase').filter(email_verified=False, created_at__lt=cutoff).delete()
+    User.objects.using(remote_db()).filter(email_verified=False, created_at__lt=cutoff).delete()
 
 
 def filter_collected(start_date=None, end_date=None):

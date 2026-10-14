@@ -11,7 +11,7 @@ router.register(r'drivers', DriverViewSet)
 router.register(r'routes', RouteViewSet)
 router.register(r'vehicles', VehicleViewSet)
 router.register(r'tickets', TicketViewSet)
-router.register(r'ticketPrice', TicketPriceViewSet)
+
 router.register(r'puvtypes', PUVTypeViewSet, basename="puvtypes")
 router.register(r'remittance', RemittanceBatchViewSet)
 router.register(r'ticket-forms', TicketFormViewSet)

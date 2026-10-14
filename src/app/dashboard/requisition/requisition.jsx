@@ -50,6 +50,7 @@ function Requisition() {
     inventory,
     approvedBy,
     setApprovedBy,
+    handleVoid,
     refresh,
   } = useRequisition();
 
@@ -186,9 +187,14 @@ function Requisition() {
                           <span className="rq-num">
                             {formatCurrency(ts.current_value)}
                             {!IS_REMOTE && (
-                              <button type="button" className="rq-link" onClick={() => setPaperSeries(ts)}>
-                                Paper range
-                              </button>
+                              <>
+                                <button type="button" className="rq-link" onClick={() => setPaperSeries(ts)}>
+                                  Paper range
+                                </button>
+                                <button type="button" className="rq-link rq-link--danger" onClick={() => handleVoid(ts)}>
+                                  Void
+                                </button>
+                              </>
                             )}
                           </span>
                         </div>

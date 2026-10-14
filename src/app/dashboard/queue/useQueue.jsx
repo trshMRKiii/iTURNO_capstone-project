@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../../lib/api-service";
 import { getPhDateString } from "../../../lib/phDate";
+import { useQueueSocket } from "../../../lib/useQueueSocket";
 import { getExpiryStatus, getIwpStatus } from "../driver/driver-utils";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -92,6 +93,15 @@ export function useQueue(userRole = "") {
     fetchDrivers();
     fetchTicketSeries();
   }, []);
+
+  // Dispatch/roam (and other terminals) change vehicle status and series stock
+  // outside this hook, so those events re-pull everything the picker depends on.
+  const refreshQueueState = () => {
+    fetchTickets();
+    fetchVehicles();
+    fetchTicketSeries();
+  };
+  useQueueSocket(refreshQueueState);
 
   const updateSelectedSeriesId = (id) => {
     setSelectedSeriesId(id);
@@ -367,6 +377,7 @@ export function useQueue(userRole = "") {
     // Actions
     fetchTickets,
     fetchTicketSeries,
+    refreshQueueState,
     handleVehicleChange,
     selectVehicleById,
     resolveDriver,

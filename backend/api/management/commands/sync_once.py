@@ -3,6 +3,7 @@ import logging
 from django.core.management.base import BaseCommand
 
 from api.sync.apply_remote_backfill import apply_pending
+from api.sync.pause import sync_enabled
 from api.sync.pull import pull_all
 from api.sync.push import push_pending
 
@@ -17,6 +18,9 @@ class Command(BaseCommand):
                              help='Max rows to push this cycle (defaults to settings.SYNC_BATCH_SIZE).')
 
     def handle(self, *args, **options):
+        if not sync_enabled():
+            self.stdout.write('sync is off (SYNC_ENABLED=False in backend/.env) - nothing done.')
+            return
         # Pull first: push may need FK targets (Route, User, ...) that only
         # exist locally once this cycle's pull has landed them.
         pulled, deleted, pull_failed = pull_all()

@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 # Local dev: leave DEBUG unset in backend/.env (defaults to True).
 # Production: set DEBUG=False in the environment.
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'True') == 'False'
 
 ALLOWED_HOSTS = ['*']
 
@@ -150,12 +150,13 @@ DATABASES = {
 }
 
 # Sync engine (LAN SQLite <-> Supabase mirror) — see api/sync/
+# On/off switch is SYNC_ENABLED in backend/.env, read live (api/sync/pause.py) — no restart needed.
 SYNC_INTERVAL_SECONDS = int(os.getenv('SYNC_INTERVAL_SECONDS', '10'))
 SYNC_BATCH_SIZE = int(os.getenv('SYNC_BATCH_SIZE', '200'))
 
 # Scheduled backups saved to media/backups (set AUTO_BACKUP_KEEP=0 to disable)
 AUTO_BACKUP_INTERVAL_HOURS = int(os.getenv('AUTO_BACKUP_INTERVAL_HOURS', '24'))
-AUTO_BACKUP_KEEP = int(os.getenv('AUTO_BACKUP_KEEP', '7'))
+AUTO_BACKUP_KEEP = int(os.getenv('AUTO_BACKUP_KEEP', '28'))
 
 
 # Password validation
@@ -228,6 +229,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
+EMAIL_TIMEOUT = 8  # offline sends must fail fast (they get parked), not hang the request
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)

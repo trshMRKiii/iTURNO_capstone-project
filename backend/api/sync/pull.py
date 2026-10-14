@@ -1,6 +1,7 @@
 import logging
 
 from api.models import LOCAL_ADMIN_PK_BASE, User
+from api.sync.account_emails import flush_account_emails
 from api.sync.fleet_access import flush_fleet_access, pending_fleet_access
 from api.sync.registry import PULL_MODELS
 from api.sync.settings_outbox import flush_settings, pending_settings
@@ -35,6 +36,7 @@ def pull_all():
     flush_fleet_access()
     pending_fleet = pending_fleet_access()  # ticks still parked: keep them over the pulled copy
     flush_settings()
+    flush_account_emails()  # after flush_settings: offline-created accounts must reach Supabase first
     pending = pending_settings()  # settings rows still parked: local copy wins, never deleted as stale
     for model in PULL_MODELS:
         try:

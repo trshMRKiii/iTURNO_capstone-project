@@ -96,6 +96,31 @@ class PaperIssuanceTests(TestCase):
         self.assertEqual(data['expected_cash'], 0.0)
         self.assertEqual(data['difference'], 0.0)
 
+    def _void(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        client = APIClient()
+        client.force_authenticate(User.objects.create_user(username='v', password='x', role='SUPERADMIN'))
+        return client.post(f'/api/ticket-series/{self.series.id}/void/')
+
+    def test_void_frees_range_for_reentry(self):
+        from .models import Requisition, TicketSeries
+        self.assertEqual(self._void().status_code, 204)
+        self.assertFalse(TicketSeries.objects.exists())
+        self.assertFalse(Requisition.objects.exists())  # it held only this series
+        again = TicketSeries.objects.create(
+            series_no='S1', ticket_form=self.form, start_no='1', end_no='1000', unit_value=0,
+            requisition=Requisition.objects.create(),
+        )
+        self.assertTrue(again.pk)
+
+    def test_void_blocked_once_range_is_used(self):
+        from .models import TicketSeries
+        self._paper(1, 5)
+        res = self._void()
+        self.assertEqual(res.status_code, 400)
+        self.assertTrue(TicketSeries.objects.filter(pk=self.series.pk).exists())
+
 
 class ArchivableSettingsTests(TestCase):
     def setUp(self):
@@ -122,3 +147,50 @@ class ArchivableSettingsTests(TestCase):
 
     def test_unused_can_be_deleted(self):
         self.assertEqual(self.client.delete(f'/api/routes/{self.route.id}/').status_code, 204)
+
+
+class OfflineStaffRegistrationTests(TestCase):
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        self.client = APIClient()
+        self.client.force_authenticate(User.objects.create_user(username='adm', password='x', role='SUPERADMIN'))
+        self.payload = {'username': 'new@staff.ph', 'first_name': 'New', 'last_name': 'Staff', 'role': 'PERSONNEL'}
+
+    def test_login_email_is_parked_while_mail_is_down_then_sent(self):
+        from unittest import mock
+        from django.test import override_settings
+        from .models import PendingAccountEmail, User
+        from .sync.account_emails import flush_account_emails
+
+        with override_settings(DEBUG=True):
+            with mock.patch('api.views.viewsets.send_new_account_email', side_effect=OSError('offline')):
+                res = self.client.post('/api/users/', self.payload)
+            self.assertEqual(res.status_code, 201)
+            self.assertTrue(res.data['email_queued'])
+            parked = PendingAccountEmail.objects.get()
+
+            with mock.patch('api.views.viewsets.send_new_account_email') as send:
+                self.assertEqual(flush_account_emails(), 1)
+            send.assert_called_once()
+            self.assertEqual(send.call_args.args[1], parked.temp_password)
+            self.assertTrue(User.objects.get(username='new@staff.ph').check_password(parked.temp_password))
+            self.assertFalse(PendingAccountEmail.objects.exists())
+
+    def test_account_created_offline_is_parked_and_not_emailed_until_pushed(self):
+        from unittest import mock
+        from .models import LOCAL_ADMIN_PK_BASE, PendingAccountEmail, PendingSetting
+        from .sync.account_emails import flush_account_emails
+
+        with mock.patch('api.views.helpers.supabase_reachable', return_value=False):
+            res = self.client.post('/api/users/', self.payload)
+        self.assertEqual(res.status_code, 201)
+        self.assertGreater(res.data['id'], LOCAL_ADMIN_PK_BASE)
+        self.assertTrue(res.data['email_queued'])
+        self.assertTrue(PendingSetting.objects.filter(model_label='api.User', obj_id=res.data['id']).exists())
+
+        with mock.patch('api.views.helpers.supabase_reachable', return_value=True), \
+                mock.patch('api.views.viewsets.send_new_account_email') as send:
+            self.assertEqual(flush_account_emails(), 0)
+        send.assert_not_called()
+        self.assertTrue(PendingAccountEmail.objects.exists())

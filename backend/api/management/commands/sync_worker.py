@@ -6,6 +6,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 
+from api.sync.pause import is_paused
+
 logger = logging.getLogger('sync')
 
 
@@ -20,6 +22,11 @@ class Command(BaseCommand):
         interval = options['interval']
         self.stdout.write(f'Sync worker started, interval={interval}s. Ctrl+C to stop.')
         while True:
+            if is_paused():
+                # A backup restore is rewriting the DB; syncing now would fight it
+                # for the write lock and pull Supabase's users over the restored ones.
+                time.sleep(interval)
+                continue
             try:
                 # Long-running loop can outlive the DB connection (Supabase's
                 # pooler drops idle connections). Force Django to check and

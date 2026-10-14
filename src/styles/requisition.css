@@ -831,6 +831,7 @@
   cursor: pointer;
 }
 .rq-link:hover { color: var(--text-primary); text-decoration: underline; }
+.rq-link--danger:hover { color: #b42318; }
 
 .rq-total {
   padding-top: 14px;

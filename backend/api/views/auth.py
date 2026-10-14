@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import User
+from .helpers import remote_db, save_user
 from ..tokens import (
     sign_password_reset_token, verify_password_reset_token,
     verify_email_verification_token,
@@ -27,7 +28,7 @@ def forgot_password(request):
     # Supabase is the source of truth for User (see api/sync/registry.py) — look up
     # there directly so this sees accounts created/edited remotely without waiting
     # on the next pull cycle.
-    user = User.objects.using('supabase').filter(username__iexact=email).first()
+    user = User.objects.using(remote_db()).filter(username__iexact=email).first()
     if user:
         # Raw pk, not base64 — has to match the uid format api/remote/auth/[action].js's
         # resetPasswordRemote expects, since this link always opens on Vercel (see
@@ -71,7 +72,7 @@ def reset_password(request):
         return Response({'detail': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        user = User.objects.using('supabase').get(pk=uid)
+        user = User.objects.using(remote_db()).get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         return Response({'detail': 'Invalid or expired reset link.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -86,7 +87,7 @@ def reset_password(request):
         return Response({'detail': ' '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
 
     user.set_password(new_password)
-    user.save(using='supabase')
+    save_user(user)
     return Response({'detail': 'Password has been reset successfully.'})
 
 
@@ -99,7 +100,7 @@ def verify_email(request):
         return Response({'detail': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        user = User.objects.using('supabase').get(pk=uid)
+        user = User.objects.using(remote_db()).get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         return Response({'detail': 'Invalid or expired verification link.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -116,7 +117,7 @@ def verify_email(request):
     raw_password = get_random_string(12)
     user.email_verified = True
     user.set_password(raw_password)
-    user.save(using='supabase')
+    save_user(user)
     send_new_account_email(user, raw_password)
     return Response({'detail': 'Email verified. Check your inbox for your temporary password.'})
 
@@ -139,8 +140,8 @@ def change_password(request):
     # would silently strand the change there until the next pull cycle,
     # while the Staff Registry (which reads straight from supabase) keeps
     # showing the account as still needing a password change.
-    user = User.objects.using('supabase').get(pk=request.user.pk)
+    user = User.objects.using(remote_db()).get(pk=request.user.pk)
     user.set_password(new_password)
     user.must_reset_password = False
-    user.save(using='supabase')
+    save_user(user)
     return Response({'detail': 'Password changed successfully.'})

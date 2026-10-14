@@ -29,14 +29,12 @@ const peso = (n) => {
 // introducing a new palette: green=good, amber=pending, blue=active, red=critical,
 // slate=neutral. Every dot is always paired with a text label, never color alone.
 // Queued/Roamed mirror the Collection Log (mode=QUEUE) / Roaming Vehicle Log
-// (mode=UNLOAD) split on the Transaction page; Cancelled stays a separate
-// bucket regardless of mode.
+// (mode=UNLOAD) split on the Transaction page.
 const TICKET_STATUS_META = {
   QUEUE: { label: "Queued", color: "#1a2744" },
   UNLOAD: { label: "Roamed", color: "#3b82f6" },
-  CANCELLED: { label: "Cancelled", color: "#ef4444" },
 };
-const TICKET_STATUS_ORDER = ["QUEUE", "UNLOAD", "CANCELLED"];
+const TICKET_STATUS_ORDER = ["QUEUE", "UNLOAD"];
 
 // Matches AuditTrail.jsx's ACTION_COLORS exactly so audit entries look the same everywhere.
 const ACTION_COLORS = { CREATE: "#22c55e", UPDATE: "#3b82f6", DELETE: "#ef4444" };

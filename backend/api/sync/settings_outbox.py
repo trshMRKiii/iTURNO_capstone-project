@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 
 from django.apps import apps
+from django.conf import settings
 from django.db.models import Max
 
 from api.models import LOCAL_ADMIN_PK_BASE, PendingSetting
@@ -20,7 +21,7 @@ def park(instance):
 def flush_settings():
     """Push parked rows to Supabase; leave them parked while it is unreachable."""
     from api.views.helpers import supabase_reachable
-    if not PendingSetting.objects.exists() or not supabase_reachable():
+    if settings.DEBUG or not PendingSetting.objects.exists() or not supabase_reachable():
         return 0
     flushed = 0
     for pending in PendingSetting.objects.order_by('queued_at'):

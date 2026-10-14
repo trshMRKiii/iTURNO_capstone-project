@@ -35,7 +35,7 @@ function Queue({ userRole }) {
     handleDriverChange,
     handleIssueTicket,
     driverHasActiveTicket,
-    fetchTicketSeries,
+    refreshQueueState,
   } = useQueue(userRole);
 
   const [vehicleSearch, setVehicleSearch] = useState("");
@@ -422,7 +422,7 @@ function Queue({ userRole }) {
           setSeriesOverrideId={setSeriesOverrideId}
           selectedSeriesId={selectedSeriesId}
           setSelectedSeriesId={setSelectedSeriesId}
-          onStockChange={fetchTicketSeries}
+          onStockChange={refreshQueueState}
         />
       </div>
 

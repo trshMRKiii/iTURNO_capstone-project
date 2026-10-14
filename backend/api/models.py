@@ -8,41 +8,12 @@ from django.utils import timezone
 LOCAL_ADMIN_PK_BASE = 1_000_000
 
 
+# Create your models here.
+
 class UserManager(BaseUserManager):
     """Username-only manager — the default UserManager always passes `email`
     to the model constructor, which breaks since User has no email field
     (username doubles as the email address)."""
-
-    def _create_user(self, username, password=None, **extra_fields):
-        if not username:
-            raise ValueError('The username must be set')
-        user = self.model(username=username, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_user(self, username, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', False)
-        extra_fields.setdefault('is_superuser', False)
-        return self._create_user(username, password, **extra_fields)
-
-    def create_superuser(self, username, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-        if self._db in (None, 'default'):
-            # Local-only emergency admin (works offline): park its id far above
-            # Supabase's sequence so a pulled row can never overwrite it.
-            extra_fields.setdefault('pk', max(self.model.objects.aggregate(m=models.Max('pk'))['m'] or 0, LOCAL_ADMIN_PK_BASE) + 1)
-        return self._create_user(username, password, **extra_fields)
-
-
-# Create your models here.
-
-class UserManager(BaseUserManager):
     use_in_migrations = True
 
     def _create_user(self, username, password, **extra_fields):
@@ -67,11 +38,15 @@ class UserManager(BaseUserManager):
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
 
+        if self._db in (None, 'default'):
+            # Local-only emergency admin (works offline): park its id far above
+            # Supabase's sequence so a pulled row can never overwrite it.
+            extra_fields.setdefault('pk', max(self.model.objects.aggregate(m=models.Max('pk'))['m'] or 0, LOCAL_ADMIN_PK_BASE) + 1)
         return self._create_user(username, password, **extra_fields)
-    
+
+
 class User(AbstractUser):
     email = None
-    objects = UserManager()
     REQUIRED_FIELDS = []
     username = models.CharField(
         max_length=254,
@@ -594,6 +569,18 @@ class PendingSetting(models.Model):
 
     class Meta:
         unique_together = ('model_label', 'obj_id')
+
+
+class PendingAccountEmail(models.Model):
+    """A new staff account's login email that hasn't gone out yet (no internet, or
+    the account hasn't reached Supabase yet).
+
+    The temp password exists nowhere else — only its hash is stored on the user — so
+    it is parked here until api/sync/account_emails.py sends it, then the row is
+    deleted. The account still has must_reset_password, so it can't outlive first login."""
+    user_id = models.IntegerField(unique=True)
+    temp_password = models.CharField(max_length=64)
+    queued_at = models.DateTimeField(auto_now=True)
 
 
 class SyncQueue(models.Model):

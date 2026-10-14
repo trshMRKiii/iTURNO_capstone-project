@@ -1,5 +1,7 @@
 import logging
 
+from django.conf import settings
+
 from api.models import PendingFleetAccess, User
 
 logger = logging.getLogger('sync')
@@ -8,7 +10,7 @@ logger = logging.getLogger('sync')
 def flush_fleet_access():
     """Push parked fleet-access ticks to Supabase; leave them parked while it is unreachable."""
     from api.views.helpers import supabase_reachable
-    if not PendingFleetAccess.objects.exists() or not supabase_reachable():
+    if settings.DEBUG or not PendingFleetAccess.objects.exists() or not supabase_reachable():
         return 0
     flushed = 0
     for pending in PendingFleetAccess.objects.all():

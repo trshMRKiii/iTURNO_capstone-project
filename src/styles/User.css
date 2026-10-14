@@ -169,6 +169,80 @@
 .usr-td-name  { font-weight: 600; }
 .usr-td-email { font-size: 13px; color: var(--text-secondary); }
 
+/* Sortable column headers */
+.usr-sort-wrap { position: relative; display: inline-block; }
+.usr-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+}
+.usr-sort:hover,
+.usr-sort.is-active { color: var(--text-primary); }
+.usr-sort-icon { flex: none; opacity: 0.8; }
+.usr-sort-pin {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 9.5px;
+}
+.dark .usr-sort-pin { background: var(--gold); color: #1a1a1a; }
+
+.usr-sort-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -8px;
+  z-index: 20;
+  min-width: 170px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,0.12));
+  text-transform: none;
+  letter-spacing: 0;
+}
+.usr-sort-menu-title {
+  padding: 4px 8px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-secondary);
+}
+.usr-sort-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.usr-sort-menu button:hover { background: var(--bg-hover); }
+.usr-sort-menu button.is-active { background: var(--bg-page); box-shadow: inset 3px 0 0 var(--gold); }
+.usr-sort-menu small { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+
+.usr-table th.usr-th-center { text-align: center; }
+
 /* Role label — plain text, no color coding */
 .usr-role {
   font-size: 11px;
@@ -265,6 +339,7 @@
 .usr-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 

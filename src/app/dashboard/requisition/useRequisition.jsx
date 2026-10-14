@@ -24,7 +24,7 @@ export function useRequisition() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setFormOpen] = useState(false);
   const [seriesItems, setSeriesItems] = useState([{ ...EMPTY_SERIES }]);
 
   // The first load shows skeleton rows. Reloads after a save refresh quietly.
@@ -116,18 +116,29 @@ export function useRequisition() {
     return { totalStock, totalValue, activeSeries, hasStock, stockLevel, allStock: enriched, byDenomination };
   }, [allSeries]);
 
+  // Opening always starts from a blank form, so a cancelled entry never reappears.
+  const setShowForm = (open) => {
+    if (open) {
+      setSeriesItems([{ ...EMPTY_SERIES }]);
+      setApprovedBy("");
+    }
+    setFormOpen(open);
+  };
+
   const updateSeriesItem = (index, field, value) => {
     setSeriesItems((prev) => {
       const copy = [...prev];
-      const updated = { ...copy[index], [field]: value };
+      const isNo = field === "start_no" || field === "end_no";
+      const updated = { ...copy[index], [field]: isNo ? value.replace(/\D/g, "") : value };
 
-      if (field === "ticket_form" || field === "start_no" || field === "end_no") {
+      if (field === "ticket_form" || isNo) {
         const form = ticketForms.find((tf) => String(tf.id) === String(updated.ticket_form));
         const price = form ? parseFloat(form.price) || 0 : 0;
         const start = parseInt(updated.start_no) || 0;
         const end = parseInt(updated.end_no) || 0;
         const pcs = end >= start && start > 0 ? end - start + 1 : 0;
-        updated.total_value = (price * pcs).toFixed(2);
+        // Stay blank until there is a real amount to show.
+        updated.total_value = price * pcs > 0 ? (price * pcs).toFixed(2) : "";
       }
 
       copy[index] = updated;
@@ -199,7 +210,7 @@ export function useRequisition() {
 
       setSeriesItems([{ ...EMPTY_SERIES }]);
       setApprovedBy("");
-      setShowForm(false);
+      setFormOpen(false);
       await fetchRequisitions();
       notify.success({
         title: "Requisition saved",
@@ -267,6 +278,26 @@ export function useRequisition() {
 
   const handleRestore = async (id) => report(await restoreRequisition(id));
 
+  // Removes a mis-keyed series (the server refuses once any ticket or paper range uses it),
+  // so the same numbers can be entered again.
+  const voidSeries = async (ts) => {
+    try {
+      await apiService.request(`/ticket-series/${ts.id}/void/`, { method: "POST" });
+      await fetchRequisitions();
+      return { success: { title: "Series voided", message: `${ts.start_no}–${ts.end_no} can be entered again.` } };
+    } catch (err) {
+      return { error: { title: "Couldn't void series", message: errorMessage(err), onRetry: () => voidSeries(ts).then(report) } };
+    }
+  };
+
+  const handleVoid = (ts) => confirmAction({
+    title: "Void this series?",
+    message: `Series ${ts.start_no}–${ts.end_no} will be removed from stock and its numbers can be entered again. This can't be undone.`,
+    confirmLabel: "Void",
+    busyLabel: "Voiding...",
+    run: () => voidSeries(ts),
+  });
+
   return {
     requisitions,
     ticketForms,
@@ -286,6 +317,7 @@ export function useRequisition() {
     handleIssue,
     handleArchive,
     handleRestore,
+    handleVoid,
     refresh: fetchRequisitions,
     allSeries,
     inventory,

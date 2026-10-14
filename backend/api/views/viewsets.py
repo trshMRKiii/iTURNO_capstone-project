@@ -16,13 +16,14 @@ from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_MET
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import LOCAL_ADMIN_PK_BASE, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, WipMode
+from ..models import LOCAL_ADMIN_PK_BASE, PendingAccountEmail, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, WipMode
 from ..serializers import UserSerializer, SelfProfileSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, PaperIssuanceSerializer
+from ..sync.account_emails import flush_account_emails, queue_account_email
 from ..sync.fleet_access import flush_fleet_access
 from ..sync.settings_outbox import flush_settings, next_offline_pk, park
 from ..sms import send_sms_async, queue_next_message
 from ..tokens import sign_email_verification_token
-from .helpers import record_audit_log, expire_stale_queue_tickets, expire_stale_unverified_accounts, supabase_reachable, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
+from .helpers import record_audit_log, expire_stale_queue_tickets, expire_stale_unverified_accounts, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
 from .remittance_export import remittance_xlsx_response
 
 
@@ -133,9 +134,9 @@ class CurrentUserView(APIView):
         # offline would be wiped by the next pull. Local-only admins never lived there.
         user = request.user
         if user.pk < LOCAL_ADMIN_PK_BASE:
-            if not supabase_reachable():
+            if not can_write_remote():
                 raise ServiceUnavailable('Your profile can only be changed while online. Reconnect to the internet and try again.')
-            user = User.objects.using('supabase').get(pk=user.pk)
+            user = User.objects.using(remote_db()).get(pk=user.pk)
         serializer = SelfProfileSerializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -152,8 +153,10 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         # Writes must land on Supabase (see get_queryset), so refuse them
         # cleanly when offline instead of crashing; reads fall back to the
         # local pulled copy.
-        # The fleet tick is the one write that works offline (see _set_fleet_access).
-        if request.method not in SAFE_METHODS and not is_fleet_tick(request, self) and not supabase_reachable():
+        # The fleet tick (see _set_fleet_access) and registering an account (see
+        # UserSerializer.create) are the writes that work offline.
+        if (request.method not in SAFE_METHODS and not is_fleet_tick(request, self)
+                and getattr(self, 'action', None) != 'create' and not can_write_remote()):
             raise ServiceUnavailable('Staff accounts can only be changed while online. Reconnect to the internet and try again.')
 
     def get_queryset(self):
@@ -162,12 +165,16 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         return qs.filter(role='PERSONNEL') if self.request.user.role in LEAD_ROLES else qs
 
     def _staff_queryset(self):
-        if not supabase_reachable():
+        if not can_write_remote():
             return User.objects.using('default').all()
         # Lazy cleanup, same convention as expire_stale_queue_tickets — the
         # first Staff Registry fetch after an invite's 30-day window closes
         # self-heals it, no scheduler needed.
         expire_stale_unverified_accounts()
+        # Accounts created offline sit parked locally until a sync cycle uploads them, and
+        # this list reads Supabase — push them now so they don't vanish from it on reconnect.
+        flush_settings()
+        flush_account_emails()
         # Reads (and, via the auto-routing below, every write this viewset makes)
         # target Supabase directly rather than the local pulled cache — User is
         # Supabase-authoritative (see api/sync/registry.py), so a user created
@@ -177,7 +184,7 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         # plain instance.save()/.delete() (AuditLogMixin) route to 'supabase'
         # automatically — Django's router falls back to the instance's own
         # _state.db when no custom router is configured.
-        return User.objects.using('supabase').all()
+        return User.objects.using(remote_db()).all()
 
     def _guard_account_change(self, target, role, is_active):
         """Accounts belong to people, roles are permissions: several people may share a
@@ -187,14 +194,17 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         if target.pk == self.request.user.pk and losing_access:
             raise ValidationError('You cannot deactivate or change the role of your own account.')
         if target.role == 'SUPERADMIN' and target.is_active and (not is_active or role != 'SUPERADMIN'):
-            other_admins = User.objects.using('supabase').filter(role='SUPERADMIN', is_active=True).exclude(pk=target.pk)
+            other_admins = User.objects.using(remote_db()).filter(role='SUPERADMIN', is_active=True).exclude(pk=target.pk)
             if not other_admins.exists():
                 raise ValidationError('This is the last active Admin. Promote or create another Admin first.')
 
     def perform_create(self, serializer):
+        # The temp password only exists in the login email, so it is always parked first
+        # and flushed: sent at once when online, kept (surviving restarts) until then.
         instance = super().perform_create(serializer)
-        if not instance.email_verified:
-            send_verification_email(instance)
+        queue_account_email(instance, instance.raw_password)
+        flush_account_emails()
+        instance.email_queued = PendingAccountEmail.objects.filter(user_id=instance.pk).exists()
         return instance
 
     def _set_fleet_access(self, target, allowed):
@@ -216,7 +226,9 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         if self.request.user.role != 'SUPERADMIN' and target.role != 'PERSONNEL':
             raise PermissionDenied('Fleet access only applies to Personnel accounts.')
         self._guard_account_change(target, data.get('role', target.role), data.get('is_active', target.is_active))
-        return super().perform_update(serializer)
+        instance = super().perform_update(serializer)
+        mirror_user(instance)
+        return instance
 
     def destroy(self, request, *args, **kwargs):
         # Accounts are never deleted (it would orphan their history) — deactivate instead.
@@ -343,7 +355,7 @@ class OfflineSettingWriteMixin:
 
     def perform_create(self, serializer):
         instance = serializer.Meta.model(**serializer.validated_data)
-        if supabase_reachable():
+        if not settings.DEBUG and supabase_reachable():
             instance.save(using='supabase')
         else:
             instance.pk = next_offline_pk(type(instance))
@@ -361,12 +373,12 @@ class OfflineSettingWriteMixin:
         return instance
 
     def perform_destroy(self, instance):
-        if not supabase_reachable():
+        if not can_write_remote():
             raise ServiceUnavailable('This can only be deleted while online. Reconnect to the internet, or archive it instead.')
         model, pk = type(instance), instance.pk
         with transaction.atomic(using='default'):
             super().perform_destroy(instance)
-            model.objects.using('supabase').filter(pk=pk).delete()
+            model.objects.using(remote_db()).filter(pk=pk).delete()
 
 
 class RouteViewSet(OfflineSettingWriteMixin, ArchivableSettingMixin, AuditLogMixin, viewsets.ModelViewSet):
@@ -979,6 +991,36 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
             _total_issued=Count('tickets'),
             _issued_before_today=Count('tickets', filter=Q(tickets__issued_at__date__lt=today)),
         )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsSupervisorOrAdminForWrite])
+    def void(self, request, pk=None):
+        """Undo a mis-keyed series so its numbers can be entered again. Only allowed while
+        nothing has used the range; deleting (not flagging) is what frees both the
+        unique series_no and the overlap check. The audit entry keeps the history."""
+        with transaction.atomic():
+            series = self.get_object()
+            start, end = int(series.start_no), int(series.end_no)
+            used = Ticket.objects.filter(series=series).exists() or any(
+                i.isdigit() and start <= int(i) <= end for i in Ticket.objects.values_list('id', flat=True)
+            )
+            if used or series.paper_issuances.exists():
+                raise ValidationError("This series already has issued tickets or a paper range, so it can't be voided.")
+
+            requisition = series.requisition
+            record_audit_log(
+                user=request.user, action='DELETE', model_name='TicketSeries', object_id=series.pk,
+                object_repr=f"Voided {series}",
+                changes={'voided': True, 'total_value': str(series.total_value), 'requisition': requisition.pk},
+            )
+            series.delete()
+
+            remaining = requisition.ticket_series.all()
+            if remaining:
+                requisition.total_value = sum(s.total_value for s in remaining)
+                requisition.save(update_fields=['total_value', 'updated_at'])
+            else:
+                requisition.delete()
+        return Response(status=204)
 
 
 class PaperIssuanceViewSet(AuditLogMixin, viewsets.ModelViewSet):
