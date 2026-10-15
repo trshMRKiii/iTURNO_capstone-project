@@ -15,21 +15,30 @@ def next_offline_pk(model):
 
 
 def park(instance):
-    PendingSetting.objects.update_or_create(model_label=instance._meta.label, obj_id=instance.pk)
+    PendingSetting.objects.update_or_create(
+        model_label=instance._meta.label, obj_id=instance.pk, defaults={'is_delete': False})
+
+
+def park_delete(model, pk):
+    """Takes the pk captured before deleting: Django clears instance.pk afterwards."""
+    PendingSetting.objects.update_or_create(model_label=model._meta.label, obj_id=pk, defaults={'is_delete': True})
 
 
 def flush_settings():
-    """Push parked rows to Supabase; leave them parked while it is unreachable."""
+    """Push parked saves and deletes to Supabase; leave them parked while it is unreachable."""
     from api.views.helpers import supabase_reachable
     if settings.DEBUG or not PendingSetting.objects.exists() or not supabase_reachable():
         return 0
     flushed = 0
     for pending in PendingSetting.objects.order_by('queued_at'):
         model = apps.get_model(pending.model_label)
-        row = model.objects.using('default').filter(pk=pending.obj_id).first()
         try:
-            if row:
-                row.save(using='supabase')
+            if pending.is_delete:
+                model.objects.using('supabase').filter(pk=pending.obj_id).delete()
+            else:
+                row = model.objects.using('default').filter(pk=pending.obj_id).first()
+                if row:
+                    row.save(using='supabase')
         except Exception as exc:
             logger.warning('push failed for %s#%s: %s', pending.model_label, pending.obj_id, str(exc)[:500])
             continue

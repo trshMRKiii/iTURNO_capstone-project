@@ -20,7 +20,7 @@ from ..models import LOCAL_ADMIN_PK_BASE, PendingAccountEmail, PendingFleetAcces
 from ..serializers import UserSerializer, SelfProfileSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, PaperIssuanceSerializer
 from ..sync.account_emails import flush_account_emails, queue_account_email
 from ..sync.fleet_access import flush_fleet_access
-from ..sync.settings_outbox import flush_settings, next_offline_pk, park
+from ..sync.settings_outbox import flush_settings, next_offline_pk, park, park_delete
 from ..sms import send_sms_async, queue_next_message
 from ..tokens import sign_email_verification_token
 from .helpers import record_audit_log, expire_stale_queue_tickets, expire_stale_unverified_accounts, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
@@ -347,11 +347,11 @@ class ArchivableSettingMixin:
 
 class OfflineSettingWriteMixin:
     """Route / ticket price / ticket form / PUV type are Supabase-authoritative
-    (PULL_MODELS), so a LAN-only save would be overwritten by the next pull. Creates
-    and edits therefore work offline: saved locally, parked in PendingSetting and pushed
-    once Supabase is reachable (flushed at once when it already is). Online creates go
-    Supabase-first so the id comes from Postgres's sequence; offline ones take an id above
-    LOCAL_ADMIN_PK_BASE. Deleting stays online-only (archive instead)."""
+    (PULL_MODELS), so a LAN-only save would be overwritten by the next pull. Creates,
+    edits and deletes therefore work offline: applied locally, parked in PendingSetting
+    and pushed once Supabase is reachable (flushed at once when it already is). Online
+    creates go Supabase-first so the id comes from Postgres's sequence; offline ones take
+    an id above LOCAL_ADMIN_PK_BASE. Online deletes hit Supabase in the same transaction."""
 
     def perform_create(self, serializer):
         instance = serializer.Meta.model(**serializer.validated_data)
@@ -373,12 +373,13 @@ class OfflineSettingWriteMixin:
         return instance
 
     def perform_destroy(self, instance):
-        if not can_write_remote():
-            raise ServiceUnavailable('This can only be deleted while online. Reconnect to the internet, or archive it instead.')
         model, pk = type(instance), instance.pk
         with transaction.atomic(using='default'):
             super().perform_destroy(instance)
-            model.objects.using(remote_db()).filter(pk=pk).delete()
+            if can_write_remote():
+                model.objects.using(remote_db()).filter(pk=pk).delete()
+            else:
+                park_delete(model, pk)
 
 
 class RouteViewSet(OfflineSettingWriteMixin, ArchivableSettingMixin, AuditLogMixin, viewsets.ModelViewSet):
@@ -1004,12 +1005,12 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
                 i.isdigit() and start <= int(i) <= end for i in Ticket.objects.values_list('id', flat=True)
             )
             if used or series.paper_issuances.exists():
-                raise ValidationError("This series already has issued tickets or a paper range, so it can't be voided.")
+                raise ValidationError("This series already has issued tickets or a paper range, so it can't be deleted.")
 
             requisition = series.requisition
             record_audit_log(
                 user=request.user, action='DELETE', model_name='TicketSeries', object_id=series.pk,
-                object_repr=f"Voided {series}",
+                object_repr=f"Deleted {series}",
                 changes={'voided': True, 'total_value': str(series.total_value), 'requisition': requisition.pk},
             )
             series.delete()

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { apiService } from "../../lib/api-service";
-import { useFeedback } from "../ui/kit";
+import { useFeedback, PasswordInput } from "../ui/kit";
 import { focusFirstError } from "../../lib/focusFirstError";
+import { CONTACT_PATTERN, CONTACT_ERROR, formatContact, normalizeContact } from "../../lib/contact";
 import "../../styles/FormModal.css";
 
 const capitalizeWords = (value) => value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
@@ -41,7 +42,7 @@ function ProfileModal({ user, onSaved, onClose }) {
     const next = {};
     if (!form.first_name.trim()) next.first_name = "Enter your first name.";
     if (!form.last_name.trim()) next.last_name = "Enter your last name.";
-    if (form.contact && !/^\d{11}$/.test(form.contact)) next.contact = "Contact number must be 11 digits.";
+    if (form.contact && !CONTACT_PATTERN.test(form.contact)) next.contact = CONTACT_ERROR;
     return next;
   };
 
@@ -127,7 +128,7 @@ function ProfileModal({ user, onSaved, onClose }) {
               <input type="text" className="usr-input" value={form.middle_name} onChange={(e) => set("middle_name", capitalizeWords(e.target.value))} />
             </Field>
             <Field label="Contact number" optional error={errors.contact}>
-              <input type="text" inputMode="numeric" maxLength={11} className={cls("contact")} placeholder="e.g. 09XXXXXXXXX" value={form.contact} onChange={(e) => set("contact", e.target.value.replace(/\D/g, ""))} />
+              <input type="tel" inputMode="numeric" maxLength={13} className={cls("contact")} placeholder="09XX XXX XXXX" value={formatContact(form.contact)} onChange={(e) => set("contact", normalizeContact(e.target.value))} />
             </Field>
           </div>
 
@@ -139,10 +140,10 @@ function ProfileModal({ user, onSaved, onClose }) {
             <>
               <div className="usr-form-grid">
                 <Field label="New password" error={errors.pw_next}>
-                  <input type="password" autoComplete="new-password" className={cls("pw_next")} value={pw.next} onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))} />
+                  <PasswordInput autoComplete="new-password" className={cls("pw_next")} value={pw.next} onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))} />
                 </Field>
                 <Field label="Confirm new password" error={errors.pw_confirm}>
-                  <input type="password" autoComplete="new-password" className={cls("pw_confirm")} value={pw.confirm} onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))} />
+                  <PasswordInput autoComplete="new-password" className={cls("pw_confirm")} value={pw.confirm} onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))} />
                 </Field>
               </div>
               {!online && <p className="usr-field-error">You're offline. Passwords can only be changed while online.</p>}

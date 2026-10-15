@@ -33,3 +33,8 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+
+# Live same-day transaction CSV (contains driver names; rewritten daily)
+backend/daily_transactions.csv
+backend/daily_transactions_LATEST.csv
+backend/daily_transactions.state

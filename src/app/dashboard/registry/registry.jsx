@@ -1,9 +1,11 @@
 import React, { useState, useCallback, useRef } from "react";
 import Vehicle from "../vehicle/vehicle";
 import Driver from "../driver/driver";
+import { useCanRegisterFleet } from "../../../lib/useCanModifyFleet";
 import "../../../styles/Registry.css";
 
 function Registry() {
+  const canRegister = useCanRegisterFleet();
   const [activeTab, setActiveTab] = useState("vehicles");
   const [vehSearch, setVehSearch] = useState("");
   const [drvSearch, setDrvSearch] = useState("");
@@ -94,13 +96,15 @@ function Registry() {
             </svg>
             Export PDF
           </button>
-          <button className="reg-add-btn" onClick={handleAdd}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M5 12h14" />
-              <path d="M12 5v14" />
-            </svg>
-            {addLabel}
-          </button>
+          {canRegister && (
+            <button className="reg-add-btn" onClick={handleAdd}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+              </svg>
+              {addLabel}
+            </button>
+          )}
         </div>
       </div>
 

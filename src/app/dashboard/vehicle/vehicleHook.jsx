@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { apiService } from "../../../lib/api-service";
 import { focusFirstError } from "../../../lib/focusFirstError";
 import { useFeedback } from "../../../components/ui/kit";
@@ -38,7 +38,12 @@ const validateVehicleForm =(form, editing, routeMode, newOrigin) => {
   if (routeMode === "select" ? !form.route : !newOrigin.trim()) {
     errors.route = routeMode === "select" ? "Please select a route." : "Please enter a route origin.";
   }
-  if (!editing && !form.plate_number.trim()) errors.plate_number = "Plate number is required.";
+  if (!editing) {
+    if (!form.plate_number) errors.plate_number = "Plate number is required.";
+    else if (!/^[A-Z]{3}-\d{3,4}$/.test(form.plate_number)) {
+      errors.plate_number = "Use the format ABC-1234 (3 letters, then 3–4 digits).";
+    }
+  }
   if (!form.transportation_id) errors.transportation_id = "Transportation type is required.";
   if (!form.franchise_number) errors.franchise_number = "Franchise number is required.";
   else if (!/^\d{2}-\d{5}$/.test(form.franchise_number)) {
@@ -51,13 +56,80 @@ const validateVehicleForm =(form, editing, routeMode, newOrigin) => {
   return errors;
 };
 
-// Formats free-typed input into LLL-1234 as the user types, auto-inserting the dash.
-export const formatPlateNumber = (value) => {
-  const clean = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const letters = clean.slice(0, 3).replace(/[0-9]/g, "");
-  const digits = clean.slice(letters.length, letters.length + 4).replace(/[^0-9]/g, "");
-  if (!letters) return "";
-  return digits ? `${letters}-${digits}` : letters;
+const LETTER = /[A-Z]/;
+const DIGIT = /\d/;
+export const PLATE_SEGMENTS = [
+  { max: 3, char: LETTER, placeholder: "ABC", width: "6rem" },
+  { max: 4, char: DIGIT, placeholder: "1234" },
+];
+export const FRANCHISE_SEGMENTS = [
+  { max: 2, char: DIGIT, placeholder: "YY", width: "5rem" },
+  { max: 5, char: DIGIT, placeholder: "NNNNN" },
+];
+
+// Fixed-length boxes joined by dashes (plate ABC-1234, franchise YY-NNNNN). Each box only
+// takes its own kind of character, jumps ahead when full, steps back on Backspace when
+// empty, and a pasted value is spread across the boxes. The form value is the dashed string.
+export const SegmentedInput = ({ value, onChange, segments, className, label }) => {
+  const refs = useRef([]);
+  const parts = segments.map((_, i) => (value || "").split("-")[i] || "");
+  const emit = (next) => {
+    while (next.length && !next[next.length - 1]) next.pop();
+    onChange(next.join("-"));
+  };
+  const clean = (text, seg) => [...text.toUpperCase()].filter((c) => seg.char.test(c)).join("").slice(0, seg.max);
+
+  const handleChange = (i, e) => {
+    const text = clean(e.target.value, segments[i]);
+    emit(parts.map((p, j) => (j === i ? text : p)));
+    if (text.length === segments[i].max) refs.current[i + 1]?.focus();
+  };
+
+  const handlePaste = (e) => {
+    let rest = e.clipboardData.getData("text").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!rest) return;
+    e.preventDefault();
+    const next = segments.map((seg) => {
+      let out = "";
+      while (rest && out.length < seg.max && seg.char.test(rest[0])) {
+        out += rest[0];
+        rest = rest.slice(1);
+      }
+      return out;
+    });
+    emit(next);
+    refs.current[Math.max(next.findLastIndex(Boolean), 0)]?.focus();
+  };
+
+  return (
+    <div className="veh-segmented">
+      {segments.map((seg, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span>-</span>}
+          <input
+            ref={(el) => (refs.current[i] = el)}
+            type="text"
+            inputMode={seg.char === DIGIT ? "numeric" : "text"}
+            autoCapitalize="characters"
+            className={className}
+            placeholder={seg.placeholder}
+            maxLength={seg.max}
+            aria-label={`${label} part ${i + 1} of ${segments.length}`}
+            style={{ width: seg.width, flex: seg.width ? "none" : 1, textAlign: seg.width ? "center" : undefined }}
+            value={parts[i]}
+            onChange={(e) => handleChange(i, e)}
+            onPaste={handlePaste}
+            onKeyDown={(e) => {
+              if (e.key === "Backspace" && !parts[i] && i > 0) {
+                e.preventDefault();
+                refs.current[i - 1]?.focus();
+              }
+            }}
+          />
+        </React.Fragment>
+      ))}
+    </div>
+  );
 };
 
 // Builds a display address string from a driver's location fields.
@@ -199,7 +271,7 @@ export function useVehicle() {
   // Always-on validation drives the sidebar checklist and progress bar.
   const liveErrors = validateVehicleForm(form, editing, routeMode, newOrigin);
   const fieldErrors = submitAttempted ? liveErrors : {};
-  const { confirmAction } = useFeedback();
+  const { notify, confirmAction } = useFeedback();
 
   useEffect(() => {
     fetchDrivers();
@@ -401,24 +473,35 @@ export function useVehicle() {
     });
   };
 
-  const handleArchive = (id) => confirmAction({
-    title: "Archive this vehicle?",
-    message: "You can restore it from Settings → Archive.",
-    confirmLabel: "Archive",
-    busyLabel: "Archiving…",
-    run: async () => {
-      try {
-        await apiService.patch(`/vehicles/${id}/`, { is_archived: true });
-        fetchVehicles();
-        return { success: { title: "Vehicle archived", message: "It's now in Settings → Archive." } };
-      } catch (err) {
-        setError(err.message);
-        return { error: { title: "Couldn't archive vehicle", message: err.message || "Nothing was changed. Try again." } };
-      }
-    },
-  });
+  const handleArchive = (id) => {
+    if (vehicles.find((v) => v.id === id)?.status === "QUEUED") {
+      notify.error({
+        title: "Can't archive this vehicle",
+        message: "It's in the queue. Dispatch it or remove it from the queue first.",
+      });
+      return;
+    }
+    confirmAction({
+      title: "Archive this vehicle?",
+      message: "You can restore it from Settings → Archive.",
+      confirmLabel: "Archive",
+      busyLabel: "Archiving…",
+      run: async () => {
+        try {
+          await apiService.patch(`/vehicles/${id}/`, { is_archived: true });
+          fetchVehicles();
+          return { success: { title: "Vehicle archived", message: "It's now in Settings → Archive." } };
+        } catch (err) {
+          setError(err.message);
+          return { error: { title: "Couldn't archive vehicle", message: err.message || "Nothing was changed. Try again." } };
+        }
+      },
+    });
+  };
 
-  const activeDrivers = drivers.filter((d) => d.status === "ACTIVE");
+  // Memoized: vehicle.jsx resets the operator search box whenever this list changes,
+  // so a fresh array each render would wipe whatever the user is typing.
+  const activeDrivers = useMemo(() => drivers.filter((d) => d.status === "ACTIVE"), [drivers]);
 
   return {
     vehicles,

@@ -12,7 +12,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import User
-from .helpers import remote_db, save_user
+from ..sync.settings_outbox import park
+from .helpers import can_write_remote, remote_db, save_user
 from ..tokens import (
     sign_password_reset_token, verify_password_reset_token,
     verify_email_verification_token,
@@ -140,8 +141,15 @@ def change_password(request):
     # would silently strand the change there until the next pull cycle,
     # while the Staff Registry (which reads straight from supabase) keeps
     # showing the account as still needing a password change.
-    user = User.objects.using(remote_db()).get(pk=request.user.pk)
+    online = can_write_remote()
+    user = User.objects.using(remote_db()).get(pk=request.user.pk) if online else request.user
     user.set_password(new_password)
     user.must_reset_password = False
-    save_user(user)
+    if online:
+        save_user(user)
+    else:
+        # Offline: save locally so the new password works at once, and park the row so the
+        # sync cycle pushes it to Supabase (pull leaves parked rows alone, so it isn't reverted).
+        user.save(using='default')
+        park(user)
     return Response({'detail': 'Password changed successfully.'})

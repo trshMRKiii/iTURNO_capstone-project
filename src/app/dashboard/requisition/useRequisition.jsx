@@ -20,7 +20,6 @@ export function useRequisition() {
   const { notify, report, confirmAction } = useFeedback();
   const [requisitions, setRequisitions] = useState([]);
   const [ticketForms, setTicketForms] = useState([]);
-  const [approvedBy, setApprovedBy] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -120,7 +119,6 @@ export function useRequisition() {
   const setShowForm = (open) => {
     if (open) {
       setSeriesItems([{ ...EMPTY_SERIES }]);
-      setApprovedBy("");
     }
     setFormOpen(open);
   };
@@ -182,7 +180,6 @@ export function useRequisition() {
         body: JSON.stringify({
           total_value: totalValue,
           requested_by: currentUser.id,
-          approved_by_name: approvedBy.trim(),
         }),
       });
 
@@ -209,7 +206,6 @@ export function useRequisition() {
       }
 
       setSeriesItems([{ ...EMPTY_SERIES }]);
-      setApprovedBy("");
       setFormOpen(false);
       await fetchRequisitions();
       notify.success({
@@ -280,29 +276,27 @@ export function useRequisition() {
 
   // Removes a mis-keyed series (the server refuses once any ticket or paper range uses it),
   // so the same numbers can be entered again.
-  const voidSeries = async (ts) => {
+  const deleteSeries = async (ts) => {
     try {
       await apiService.request(`/ticket-series/${ts.id}/void/`, { method: "POST" });
       await fetchRequisitions();
-      return { success: { title: "Series voided", message: `${ts.start_no}–${ts.end_no} can be entered again.` } };
+      return { success: { title: "Series deleted", message: `${ts.start_no}–${ts.end_no} can be entered again.` } };
     } catch (err) {
-      return { error: { title: "Couldn't void series", message: errorMessage(err), onRetry: () => voidSeries(ts).then(report) } };
+      return { error: { title: "Couldn't delete series", message: errorMessage(err), onRetry: () => deleteSeries(ts).then(report) } };
     }
   };
 
-  const handleVoid = (ts) => confirmAction({
-    title: "Void this series?",
+  const handleDelete = (ts) => confirmAction({
+    title: "Delete this series?",
     message: `Series ${ts.start_no}–${ts.end_no} will be removed from stock and its numbers can be entered again. This can't be undone.`,
-    confirmLabel: "Void",
-    busyLabel: "Voiding...",
-    run: () => voidSeries(ts),
+    confirmLabel: "Delete",
+    busyLabel: "Deleting...",
+    run: () => deleteSeries(ts),
   });
 
   return {
     requisitions,
     ticketForms,
-    approvedBy,
-    setApprovedBy,
     loading,
     saving,
     showForm,
@@ -317,7 +311,7 @@ export function useRequisition() {
     handleIssue,
     handleArchive,
     handleRestore,
-    handleVoid,
+    handleDelete,
     refresh: fetchRequisitions,
     allSeries,
     inventory,

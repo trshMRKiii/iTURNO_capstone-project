@@ -1,56 +1,42 @@
 """Wipe transactional/fleet data and reseed North Central Terminal (San Fernando,
-La Union) with a dummy fleet: 100 vehicles, 100 drivers, spread across whatever
-routes are currently registered and active, and ~5 months of backdated ticket
-history for scale/stress testing.
+La Union) with a dummy fleet: 100 Jeepney vehicles, each owned by one of 100
+ACTIVE drivers, spread across the routes already registered in Settings ->
+Routes (never created or renamed here), and 2 months of backdated ticket
+history by default for scale/stress testing.
 
-Each day's tickets land in one of three buckets, mirroring how the real Queue
-page groups them (see queue.jsx): most resolve COLLECTED (dispatched, with a
-queue wait from issued_at to dispatched_at centered on that vehicle's own
-route's configured loading-time estimate -- Settings -> Routes, ~5 minutes for
-most routes here), a small fraction end CANCELLED (scattered across the whole
-history, not just one day -- a check-in can be cancelled any day), and
-mode=UNLOAD ("roam") tickets are born already collected on the spot with no
-queue wait at all. The one exception is the final day (today): a handful of
-its QUEUE-mode tickets are left genuinely QUEUED (no dispatched_at) to
-simulate vehicles still waiting in line right now, since a ticket can't
-realistically stay unresolved for months.
+Drivers and vehicles are filled in exactly as the Driver / Vehicle registry
+forms require (src/app/dashboard/driver/driver-utils.js, vehicle/vehicleHook.jsx):
+12-digit IWP number + expiration date, real La Union municipality/barangay,
+09XXXXXXXXX contact, plate ABC-1234, franchise YY-NNNNN + expiration date,
+operator address built from the owner's address.
+
+Ticket numbers come from 1000-ticket series chained contiguously per form: the
+P10 form starts at 1020101001-1020102000, the P2 form at 2020101001-2020102000;
+whenever a form's current series runs out a new requisition + series follows
+(e.g. 1020102001-1020103000), dated the day it was needed.
+
+Each day gets between --daily-min and --daily-max physical Ticket rows (the
+app's own "check-out" count, see checkout_count in views/reports.py). Tickets
+land in the buckets the Queue page groups them in: mostly COLLECTED (queue wait
+centered on the vehicle's route loading-time estimate), a few CANCELLED
+(spread over the whole history), and mode=UNLOAD ("roam") tickets collected on
+the spot. Days are Philippine days (UTC+8, like every report in the app) and
+history runs through yesterday, so nothing is dated in the future; each day has
+a remittance batch whose tickets are linked to it (Ticket.remittance_batch).
+
+Every COLLECTED transaction is issued as however many ticket units hit the
+PUV type's Terminal Price exactly (a P2 ticket only ever 5-at-a-time against a
+P10 terminal price), so daily remittance totals are clean multiples of it.
 
 Pass --keep-fleet to leave existing Driver/Vehicle rows untouched and only
-wipe+regenerate the transactional half (tickets/requisitions/series) --
-useful for rerunning the history without reshuffling driver/vehicle identities.
+wipe+regenerate tickets/requisitions/series.
 
-Every COLLECTED transaction is issued as a group of however many ticket units
-hit the configured Terminal Price exactly (see dispatch_ticket / roam check-in's
-price*quantity == terminal_price guard in views/viewsets.py) -- e.g. with a P10
-terminal price, a P2 ticket is only ever issued 5-at-a-time, never alone --
-so daily remittance totals are always a clean multiple of that terminal price,
-same as real collections. --daily-avg/--daily-cap count physical Ticket rows
-(what the app itself calls a "check-out" -- see checkout_count in
-views/reports.py), not transactions -- a single P2 transaction contributes 5
-of those rows at once, so the day's transaction count comes out lower than
-its row count whenever P2 transactions land.
-
-Leaves User/Route(existing)/PUVType/TicketForm/WipMode untouched —
-those are the Supabase-authoritative PULL_MODELS (see api/sync/registry.py),
-also what Settings -> General manages.
-
-Requisition ids continue from whatever the highest existing id was, instead of
-resetting to 1, per the old-ID-as-reference request.
-
-Ticket history is generated with bulk_create for speed, which means Django
-never fires the post_save signal that would normally queue each row into
-SyncQueue (api/sync/signals.py) -- so matching SyncQueue rows are inserted
-directly here to get the same "queued for push" effect without 30-40k
-individual signal-triggered saves.
-
-The wipe/fleet/routes/requisitions setup runs in one transaction, but the
-~4-month ticket history commits one day at a time instead of as part of that
-same transaction -- holding a single multi-minute transaction open for the
-whole history starves SQLite's WAL checkpointing (nothing can checkpoint
-while a writer transaction is open), so the longer a giant single-transaction
-run went, the slower every statement inside it got. Per-day commits also
-mirror how tickets actually accumulate in real operation: incrementally, not
-in one burst.
+Leaves User/Route/PUVType/TicketForm/WipMode untouched -- the
+Supabase-authoritative PULL_MODELS (api/sync/registry.py). Requisition ids
+continue from the highest existing id. Tickets use bulk_create (no post_save),
+so matching SyncQueue rows are inserted directly; history commits one day at a
+time so SQLite's WAL can checkpoint instead of starving behind one huge
+transaction.
 """
 import random
 import uuid
@@ -59,7 +45,7 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import F, Max
 from django.utils import timezone
 
 from api.models import (
@@ -67,11 +53,18 @@ from api.models import (
     Route, SyncQueue, Ticket, TicketForm, TicketSeries, User, Vehicle,
 )
 
-BARANGAYS = [
-    "Poblacion", "San Vicente", "San Isidro", "San Jose", "Santa Rita",
-    "Santo Rosario", "Bacsil", "Cabaroan", "Nagsabaran", "Tammocalao",
-    "Paringao", "Pagdalagan", "Dili", "Sipulo", "Cabuluan", "Camansi",
-]
+# Real PSGC municipality -> barangay names, as the registry form's address selects return them.
+ADDRESSES = {
+    "Bacnotan": ["Agtipal", "Arosip", "Bacqui", "Bacsil", "Bagutot"],
+    "Balaoan": ["Apatut", "Ar-arampang", "Baracbac Este", "Baracbac Oeste", "Bet-ang"],
+    "Bauang": ["Acao", "Baccuit Norte", "Baccuit Sur", "Bagbag", "Ballay"],
+    "Luna": ["Alcala (Pob.)", "Ayaoan", "Barangobong", "Barrientos", "Bungro"],
+    "Naguilian": ["Aguioas", "Al-alinao Norte", "Al-alinao Sur", "Ambaracao Norte", "Angin"],
+    "Rosario": ["Alipang", "Ambangonan", "Amlang", "Bacani", "Bani"],
+    "City Of San Fernando (Capital)": ["Abut", "Apaleng", "Bacsil", "Bangbangolan", "Bangcusay"],
+    "San Gabriel": ["Amontoc", "Apayao", "Balbalayang", "Bayabas", "Bucao"],
+    "San Juan": ["Allangigan", "Aludaid", "Bacsayan", "Balballosa", "Bambanay"],
+}
 
 FIRST_NAMES_M = [
     "Juan", "Jose", "Antonio", "Ramon", "Ricardo", "Eduardo", "Roberto",
@@ -111,10 +104,28 @@ def _rand_name(gender):
 
 def _rand_plate(used):
     while True:
-        plate = f"{''.join(random.choices('ABCDEFGHJKLMNPRSTUVWXYZ', k=3))} {random.randint(1000, 9999)}"
+        plate = f"{''.join(random.choices('ABCDEFGHJKLMNPRSTUVWXYZ', k=3))}-{random.randint(1000, 9999)}"
         if plate not in used:
             used.add(plate)
             return plate
+
+
+def _rand_iwp(used):
+    while True:
+        iwp = "".join(random.choices("0123456789", k=12))
+        if iwp not in used:
+            used.add(iwp)
+            return iwp
+
+
+def _ph(day, hour, minute=0):
+    """UTC datetime for a Philippine wall-clock time (UTC+8), the same offset the
+    backend uses everywhere it cuts a day (e.g. views/helpers.py parse_date_start)."""
+    return timezone.make_aware(datetime.combine(day, time(hour, minute)) - timedelta(hours=8))
+
+
+def _future_date(today, min_days, max_days):
+    return today + timedelta(days=random.randint(min_days, max_days))
 
 
 # Fixed test-number pool -- matches the numbers actually used for testing
@@ -129,6 +140,9 @@ def _rand_contact():
 # Mirrors DEFAULT_ESTIMATED_LOADING_MINUTES in views/records.py -- the queue
 # wait fallback for a route with no estimated_loading_minutes configured.
 DEFAULT_ESTIMATED_LOADING_MINUTES = 5
+
+# Tickets per series/booklet, e.g. 1020101001-1020102000.
+SERIES_SIZE = 1000
 
 
 def _denominate(total):
@@ -156,16 +170,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--dry-run", action="store_true", help="Print what would happen without writing anything.")
-        parser.add_argument("--months", type=int, default=5, help="How many months of ticket history to backdate.")
-        parser.add_argument(
-            "--daily-avg", type=int, default=180,
-            help="Average physical Ticket rows (app's own 'check-out' count) per day, combining "
-                 "roaming (UNLOAD) and queueing (QUEUE) modes.",
-        )
-        parser.add_argument(
-            "--daily-cap", type=int, default=250,
-            help="Hard cap on physical Ticket rows per day, matching the terminal's observed busiest days.",
-        )
+        parser.add_argument("--months", type=int, default=2, help="How many months of ticket history to backdate.")
+        parser.add_argument("--daily-min", type=int, default=130, help="Minimum physical Ticket rows (check-outs) per day.")
+        parser.add_argument("--daily-max", type=int, default=210, help="Maximum physical Ticket rows (check-outs) per day.")
         parser.add_argument(
             "--cancelled-rate", type=float, default=0.02,
             help="Fraction of tickets, spread across the whole history, that end up CANCELLED instead of COLLECTED.",
@@ -179,8 +186,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
         months = options["months"]
-        daily_avg = options["daily_avg"]
-        daily_cap = options["daily_cap"]
+        daily_min = options["daily_min"]
+        daily_max = options["daily_max"]
         cancelled_rate = options["cancelled_rate"]
         keep_fleet = options["keep_fleet"]
         if options["seed"] is not None:
@@ -188,9 +195,9 @@ class Command(BaseCommand):
 
         ticket_stats = {"created": 0, "days": 0}
         with transaction.atomic():
-            ctx = self._setup(dry_run, keep_fleet, months, daily_cap)
+            ctx = self._setup(dry_run, keep_fleet)
             if ctx is not None and not dry_run:
-                ticket_stats = self._generate_history(ctx, months, daily_avg, daily_cap, cancelled_rate)
+                ticket_stats = self._generate_history(ctx, months, daily_min, daily_max, cancelled_rate)
             if dry_run:
                 transaction.set_rollback(True)
 
@@ -203,8 +210,7 @@ class Command(BaseCommand):
         """How many units of each form make up one COLLECTED transaction --
         whatever quantity makes price*quantity hit the terminal price exactly
         (see the guard in views/viewsets.py's dispatch_ticket / roam check-in).
-        Shared by _setup (to size each form's series generously enough to
-        never run dry) and _generate_day (to actually issue that many)."""
+        Used by _generate_day to issue that many."""
         # Terminal price is per PUV type now; the dummy fleet is Jeepney-based.
         terminal_price = PUVType.objects.filter(name="Jeepney").values_list("terminal_price", flat=True).first() or 0
         quantities = {}
@@ -215,7 +221,7 @@ class Command(BaseCommand):
                 quantities[form.id] = 1
         return quantities
 
-    def _setup(self, dry_run, keep_fleet=False, months=5, daily_cap=250):
+    def _setup(self, dry_run, keep_fleet=False):
         """Wipe PUSH_MODELS and recreate routes/drivers/vehicles/requisitions/series
         (or, with keep_fleet, only the transactional half -- requisitions/series/
         tickets -- reusing whatever Driver/Vehicle rows already exist).
@@ -235,7 +241,7 @@ class Command(BaseCommand):
         ticket_forms = list(TicketForm.objects.all())
         puv_types = list(PUVType.objects.all())
         jeepney = next((p for p in puv_types if p.name == "Jeepney"), puv_types[0] if puv_types else None)
-        routes = list(Route.objects.filter(is_active=True))
+        routes = list(Route.objects.filter(is_active=True, is_archived=False))
         admin_user = User.objects.filter(role="SUPERADMIN").first() or User.objects.first()
         staff_users = list(User.objects.filter(role__in=["PERSONNEL", "SUPERVISOR", "MANAGER"])) or [admin_user]
 
@@ -264,6 +270,8 @@ class Command(BaseCommand):
             # Ticket would otherwise only be cleared as a side effect of the
             # Vehicle/Driver cascade below, so it needs an explicit delete here.
             Ticket.objects.all().delete()
+            # No tickets left, so nobody is in line -- don't leave ghost QUEUED vehicles.
+            Vehicle.objects.filter(status='QUEUED').update(status='AVAILABLE', active_driver=F('owner_driver'))
         else:
             # Cascades: Vehicle -> Ticket (CASCADE), Driver -> any leftover Ticket (CASCADE).
             Vehicle.objects.all().delete()
@@ -274,217 +282,160 @@ class Command(BaseCommand):
         Requisition.objects.all().delete()
         AuditLog.objects.all().delete()
 
-        # --- Routes -- reuse whatever's currently registered and active,
-        # instead of a hardcoded town list that drifts out of sync with it.
-        routes_by_town = {r.origin: r for r in routes}
-        towns = list(routes_by_town.keys())
+        # Routes are whatever Settings -> Routes already has; nothing is created here.
+        today = timezone.localtime().date()
 
         if keep_fleet:
             # Reuse whatever's already there instead of wiping identities.
             drivers = list(Driver.objects.all())
             vehicles = list(Vehicle.objects.all())
         else:
-            # --- Drivers (100) ---------------------------------------------
-            drivers = []
-            for i in range(1, 101):
+            # Drivers and vehicles are paired 1:1, all ACTIVE -- an inactive driver
+            # can't check in (TicketSerializer.create's driver.status guard), and a
+            # vehicle with no driver can never queue, so neither would generate history.
+            used_iwp, used_plates = set(), set()
+            drivers, vehicles = [], []
+            for _ in range(100):
                 gender = random.choice(["MALE", "MALE", "FEMALE"])  # jeepney driving skews male, not exclusively
                 first, middle, last = _rand_name(gender)
-                town = random.choice(towns)
+                city = random.choice(list(ADDRESSES))
                 driver = Driver(
-                    iwp_number=f"IWP-{2024 + (i % 3)}-{i:04d}",
+                    iwp_number=_rand_iwp(used_iwp),
+                    iwp_expiration_date=_future_date(today, 60, 1000),
                     first_name=first,
                     middle_name=middle,
                     last_name=last,
                     gender=gender,
                     birthdate=date(random.randint(1968, 2001), random.randint(1, 12), random.randint(1, 28)),
                     province="La Union",
-                    city=town,
-                    barangay=random.choice(BARANGAYS),
+                    city=city,
+                    barangay=random.choice(ADDRESSES[city]),
                     street=f"{random.randint(1, 200)} {random.choice(['Rizal', 'Bonifacio', 'Mabini', 'National Highway', 'Quezon'])} St.",
                     contact=_rand_contact(),
-                    status="ACTIVE" if i > 6 else "INACTIVE",  # a few inactive for realism
+                    status="ACTIVE",
                 )
                 drivers.append(driver)
-
-            if not dry_run:
-                for d in drivers:
-                    d.save()  # small volume (100) -- normal save() so it queues into SyncQueue like real data
-                    d.qr_code = d.iwp_number
-                    d.save(update_fields=["qr_code"])
-
-            # --- Vehicles (100) ----------------------------------------------
-            used_plates = set()
-            vehicles = []
-            # Only ACTIVE drivers get assigned as a vehicle's active_driver -- an
-            # inactive one can't legally check in (see TicketSerializer.create's
-            # driver.status != 'ACTIVE' guard), so pairing one with a vehicle would
-            # leave that vehicle unable to ever queue.
-            assignable_drivers = [d for d in drivers if d.status == "ACTIVE"]
-            for i in range(100):
-                town = random.choice(towns)
-                driver = assignable_drivers[i] if i < len(assignable_drivers) else None
-                vehicle = Vehicle(
+                vehicles.append(Vehicle(
                     plate_number=_rand_plate(used_plates),
-                    transportation_id=jeepney,  # the fleet is Jeepney-only in practice
-                    franchise_number=f"{random.randint(2018, 2025)}-LTFRB-{random.randint(10000, 99999)}",
-                    route=routes_by_town[town],
-                    operator_address=f"{random.choice(BARANGAYS)}, {town}, La Union",
+                    transportation_id=jeepney,
+                    franchise_number=f"{random.randint(18, 25)}-{random.randint(10000, 99999)}",
+                    franchise_expiration_date=_future_date(today, 60, 1000),
+                    route=random.choice(routes),
+                    # Same string the Vehicle form builds from the chosen operator (buildDriverAddress).
+                    operator_address=", ".join((driver.street, driver.barangay, driver.city, driver.province)),
                     status="AVAILABLE",
-                    owner_driver=driver,
-                    active_driver=driver,
-                )
-                vehicles.append(vehicle)
+                ))
 
             if not dry_run:
-                for v in vehicles:
+                # Small volume (100) -- normal save() so each row queues into SyncQueue like real data.
+                for d, v in zip(drivers, vehicles):
+                    d.qr_code = d.iwp_number
+                    d.save()
+                    v.owner_driver = v.active_driver = d
+                    v.qr_code = f"QR-{v.plate_number}-{uuid.uuid4().hex[:8].upper()}"
                     v.save()
-                    v.qr_code = v.plate_number
-                    v.save(update_fields=["qr_code"])
 
-        # --- Requisition (continues old id sequence) + TicketSeries -------
-        requisitions = []
-        next_id = old_max_requisition_id + 1
-        for i, form in enumerate(ticket_forms):
-            req = Requisition(
-                id=next_id + i,
-                requested_by=admin_user,
-                approved_by_name=f"{admin_user.first_name} {admin_user.last_name}".strip() or admin_user.username,
-                status="ISSUED",
-                total_value=Decimal("0"),
-            )
-            requisitions.append(req)
-
-        series_list = []
-        if not dry_run:
-            for req in requisitions:
-                req.save()
-
-            # Ticket.id is a single global primary key (not scoped per series/form),
-            # same as real physical ticket books at the terminal -- so each series
-            # needs a non-overlapping slice of the number line, not its own 1..N.
-            # Each form gets its own numeric range instead of one shared counter:
-            # the leading digit is the ticket price's own leading digit (1 for the
-            # P10 form, 2 for the P2 form), so ranges can never collide across
-            # forms and the ticket number alone tells you the denomination --
-            # e.g. 1012100001, 1012100002, ... vs 2012100001, 2012100002, ...
-            # series_no is just that same range's start_no, kept purely numeric
-            # (no "CASHTICKETS-0-0" style label).
-            #
-            # Each form's range is sized off *ticket units*, not transactions: a
-            # cheaper form needs more units per transaction to hit the terminal
-            # price (a P2 form needs 5 units for every 1 a P10 form needs) -- a
-            # flat range per form previously starved the P2 form's stock well
-            # before the P10 form's, well within one history run. Sized against
-            # the worst case (every single day at daily-cap, all of it this one
-            # form) so it can never run dry regardless of how the random mode/
-            # cancellation split actually lands.
-            form_quantities = self._compute_form_quantities(ticket_forms)
-            worst_case_days = months * 31 + 10
-            for i, (req, form) in enumerate(zip(requisitions, ticket_forms)):
-                form_code = str(int(form.price))[0]
-                next_ticket_no = int(form_code) * 10**9 + 12_100_001
-                per_series_size = max(20000, (worst_case_days * daily_cap * form_quantities[form.id]) // 2)
-                for s in range(2):  # 2 series per form
-                    start_no = next_ticket_no
-                    end_no = start_no + per_series_size - 1
-                    next_ticket_no = end_no + 1
-                    series = TicketSeries(
-                        series_no=str(start_no),
-                        ticket_form=form,
-                        start_no=str(start_no),
-                        end_no=str(end_no),
-                        unit_value=form.price,
-                        total_value=form.price * (end_no - start_no + 1),
-                        requisition=req,
-                        issued_to=admin_user,
-                        date_issued=timezone.now(),
-                    )
-                    series.save()
-                    series_list.append(series)
-                req.total_value = sum((s.total_value for s in series_list if s.requisition_id == req.id), Decimal("0"))
-                req.save(update_fields=["total_value"])
-
+        # Requisitions + series are created lazily as stock runs out (see
+        # _draw_ticket_no); numbering starts at the registered booklet ranges.
         return {
             "before": before,
             "old_max_requisition_id": old_max_requisition_id,
-            "requisitions": requisitions,
+            "next_requisition_id": old_max_requisition_id + 1,
+            "requisitions": [],
+            "series_count": 0,
+            "admin_user": admin_user,
+            # Per form: current series (None until first needed) + next unused ticket number.
+            # Leading digit is the form price's own (1 for P10, 2 for P2), so the number
+            # alone tells the denomination: 1020101001-1020102000, 2020101001-2020102000, ...
+            "cursor": {f.id: {"series": None, "next": int(str(int(f.price))[0]) * 10**9 + 20_101_001} for f in ticket_forms},
             "ticket_forms": ticket_forms,
             "staff_users": staff_users,
             "vehicles": vehicles,
             "driver_count": len(drivers),
             "vehicle_count": len(vehicles),
             "keep_fleet": keep_fleet,
-            "series_list": series_list,
-            "route_count": len(towns),
+            "route_count": len(routes),
         }
 
-    def _generate_history(self, ctx, months, daily_avg, daily_cap, cancelled_rate):
-        ticket_forms = ctx["ticket_forms"]
-        staff_users = ctx["staff_users"]
-        series_list = ctx["series_list"]
-
-        series_cursor = {s.id: int(s.start_no) for s in series_list}
-        series_by_form = {}
-        for s in series_list:
-            series_by_form.setdefault(s.ticket_form_id, []).append(s)
-
+    def _generate_history(self, ctx, months, daily_min, daily_max, cancelled_rate):
         # Every COLLECTED transaction must total exactly the configured terminal
         # price (see dispatch_ticket / roam check-in's price*quantity ==
         # terminal_price guard in views/viewsets.py) -- so a form only ever gets
         # issued in whatever fixed quantity hits that total exactly (e.g. a P2
         # ticket 5-at-a-time against a P10 terminal price), never as a lone P2.
-        form_quantities = self._compute_form_quantities(ticket_forms)
-
+        form_quantities = self._compute_form_quantities(ctx["ticket_forms"])
         available_vehicles = [v for v in ctx["vehicles"] if v.active_driver_id]
-        today = timezone.localtime().date()
-        start_day = today - timedelta(days=months * 30)
+        ph_today = (timezone.now() + timedelta(hours=8)).date()
+        start_day = ph_today - timedelta(days=months * 30)
+        last_day = ph_today - timedelta(days=1)
 
         ticket_stats = {"created": 0, "days": 0}
 
         day = start_day
-        while day <= today:
+        while day <= last_day:
             with transaction.atomic():
-                self._generate_day(
-                    day, today, daily_avg, daily_cap, cancelled_rate, form_quantities,
-                    available_vehicles, ticket_forms, staff_users,
-                    series_cursor, series_by_form, ticket_stats,
-                )
+                self._generate_day(day, daily_min, daily_max, cancelled_rate, form_quantities,
+                                   available_vehicles, ctx, ticket_stats)
             day += timedelta(days=1)
 
         return ticket_stats
 
-    def _draw_ticket_no(self, form_id, series_by_form, series_cursor):
-        """Pull the next physical ticket number for this form, falling over to
-        the next series once the current one's range is exhausted. Returns
-        (series, no), or (None, None) if every series for this form is spent."""
-        form_series = series_by_form.get(form_id)
-        while form_series:
-            series = form_series[0]
-            no = series_cursor[series.id]
-            if no <= int(series.end_no):
-                series_cursor[series.id] = no + 1
-                return series, no
-            form_series = form_series[1:]
-            series_by_form[form_id] = form_series
-        return None, None
+    def _draw_ticket_no(self, form, day, ctx):
+        """Next physical ticket number for this form. Once the current 1000-ticket
+        series is spent, a fresh requisition + contiguous series is issued (dated
+        `day`, i.e. when the stock actually ran out). Returns (series, no)."""
+        cur = ctx["cursor"][form.id]
+        if cur["series"] is None or cur["next"] > int(cur["series"].end_no):
+            cur["series"] = self._issue_series(form, cur["next"], day, ctx)
+        no = cur["next"]
+        cur["next"] += 1
+        return cur["series"], no
 
-    def _generate_day(self, day, today, daily_avg, daily_cap, cancelled_rate, form_quantities,
-                       available_vehicles, ticket_forms, staff_users,
-                       series_cursor, series_by_form, ticket_stats):
-        is_weekend = day.weekday() >= 5
-        base = daily_avg * (0.5 if is_weekend else 1.0)
-        # daily-avg/daily-cap count physical Ticket rows -- what the app itself
+    def _issue_series(self, form, start_no, day, ctx):
+        admin_user = ctx["admin_user"]
+        issued = _ph(day, 4)
+        end_no = start_no + SERIES_SIZE - 1
+        total = form.price * SERIES_SIZE
+        req = Requisition.objects.create(
+            id=ctx["next_requisition_id"],
+            requested_by=admin_user,
+            approved_by_name=f"{admin_user.first_name} {admin_user.last_name}".strip() or admin_user.username,
+            status="ISSUED",
+            total_value=total,
+        )
+        ctx["next_requisition_id"] += 1
+        series = TicketSeries.objects.create(
+            series_no=f"{start_no}-{end_no}",
+            ticket_form=form,
+            start_no=str(start_no),
+            end_no=str(end_no),
+            unit_value=form.price,
+            total_value=total,
+            requisition=req,
+            issued_to=admin_user,
+            date_issued=issued,
+        )
+        # auto_now(_add) stamps "now" on save; backdate to when the stock was requisitioned.
+        Requisition.objects.filter(pk=req.pk).update(date_requested=issued, created_at=issued, updated_at=issued)
+        TicketSeries.objects.filter(pk=series.pk).update(created_at=issued, updated_at=issued)
+        ctx["requisitions"].append(req)
+        ctx["series_count"] += 1
+        return series
+
+    def _generate_day(self, day, daily_min, daily_max, cancelled_rate, form_quantities,
+                       available_vehicles, ctx, ticket_stats):
+        ticket_forms, staff_users = ctx["ticket_forms"], ctx["staff_users"]
+        # daily-min/daily-max count physical Ticket rows -- what the app itself
         # calls a "check-out" (EodReconciliation's checkout_count, in
         # views/reports.py, is literally len(COLLECTED tickets dispatched that
         # day)) -- not the higher-level transaction/issuance_group. A single P2
         # transaction still produces 5 of those rows, not 1, so the loop below
         # keeps adding transactions until their rows add up to the target,
         # rather than just counting transactions.
-        target_rows = min(daily_cap, max(1, int(random.gauss(base, base * 0.15))))
+        target_rows = random.randint(daily_min, daily_max)
 
         # --- Pass 1: decide each transaction's shape (mode/timing/outcome/
-        # form) before any ticket numbers are drawn, so today's still-queued
-        # picks (by issued_at, below) don't need any series bookkeeping undone.
+        # form) before any ticket numbers are drawn.
         txns = []
         row_count = 0
         while row_count < target_rows:
@@ -496,7 +447,7 @@ class Command(BaseCommand):
                 weights=[3, 5, 8, 8, 5, 4, 4, 4, 4, 4, 5, 6, 8, 6, 3],
             )[0]
             minute = random.randint(0, 59)
-            dispatched_at = timezone.make_aware(datetime.combine(day, time(hour, minute)))
+            dispatched_at = _ph(day, hour, minute)
 
             if mode == "QUEUE":
                 # Queue wait (check-in to dispatch) is centered on this route's
@@ -518,8 +469,8 @@ class Command(BaseCommand):
             else:
                 form, quantity = None, 1
 
-            if row_count + quantity > daily_cap:
-                break  # would blow the hard cap -- stop issuing for today
+            if row_count + quantity > daily_max:
+                break  # would blow the hard cap -- stop issuing for the day
 
             txns.append({
                 "vehicle": vehicle,
@@ -533,29 +484,9 @@ class Command(BaseCommand):
             })
             row_count += quantity
 
-        if day == today:
-            # Leave a handful of today's still-open QUEUE-mode check-ins
-            # genuinely QUEUED instead of COLLECTED -- one vehicle can only
-            # have one open ticket at a time, and real check-ins don't pick a
-            # ticket_form/quantity until dispatch, so these become single,
-            # price-less placeholders rather than a priced COLLECTED group.
-            queue_candidates = [t for t in txns if t["mode"] == "QUEUE" and t["status"] == "COLLECTED"]
-            queue_candidates.sort(key=lambda t: t["issued_at"], reverse=True)
-            take = min(len(queue_candidates), random.randint(5, 20))
-            seen_vehicles, left = set(), 0
-            for t in queue_candidates:
-                if left >= take:
-                    break
-                if t["vehicle"].id in seen_vehicles:
-                    continue
-                seen_vehicles.add(t["vehicle"].id)
-                t["status"] = "QUEUED"
-                left += 1
-
         # --- Pass 2: materialize Ticket rows.
         day_tickets = []
         day_form_totals = {}  # form_id -> [amount_sum, min_no, max_no]
-        route_counters = {}
 
         for t in txns:
             vehicle, mode, on_duty = t["vehicle"], t["mode"], t["on_duty"]
@@ -563,37 +494,10 @@ class Command(BaseCommand):
             active_user_name = f"{on_duty.first_name} {on_duty.last_name}".strip() or on_duty.username
             issuance_group = uuid.uuid4().hex
 
-            if status == "QUEUED":
-                queue_code = ""
-                if vehicle.route_id:
-                    route_counters[vehicle.route_id] = route_counters.get(vehicle.route_id, 0) + 1
-                    queue_code = f"{vehicle.route.acronym}-{route_counters[vehicle.route_id]}"
-                ticket = Ticket(
-                    id=f"PENDING-{uuid.uuid4().hex[:12]}",
-                    vehicle=vehicle,
-                    driver_id=vehicle.active_driver_id,
-                    active_user=on_duty,
-                    active_user_name=active_user_name,
-                    route=vehicle.route,
-                    mode=mode,
-                    status="QUEUED",
-                    is_verified=False,
-                    queue_code=queue_code,
-                    issued_at=issued_at,
-                    dispatched_at=None,
-                    issuance_group=issuance_group,
-                )
-                ticket._issued_at_fix = issued_at
-                ticket._created_at_fix = issued_at
-                day_tickets.append(ticket)
-                vehicle.status = "QUEUED"
-                vehicle.save(update_fields=["status", "updated_at"])
-                continue
-
             if status == "CANCELLED":
                 # Cancelled before a ticket_form/quantity was ever chosen (that
                 # only happens at dispatch/roam check-in), so no series number
-                # is consumed -- same placeholder shape as a QUEUED ticket.
+                # is consumed -- a price-less placeholder.
                 ticket = Ticket(
                     id=f"CANCELLED-{uuid.uuid4().hex[:12]}",
                     vehicle=vehicle,
@@ -619,9 +523,7 @@ class Command(BaseCommand):
             group_min = group_max = None
             group_amount = Decimal("0")
             for _u in range(quantity):
-                series, no = self._draw_ticket_no(form.id, series_by_form, series_cursor)
-                if series is None:
-                    break  # this form's series are exhausted -- issue fewer units than intended
+                series, no = self._draw_ticket_no(form, day, ctx)
                 ticket = Ticket(
                     id=str(no),
                     vehicle=vehicle,
@@ -679,13 +581,22 @@ class Command(BaseCommand):
             total_amount=total_amount,
             covers_date=day,
         )
-        for form_id, (amount, min_no, max_no) in day_form_totals.items():
+        # Marks the day's collected tickets as remitted, as saving a batch does for real,
+        # and dates the batch to that evening instead of the moment this command ran.
+        Ticket.objects.filter(pk__in=[t.id for t in day_tickets if t.status == "COLLECTED"]).update(remittance_batch=batch)
+        RemittanceBatch.objects.filter(pk=batch.pk).update(issued_at=_ph(day, 20, 30))
+        for form_id, (amount, min_no, _max_no) in day_form_totals.items():
             form = next(f for f in ticket_forms if f.id == form_id)
+            # Like the real remittance form (createRemittance.jsx): From/To are the
+            # peso value of this form's stock at the start of the day and what's left
+            # after it (From - Amount), not ticket numbers. Today's draws are contiguous
+            # up to the end of the current series, so start-of-day stock = end_no - min_no + 1.
+            stock_from = form.price * (int(ctx["cursor"][form_id]["series"].end_no) - min_no + 1)
             Collection.objects.create(
                 batch=batch,
                 ticket_form_no=form.name,
-                from_no=str(min_no),
-                to_no=str(max_no),
+                from_no=str(stock_from),
+                to_no=str(stock_from - amount),
                 amount=amount,
             )
         for kind, denom, qty in _denominate(total_amount):
@@ -707,6 +618,6 @@ class Command(BaseCommand):
             f"Wiped: {fleet_wiped}, {before['tickets']} tickets, "
             f"{before['requisitions']} requisitions, {before['remittance_batches']} remittance batches.\n"
             f"Reseeded: {ctx['route_count']} routes, {fleet_reseeded}, "
-            f"{len(requisitions)} requisitions (ids {old_max_requisition_id + 1}-{old_max_requisition_id + len(requisitions)}), "
+            f"{len(requisitions)} requisitions / {ctx['series_count']} ticket series (requisition ids from {old_max_requisition_id + 1}), "
             f"{ticket_stats['created']} tickets across {ticket_stats['days']} days."
         ))

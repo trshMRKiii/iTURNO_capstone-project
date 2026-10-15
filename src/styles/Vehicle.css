@@ -472,6 +472,14 @@
 .veh-text-btn--navy { color: #1a2744; }
 .veh-text-btn--gold { color: var(--gold); }
 
+.veh-segmented {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.veh-segmented .veh-input { min-width: 0; }
+
 .veh-route-input-row {
   display: flex;
   align-items: center;

@@ -29,8 +29,8 @@ const css = `
   transition: opacity .25s; }
 .pv-time { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
   background: rgba(255,255,255,.07); border: .3vh solid rgba(255,255,255,.15); border-radius: 2vw; padding: 2vh 2vw; min-width: 0; }
-.pv-route { font-size: clamp(20px, 6vh, 5vw); font-weight: 800; color: #ffd24d; text-transform: uppercase; line-height: 1.1; }
-.pv-label { font-size: clamp(16px, 3.6vh, 3vw); letter-spacing: .15em; text-transform: uppercase; opacity: .8; margin-top: 3vh; }
+.pv-route { font-size: clamp(28px, 9vh, 7vw); font-weight: 800; color: #ffd24d; text-transform: uppercase; line-height: 1.1; }
+.pv-label { font-size: clamp(20px, 5.6vh, 4.6vw); letter-spacing: .15em; text-transform: uppercase; opacity: .8; margin-top: 3vh; }
 .pv-big { font-size: min(24vh, 13vw); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; margin-top: 1vh; }
 .pv-list { display: flex; flex-direction: column; gap: 1.2vh; min-width: 0; min-height: 0; }
 .pv-row { flex: 1; display: flex; align-items: center; gap: 2vw; padding: 0 2vw; min-height: 0;

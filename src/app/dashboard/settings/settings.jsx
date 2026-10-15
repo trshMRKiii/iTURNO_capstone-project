@@ -4,6 +4,7 @@ import { apiService } from "../../../lib/api-service";
 import { useFeedback } from "../../../components/ui/kit";
 import SettingsModal from "../../../components/ui/settingsModal";
 import TicketBackfillTab from "./backfill/TicketBackfillTab";
+import OutsideRemittanceTab from "./outside/OutsideRemittanceTab";
 import ArchiveTab from "./archive/ArchiveTab";
 import SettingsNav from "./SettingsNav";
 import TicketFormsSection from "./TicketFormsSection";
@@ -164,6 +165,7 @@ function SettingsPage() {
 
   const { list: routes, setList: setRoutes, loading: loadingRoutes, reload: loadRoutes } = useListLoader(fetchRoutes, "Couldn't load routes", notify);
   const [newOrigin, setNewOrigin] = useState("");
+  const [newVia, setNewVia] = useState("");
   const [routeEstimateInputs, setRouteEstimateInputs] = useState({});
   const [routeRows, setRouteRows] = useState({});
   const [addingRoute, setAddingRoute] = useState(false);
@@ -285,9 +287,13 @@ function SettingsPage() {
     }
     setAddingRoute(true);
     try {
-      const created = await apiService.createRoute({ origin: newOrigin.trim().toUpperCase() });
+      // "Via" is folded into the name (e.g. "LUNA VIA BALAOAN") — origin is the route's
+      // unique key everywhere, and its acronym already handles multi-word names.
+      const via = newVia.trim();
+      const created = await apiService.createRoute({ origin: `${newOrigin.trim()}${via ? ` via ${via}` : ""}`.toUpperCase() });
       setRoutes((prev) => [...prev, created]);
       setNewOrigin("");
+      setNewVia("");
       setRouteModalOpen(false);
       notify.success({ title: "Route added", message: `${routeLabel(created)} is ready to use.` });
     } catch (err) {
@@ -597,6 +603,18 @@ function SettingsPage() {
           </div>
         )}
 
+        {/* Tickets whose cash was remitted outside the system */}
+        {activeTab === "outside-remittance" && canManageBackfill && (
+          <div className="set-section">
+            <div className="set-panel-toolbar">
+              <div className="set-panel-heading">
+                <h2 className="set-panel-title">Outside Remittance</h2>
+              </div>
+            </div>
+            <OutsideRemittanceTab />
+          </div>
+        )}
+
         {/* Archive: restore archived vehicles, drivers, requisitions, remittance */}
         {activeTab === "archive" && (
           <ArchiveTab onRestored={(key) => { if (key === "routes") loadRoutes(); if (key === "puvtypes") loadPuvTypes(); }} />
@@ -639,9 +657,12 @@ function SettingsPage() {
       <SettingsModal
         open={routeModalOpen}
         title="Add Route"
-        fields={[{ name: "origin", label: "Route Origin", placeholder: "New Route Origin" }]}
-        values={{ origin: newOrigin }}
-        onChange={(_, value) => setNewOrigin(value.toUpperCase())}
+        fields={[
+          { name: "origin", label: "Route Origin", placeholder: "e.g. Luna" },
+          { name: "via", label: "Via (optional)", placeholder: "e.g. Balaoan" },
+        ]}
+        values={{ origin: newOrigin, via: newVia }}
+        onChange={(field, value) => (field === "via" ? setNewVia : setNewOrigin)(value.toUpperCase())}
         onClose={() => setRouteModalOpen(false)}
         onSubmit={addRoute}
         saving={addingRoute}

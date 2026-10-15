@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { apiService } from "../../lib/api-service";
 import "../../styles/login.css";
+import PasswordInput from "../ui/kit/PasswordInput";
 
 import sfcLogo from "../../pictures/sfc-nobg-logo.png";
 import sfcMain from "../../pictures/sfc-main.jpg";
@@ -47,21 +48,21 @@ function ForcePasswordChange({ onChanged }) {
           <div className="lp-login-modal__brand">
             <img src={sfcLogo} alt="Logo" className="lp-login-modal__logo" style={{ borderRadius: "40px" }} />
             <h2>Set Your Password</h2>
-            <p>You're using a temporary password — choose your own to continue</p>
+            
           </div>
 
           <form onSubmit={handleSubmit} className="lp-login-form">
             <div className="lp-field">
               <label htmlFor="new-password">New Password</label>
-              <input
-                id="new-password" type="password" placeholder="Enter new password"
+              <PasswordInput
+                id="new-password" placeholder="Enter new password"
                 value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoFocus
               />
             </div>
             <div className="lp-field">
               <label htmlFor="confirm-password">Confirm Password</label>
-              <input
-                id="confirm-password" type="password" placeholder="Re-enter new password"
+              <PasswordInput
+                id="confirm-password" placeholder="Re-enter new password"
                 value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>

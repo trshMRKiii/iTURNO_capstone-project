@@ -23,5 +23,6 @@ export { default as ProgressDialog } from "./ProgressDialog";
 export { default as FeedbackProvider } from "./FeedbackProvider";
 export { useFeedback } from "./feedbackContext";
 export { default as ButtonLabel } from "./ButtonLabel";
+export { default as PasswordInput } from "./PasswordInput";
 export { default as BusyOverlay } from "./BusyOverlay";
 export { Skel, SkeletonRows, SkeletonList } from "./Skeleton";

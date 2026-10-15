@@ -67,14 +67,10 @@ const ROLE_NAV = {
   SUPERADMIN: ADMIN_NAV,
   MANAGER: ADMIN_NAV,
   SUPERVISOR: ADMIN_NAV,
-  PERSONNEL: ["/dashboard", "/dashboard/Queue", "/dashboard/Reports"],
+  PERSONNEL: ["/dashboard", "/dashboard/Queue", "/dashboard/Registry", "/dashboard/Reports"],
 };
 
-// Personnel see Fleet & Driver only once a Supervisor/Manager has ticked it for them.
-const navFor = (user) => {
-  const nav = ROLE_NAV[user.role] || [];
-  return user.role === "PERSONNEL" && user.can_manage_fleet ? [...nav, "/dashboard/Registry"] : nav;
-};
+const navFor = (user) => ROLE_NAV[user.role] || [];
 
 function mainIndex() {
   const [currentUser, setCurrentUser] = useState({});

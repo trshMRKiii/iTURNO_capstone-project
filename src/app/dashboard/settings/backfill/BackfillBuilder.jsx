@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useFeedback } from "../../../../components/ui/kit";
 import { IS_REMOTE } from "../../../../lib/api-service";
+import { getPhDateString } from "../../../../lib/phDate";
+import { useNavigate } from "react-router-dom";
 import { focusFirstError } from "../../../../lib/focusFirstError";
 import "../../../../styles/FormModal.css";
 import {
@@ -84,6 +86,9 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
   // what failed after a save. Null = modal closed.
   const [review, setReview] = useState(null);
   const [showErrors, setShowErrors] = useState(false);
+  // Date of the last saved backfill when it was for a past day — that day's cash still needs a remittance.
+  const [lateDate, setLateDate] = useState(null);
+  const navigate = useNavigate();
 
   const editSlot = (id, fn) => setSlots((prev) => prev.map((s) => (s.id === id ? fn(s) : s)));
 
@@ -141,6 +146,7 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
   const commit = async () => {
     const results = await submitRows(rows, true);
     if (results.every((r) => r.outcome === "ok")) {
+      setLateDate(date < getPhDateString(0) ? date : null);
       reset();
       return IS_REMOTE
         ? { success: { title: "Backfill queued", message: `${totalTickets} ticket(s) will be created on the LAN terminal's next sync.` } }
@@ -171,6 +177,20 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
 
   return (
     <div className="tbf-manual-form">
+      {lateDate && (
+        <div className="gnotice gnotice--warning">
+          <span className="gnotice-text">
+            These tickets were issued on {lateDate}, so that day's cash needs a late remittance
+            {IS_REMOTE ? " once the LAN terminal syncs them." : "."}
+          </span>
+          {!IS_REMOTE && (
+            <button type="button" className="gnotice-action" onClick={() => navigate(`/dashboard/Remittance?date=${lateDate}`)}>
+              File Late Remittance
+            </button>
+          )}
+          <button type="button" className="gnotice-dismiss" onClick={() => setLateDate(null)} aria-label="Dismiss">×</button>
+        </div>
+      )}
       <div className="set-add-row">
         <label className="set-field">
           <span className="set-field-label">Date *</span>

@@ -260,7 +260,7 @@ EMAIL_LINK_SECRET = os.getenv('EMAIL_LINK_SECRET')
 # Turn ON: set SMS_ENABLED=True in backend/.env and fill in PHILSMS_API_TOKEN.
 # Turn OFF: set SMS_ENABLED=False (or unset it) in backend/.env — send_sms()
 # then just logs and returns instead of calling the PhilSMS API.
-SMS_ENABLED = os.getenv('SMS_ENABLED', 'False') == 'False'
+SMS_ENABLED = os.getenv('SMS_ENABLED', 'False') == 'True'
 PHILSMS_API_TOKEN = os.getenv('PHILSMS_API_TOKEN', '')
 PHILSMS_SENDER_ID = os.getenv('PHILSMS_SENDER_ID', 'PhilSMS')
 PHILSMS_API_URL = 'https://dashboard.philsms.com/api/v3/sms/send'

@@ -75,7 +75,7 @@ function Scan() {
               <div className="scan-result-warning">✕ Vehicle franchise expired</div>
             )}
             <div className="scan-result-error">Waiting for check-in…</div>
-            <div className="scan-result-note">Complete the check-in on the Queue page</div>
+            
           </div>
         )}
 

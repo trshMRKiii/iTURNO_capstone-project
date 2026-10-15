@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useRequisition } from "./useRequisition";
 import RequisitionFormModal from "./RequisitionFormModal";
-import PaperRangeModal from "./PaperRangeModal";
 import { IS_REMOTE } from "../../../lib/api-service";
 import "../../../styles/requisition.css";
 import "../../../components/ui/kit";
@@ -48,14 +47,10 @@ function Requisition() {
     computeTotal,
     handleSave,
     inventory,
-    approvedBy,
-    setApprovedBy,
-    handleVoid,
-    refresh,
+    handleDelete,
   } = useRequisition();
 
   const [expandedDenom, setExpandedDenom] = useState(null);
-  const [paperSeries, setPaperSeries] = useState(null);
   const [search, setSearch] = useState("");
 
   const query = search.replace(/[,\s]/g, "");
@@ -91,16 +86,10 @@ function Requisition() {
         addSeriesItem={addSeriesItem}
         removeSeriesItem={removeSeriesItem}
         ticketForms={ticketForms}
-        approvedBy={approvedBy}
-        setApprovedBy={setApprovedBy}
         computeTotal={computeTotal}
         handleSave={handleSave}
         saving={saving}
       />
-
-      {paperSeries && (
-        <PaperRangeModal series={paperSeries} onClose={() => setPaperSeries(null)} onSaved={refresh} />
-      )}
 
       <div className="rq-card" aria-busy={loading}>
         <div className="rq-card-head">
@@ -187,14 +176,9 @@ function Requisition() {
                           <span className="rq-num">
                             {formatCurrency(ts.current_value)}
                             {!IS_REMOTE && (
-                              <>
-                                <button type="button" className="rq-link" onClick={() => setPaperSeries(ts)}>
-                                  Paper range
+                              <button type="button" className="rq-link rq-link--danger" onClick={() => handleDelete(ts)}>
+                                  Delete
                                 </button>
-                                <button type="button" className="rq-link rq-link--danger" onClick={() => handleVoid(ts)}>
-                                  Void
-                                </button>
-                              </>
                             )}
                           </span>
                         </div>

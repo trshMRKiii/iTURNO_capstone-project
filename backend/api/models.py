@@ -562,9 +562,11 @@ class PendingSetting(models.Model):
     by the next pull. It is saved locally at once and parked here; api/sync/settings_outbox.py
     pushes the whole row when Supabase is back, and pull_all() leaves parked rows alone
     until then. Rows created offline get an id above LOCAL_ADMIN_PK_BASE so they can be
-    pushed under the same id with no FK remapping."""
+    pushed under the same id with no FK remapping. An offline delete parks a tombstone
+    (is_delete) instead: the row is gone locally, and the flush deletes it on Supabase."""
     model_label = models.CharField(max_length=60)
     obj_id = models.IntegerField()
+    is_delete = models.BooleanField(default=False)
     queued_at = models.DateTimeField(auto_now=True)
 
     class Meta:

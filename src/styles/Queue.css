@@ -1299,6 +1299,34 @@
   color: var(--text-primary);
 }
 
+.queue-series-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.queue-series-option {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.queue-series-option:hover {
+  border-color: var(--gold);
+}
+
+.queue-series-option.is-active {
+  border-color: var(--gold);
+  background: rgba(201, 168, 76, 0.12);
+  font-weight: 600;
+}
+
 .queue-change-series-btn {
   padding: 7px 12px;
   border: 1px solid var(--border);

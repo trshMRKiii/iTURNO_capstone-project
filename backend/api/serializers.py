@@ -136,6 +136,11 @@ class VehicleSerializer(serializers.ModelSerializer):
             return f"{obj.owner_driver.last_name}, {obj.owner_driver.first_name}".strip()
         return None
 
+    def validate_is_archived(self, value):
+        if value and self.instance and self.instance.status == 'QUEUED':
+            raise serializers.ValidationError('This vehicle is in the queue. Dispatch or remove it from the queue first.')
+        return value
+
     def create(self, validated_data):
         # A freshly-registered vehicle has no shift history yet, so its
         # current driver starts out as its owner (mirrors the pre-split

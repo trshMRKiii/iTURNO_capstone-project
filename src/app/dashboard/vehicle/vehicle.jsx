@@ -6,7 +6,9 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
   DESTINATION,
-  formatPlateNumber,
+  SegmentedInput,
+  PLATE_SEGMENTS,
+  FRANCHISE_SEGMENTS,
   buildDriverAddress,
 } from "./vehicleHook";
 import VehicleModal from "./vehicleModal";
@@ -565,72 +567,25 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                   </Field>
                   {!editing && (
                     <Field label="Plate number" required>
-                      <input
-                        type="text"
+                      <SegmentedInput
+                        label="Plate number"
+                        segments={PLATE_SEGMENTS}
                         className={errCls("veh-input", "plate_number")}
-                        placeholder="e.g. ABC-1234"
                         value={form.plate_number}
-                        maxLength={8}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            plate_number: formatPlateNumber(e.target.value),
-                          })
-                        }
+                        onChange={(plate_number) => setForm({ ...form, plate_number })}
                       />
                       <FieldError name="plate_number" />
+                      {!fieldErrors.plate_number && <p className="veh-field-hint">3 letters, then 3–4 digits. Can't be changed after registering.</p>}
                     </Field>
                   )}
                   <Field label="Franchise number" required>
-                    {(() => {
-                      const [yy = "", nnnnn = ""] = (form.franchise_number || "").split("-");
-                      const update = (nextYY, nextN) => {
-                        setForm({
-                          ...form,
-                          franchise_number: nextN ? `${nextYY}-${nextN}` : nextYY,
-                        });
-                      };
-                      return (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <input
-                            id="franchise-yy"
-                            type="text"
-                            inputMode="numeric"
-                            className={errCls("veh-input", "franchise_number")}
-                            placeholder="YY"
-                            maxLength={2}
-                            style={{ width: "5rem", textAlign: "center" }}
-                            value={yy}
-                            onChange={(e) => {
-                              const v = e.target.value.replace(/\D/g, "").slice(0, 2);
-                              update(v, nnnnn);
-                              if (v.length === 2) {
-                                document.getElementById("franchise-n")?.focus();
-                              }
-                            }}
-                          />
-                          <span>-</span>
-                          <input
-                            id="franchise-n"
-                            type="text"
-                            inputMode="numeric"
-                            className={errCls("veh-input", "franchise_number")}
-                            placeholder="NNNNN"
-                            maxLength={5}
-                            style={{ flex: 1 }}
-                            value={nnnnn}
-                            onChange={(e) =>
-                              update(yy, e.target.value.replace(/\D/g, "").slice(0, 5))
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Backspace" && !nnnnn) {
-                                document.getElementById("franchise-yy")?.focus();
-                              }
-                            }}
-                          />
-                        </div>
-                      );
-                    })()}
+                    <SegmentedInput
+                      label="Franchise number"
+                      segments={FRANCHISE_SEGMENTS}
+                      className={errCls("veh-input", "franchise_number")}
+                      value={form.franchise_number}
+                      onChange={(franchise_number) => setForm({ ...form, franchise_number })}
+                    />
                     <FieldError name="franchise_number" />
                     {!fieldErrors.franchise_number && <p className="veh-field-hint">Format YY-NNNNN (7 digits).</p>}
                   </Field>

@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import F
 
-from api.models import Ticket, RemittanceBatch, AuditLog, SyncQueue
+from api.models import Ticket, RemittanceBatch, AuditLog, SyncQueue, Vehicle
 
 # RemittanceBatch cascades to Deposit/Collection on both 'default' and
 # 'supabase' (mirrored FK behavior), so they don't need to be listed here.
@@ -15,7 +16,7 @@ QUEUE_LABELS = ['api.Ticket', 'api.RemittanceBatch', 'api.Deposit', 'api.Collect
 class Command(BaseCommand):
     help = ('Debug-stage reset: deletes Ticket/RemittanceBatch(+Deposit/Collection)/AuditLog '
             'from both LAN (default) and Supabase (supabase). '
-            'Leaves User/Driver/Vehicle/TicketSeries/Requisition untouched. Also clears the '
+            'Leaves User/Driver/Vehicle/TicketSeries/Requisition untouched (except resetting QUEUED vehicles to AVAILABLE). Also clears the '
             'matching SyncQueue backlog so nothing is left queued for the wiped rows.')
 
     def add_arguments(self, parser):
@@ -34,12 +35,15 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('Dry run only — re-run with --yes to actually delete.'))
             return
 
-        for model in SUPABASE_MODELS:
-            with transaction.atomic(using='supabase'):
-                model.objects.using('supabase').all().delete()
-        for model in SUPABASE_MODELS:
-            with transaction.atomic(using='default'):
-                model.objects.using('default').all().delete()
+        for alias in ('supabase', 'default'):
+            with transaction.atomic(using=alias):
+                for model in SUPABASE_MODELS:
+                    model.objects.using(alias).all().delete()
+                # With every ticket gone, no vehicle can still be in line —
+                # otherwise it stays QUEUED with no ticket (a "ghost" counted
+                # by the dashboard but invisible in the queue).
+                Vehicle.objects.using(alias).filter(status='QUEUED').update(
+                    status='AVAILABLE', active_driver=F('owner_driver'))
 
         SyncQueue.objects.filter(model_label__in=QUEUE_LABELS).delete()
 

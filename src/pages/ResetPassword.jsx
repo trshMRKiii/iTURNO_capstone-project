@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/login.css";
+import PasswordInput from "../components/ui/kit/PasswordInput";
 import { apiService } from "../lib/api-service";
 import { useToast } from "../components/ui/ToastConfirmContext";
 
@@ -78,15 +79,15 @@ function ResetPassword() {
             <form onSubmit={handleSubmit} className="lp-login-form">
               <div className="lp-field">
                 <label htmlFor="new-password">New Password</label>
-                <input
-                  id="new-password" type="password" placeholder="Enter new password"
+                <PasswordInput
+                  id="new-password" placeholder="Enter new password"
                   value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoFocus
                 />
               </div>
               <div className="lp-field">
                 <label htmlFor="confirm-password">Confirm Password</label>
-                <input
-                  id="confirm-password" type="password" placeholder="Re-enter new password"
+                <PasswordInput
+                  id="confirm-password" placeholder="Re-enter new password"
                   value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>

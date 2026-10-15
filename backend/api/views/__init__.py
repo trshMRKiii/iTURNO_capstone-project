@@ -30,6 +30,8 @@ from .records import (
     remittance_batches,
 )
 
+from .external_remittance import external_remittance, external_remittance_records, undo_external_remittance
+
 from .system import (
     system_backups,
     system_backup_detail,

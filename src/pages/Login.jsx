@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/login.css";
 import { handleLogin, apiService } from '../lib/api-service';
 import { useToast } from '../components/ui/ToastConfirmContext';
-import { ButtonLabel } from '../components/ui/kit';
+import { ButtonLabel, PasswordInput } from '../components/ui/kit';
 
 // ── Import images
 import sfcLogo from '../pictures/sfc-nobg-logo.png';
@@ -98,8 +98,8 @@ function Login() {
                 </div>
                 <div className="lp-field">
                   <label htmlFor="password">Password</label>
-                  <input
-                    id="password" type="password" placeholder="Enter your password"
+                  <PasswordInput
+                    id="password" placeholder="Enter your password"
                     value={password} onChange={(e) => setPassword(e.target.value)}
                     disabled={signingIn}
                   />

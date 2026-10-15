@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { usePhilippineAddress } from "./usePhilippineAddress";
+import { formatContact, normalizeContact } from "../../../lib/contact";
 import {
   DRIVER_SECTIONS,
   REQUIRED_FIELD_COUNT,
@@ -303,7 +304,7 @@ function DriverFormModal({
 
               <Section number={3} title={editing ? "Contact & status" : "Contact"}>
                 <Field label="Contact number" required error={fieldErrors.contact}>
-                  <input type="text" inputMode="numeric" className={`drv-input${fieldErrors.contact ? " drv-input--error" : ""}`} placeholder="e.g. 09XXXXXXXXX" maxLength={11} value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value.replace(/\D/g, "") })} />
+                  <input type="tel" inputMode="numeric" className={`drv-input${fieldErrors.contact ? " drv-input--error" : ""}`} placeholder="09XX XXX XXXX" maxLength={13} value={formatContact(form.contact)} onChange={(e) => setForm({ ...form, contact: normalizeContact(e.target.value) })} />
                 </Field>
                 {editing && (
                   <Field

@@ -1,4 +1,6 @@
-export const getDriverDisplayName = (driver) => {
+import { CONTACT_PATTERN, CONTACT_ERROR } from "../../../lib/contact";
+
+export const getDriverDisplayName =(driver) => {
   if (!driver) return "Unnamed Driver";
 
   const parts = [driver.first_name, driver.middle_name, driver.last_name]
@@ -61,8 +63,8 @@ export const validateDriverForm = (form) => {
   if (!errors.iwp_number && !/^\d{12}$/.test(form.iwp_number.toString().trim())) {
     errors.iwp_number = "IWP number must be exactly 12 digits.";
   }
-  if (!errors.contact && !/^\d{11}$/.test(form.contact.toString().trim())) {
-    errors.contact = "Contact number must be 11 digits.";
+  if (!errors.contact && !CONTACT_PATTERN.test(form.contact.toString().trim())) {
+    errors.contact = CONTACT_ERROR;
   }
   return errors;
 };

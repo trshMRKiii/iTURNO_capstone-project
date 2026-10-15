@@ -2,6 +2,23 @@ import React, { useState } from "react";
 
 const labelOf = (s) => s?.ticket_form_label || "Unspecified";
 
+const OptionList = ({ options, activeId, onPick }) => (
+  <div className="queue-series-options" role="listbox">
+    {options.map(({ id, text }) => (
+      <button
+        key={id}
+        type="button"
+        role="option"
+        aria-selected={String(id) === String(activeId)}
+        className={`queue-series-option${String(id) === String(activeId) ? " is-active" : ""}`}
+        onClick={() => onPick(String(id))}
+      >
+        {text}
+      </button>
+    ))}
+  </div>
+);
+
 // Ticket denomination summary + "Change Series" drawer. The picked series lives
 // in useQueue (shared by Roaming issuance and Dispatch). `pickExact` also lets the
 // operator choose a specific series of the denomination instead of the default.
@@ -39,37 +56,25 @@ function SeriesPicker({
       </div>
       {open && (
         <>
-          <select
-            className="queue-select"
-            value={
-              availableSeries.find((s) => labelOf(s) === labelOf(selected))?.id ?? selectedSeriesId
-            }
-            onChange={(e) => {
+          {/* Options are listed right away — no second dropdown to open. */}
+          <OptionList
+            options={availableSeries.map((s) => ({ id: s.id, text: labelOf(s) }))}
+            activeId={availableSeries.find((s) => labelOf(s) === labelOf(selected))?.id ?? selectedSeriesId}
+            onPick={(id) => {
               setSeriesOverrideId("");
-              setSelectedSeriesId(e.target.value);
+              setSelectedSeriesId(id);
               onChange?.();
+              if (!pickExact) setOpen(false);
             }}
-          >
-            {availableSeries.map((s) => (
-              <option key={s.id} value={s.id}>
-                {labelOf(s)}
-              </option>
-            ))}
-          </select>
+          />
           {pickExact && (
-            <select
-              className="queue-select"
-              value={selectedSeriesId}
-              onChange={(e) => setSeriesOverrideId(e.target.value)}
-            >
-              {allSeries
+            <OptionList
+              options={allSeries
                 .filter((s) => labelOf(s) === labelOf(selected))
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    Series {s.series_no} ({s.pcs} pcs remaining)
-                  </option>
-                ))}
-            </select>
+                .map((s) => ({ id: s.id, text: `Series ${s.series_no} (${s.pcs} pcs remaining)` }))}
+              activeId={selectedSeriesId}
+              onPick={setSeriesOverrideId}
+            />
           )}
         </>
       )}
