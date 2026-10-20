@@ -815,3 +815,12 @@
 .rpt-row-actions--center { justify-content: center; }
 .rpt-th--center { text-align: center; }
 .rpt-btn--icon { padding: 8px 10px; display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── Route Analytics (expandable per-route rows) ── */
+.rpt-center { text-align: center; }
+.rpt-route-row { cursor: pointer; }
+.rpt-route-caret { display: inline-block; width: 14px; color: var(--text-secondary); transition: transform 0.15s; }
+.rpt-route-caret--open { transform: rotate(90deg); }
+.rpt-route-detail { background: var(--bg-page); padding-top: 4px; padding-bottom: 12px; }
+.rpt-route-sub { width: 100%; }
+.rpt-route-plate { margin: 0 4px 2px 0; }

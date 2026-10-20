@@ -113,13 +113,47 @@ export const matchesRoamingRow = (t, query) =>
   fieldsMatch([t.id, t.vehicle?.plate_number, t.driver?.name, t.route_name, t.active_user_name], query);
 
 export const matchesRequisitionRow = (r, query) =>
-  fieldsMatch([r.requested_by_name, r.approved_by_name], query);
+  fieldsMatch([r.requested_by_name, r.issued_by_name], query);
 
 export const matchesRemittanceRow = (b, query) =>
   fieldsMatch([b.issued_by_name], query);
 
 export const matchesAuditRow = (l, query) =>
   fieldsMatch([l.created_at, l.action_display, l.model_name, l.object_repr, l.user_name], query);
+
+// Per-route tally of who took a queue slot vs. a roaming ticket. Takes the fully
+// fetched date-ranged rows (queue rows already mapped to the log shape, roaming
+// rows raw); cancelled tickets never carried a passenger load, so they're skipped.
+// Each route lists its drivers with their own queue/roaming counts, busiest first.
+export function buildRouteAnalytics(queueRows, roamingRows) {
+  const routes = new Map();
+  const tally = (route, driver, plate, kind) => {
+    const routeKey = route || "No route";
+    const driverKey = driver || "Unknown driver";
+    if (!routes.has(routeKey)) routes.set(routeKey, { route: routeKey, queue: 0, roaming: 0, drivers: new Map() });
+    const r = routes.get(routeKey);
+    r[kind] += 1;
+    if (!r.drivers.has(driverKey)) r.drivers.set(driverKey, { driver: driverKey, plates: new Set(), queue: 0, roaming: 0 });
+    const d = r.drivers.get(driverKey);
+    d[kind] += 1;
+    if (plate) d.plates.add(plate);
+  };
+  queueRows.forEach((l) => l.action !== "CANCELLED" && tally(l.route, l.driver, l.vehicle, "queue"));
+  roamingRows.forEach((t) => t.status !== "CANCELLED" && tally(t.route_name, t.driver?.name, t.vehicle?.plate_number, "roaming"));
+
+  return [...routes.values()]
+    .map((r) => ({
+      ...r,
+      total: r.queue + r.roaming,
+      drivers: [...r.drivers.values()]
+        .map((d) => ({ ...d, plates: [...d.plates], total: d.queue + d.roaming }))
+        .sort((a, b) => b.total - a.total || a.driver.localeCompare(b.driver)),
+    }))
+    .sort((a, b) => b.total - a.total || a.route.localeCompare(b.route));
+}
+
+export const matchesRouteRow = (r, query) =>
+  fieldsMatch([r.route, ...r.drivers.flatMap((d) => [d.driver, ...d.plates])], query);
 
 // The report tables only ever hold one server-paginated page (e.g. 30 rows) in
 // memory, so filtering that page client-side silently misses matches sitting

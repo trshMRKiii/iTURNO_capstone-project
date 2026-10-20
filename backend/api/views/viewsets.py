@@ -613,6 +613,9 @@ class TicketViewSet(viewsets.ModelViewSet):
         vehicle_id = self.request.query_params.get('vehicle_id')
         if vehicle_id:
             qs = qs.filter(vehicle_id=vehicle_id)
+        driver_id = self.request.query_params.get('driver_id')
+        if driver_id:
+            qs = qs.filter(driver_id=driver_id)
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date:
@@ -976,8 +979,18 @@ class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        requisition = serializer.save(requested_by=self.request.user)
+        user = self.request.user
+        requisition = serializer.save(issued_by_name=f"{user.first_name} {user.last_name}".strip() or user.username)
         self._audit('CREATE', requisition, self._safe_changes())
+
+    @action(detail=False, methods=['get'])
+    def supervisors(self, request):
+        """Who a requisition can be requested by. Open to anyone who can record one, since
+        the staff list itself is limited to admins."""
+        users = User.objects.filter(role='SUPERVISOR', is_active=True).order_by('first_name', 'last_name')
+        return Response([
+            {'id': u.id, 'name': f"{u.first_name} {u.last_name}".strip() or u.username} for u in users
+        ])
 
 
 class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
@@ -993,6 +1006,34 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
             _issued_before_today=Count('tickets', filter=Q(tickets__issued_at__date__lt=today)),
         )
 
+    def get_permissions(self):
+        # Correcting a mis-keyed series is a lead action; reads stay open.
+        if self.action in ('update', 'partial_update'):
+            return [IsAuthenticated(), IsSupervisorOrAdminForWrite()]
+        return super().get_permissions()
+
+    @staticmethod
+    def _in_use(series):
+        start, end = int(series.start_no), int(series.end_no)
+        return Ticket.objects.filter(series=series).exists() or series.paper_issuances.exists() or any(
+            i.isdigit() and start <= int(i) <= end for i in Ticket.objects.values_list('id', flat=True)
+        )
+
+    def perform_update(self, serializer):
+        """Fix a mis-keyed series in place. Only allowed while nothing has used the range;
+        series_no and the amounts are rebuilt from the corrected numbers and form price."""
+        with transaction.atomic():
+            if self._in_use(serializer.instance):
+                raise ValidationError("This series already has issued tickets or a paper range, so it can't be edited.")
+            series = serializer.save()
+            series.series_no = f"{series.start_no}-{series.end_no}"
+            series.total_value = series.ticket_form.price * (int(series.end_no) - int(series.start_no) + 1)
+            series.save(update_fields=['series_no', 'total_value'])
+            requisition = series.requisition
+            requisition.total_value = sum(s.total_value for s in requisition.ticket_series.all())
+            requisition.save(update_fields=['total_value', 'updated_at'])
+            self._audit('UPDATE', series, self._safe_changes())
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsSupervisorOrAdminForWrite])
     def void(self, request, pk=None):
         """Undo a mis-keyed series so its numbers can be entered again. Only allowed while
@@ -1000,11 +1041,7 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
         unique series_no and the overlap check. The audit entry keeps the history."""
         with transaction.atomic():
             series = self.get_object()
-            start, end = int(series.start_no), int(series.end_no)
-            used = Ticket.objects.filter(series=series).exists() or any(
-                i.isdigit() and start <= int(i) <= end for i in Ticket.objects.values_list('id', flat=True)
-            )
-            if used or series.paper_issuances.exists():
+            if self._in_use(series):
                 raise ValidationError("This series already has issued tickets or a paper range, so it can't be deleted.")
 
             requisition = series.requisition

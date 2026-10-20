@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 # Local dev: leave DEBUG unset in backend/.env (defaults to True).
 # Production: set DEBUG=False in the environment.
-DEBUG = os.getenv('DEBUG', 'True') == 'False'
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
@@ -154,11 +154,6 @@ DATABASES = {
 SYNC_INTERVAL_SECONDS = int(os.getenv('SYNC_INTERVAL_SECONDS', '10'))
 SYNC_BATCH_SIZE = int(os.getenv('SYNC_BATCH_SIZE', '200'))
 
-# Scheduled backups saved to media/backups (set AUTO_BACKUP_KEEP=0 to disable)
-AUTO_BACKUP_INTERVAL_HOURS = int(os.getenv('AUTO_BACKUP_INTERVAL_HOURS', '24'))
-AUTO_BACKUP_KEEP = int(os.getenv('AUTO_BACKUP_KEEP', '28'))
-
-
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -260,7 +255,7 @@ EMAIL_LINK_SECRET = os.getenv('EMAIL_LINK_SECRET')
 # Turn ON: set SMS_ENABLED=True in backend/.env and fill in PHILSMS_API_TOKEN.
 # Turn OFF: set SMS_ENABLED=False (or unset it) in backend/.env — send_sms()
 # then just logs and returns instead of calling the PhilSMS API.
-SMS_ENABLED = os.getenv('SMS_ENABLED', 'False') == 'True'
+SMS_ENABLED = os.getenv('SMS_ENABLED', 'False') == 'Flase'
 PHILSMS_API_TOKEN = os.getenv('PHILSMS_API_TOKEN', '')
 PHILSMS_SENDER_ID = os.getenv('PHILSMS_SENDER_ID', 'PhilSMS')
 PHILSMS_API_URL = 'https://dashboard.philsms.com/api/v3/sms/send'

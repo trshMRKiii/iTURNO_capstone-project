@@ -9,6 +9,8 @@ const EMPTY_SERIES = {
   total_value: "",
 };
 
+const SERIES_SIZE = 10000;
+
 const FALLBACK_ERROR = "Nothing was changed. Check your connection and try again.";
 // Server field errors read "Series No: ticket series with this series no already exists." — spell it out and drop the field prefix.
 const errorMessage = (err) => {
@@ -25,6 +27,9 @@ export function useRequisition() {
 
   const [showForm, setFormOpen] = useState(false);
   const [seriesItems, setSeriesItems] = useState([{ ...EMPTY_SERIES }]);
+  const [supervisors, setSupervisors] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [requestedBy, setRequestedBy] = useState("");
 
   // The first load shows skeleton rows. Reloads after a save refresh quietly.
   const fetchRef = useRef(null);
@@ -57,6 +62,12 @@ export function useRequisition() {
     fetchRequisitions();
     fetchTicketForms();
   }, [fetchRequisitions, fetchTicketForms]);
+
+  // Who can be named as the requester, and who is keying this in (a supervisor is their own requester by default).
+  useEffect(() => {
+    apiService.request("/requisitions/supervisors/").then(setSupervisors).catch(() => {});
+    apiService.getCurrentUser().then(setCurrentUser).catch(() => {});
+  }, []);
 
   const activeRequisitions = useMemo(
     () => requisitions.filter((r) => !r.is_archived),
@@ -119,6 +130,7 @@ export function useRequisition() {
   const setShowForm = (open) => {
     if (open) {
       setSeriesItems([{ ...EMPTY_SERIES }]);
+      setRequestedBy(currentUser?.role === "SUPERVISOR" ? currentUser.id : "");
     }
     setFormOpen(open);
   };
@@ -128,6 +140,12 @@ export function useRequisition() {
       const copy = [...prev];
       const isNo = field === "start_no" || field === "end_no";
       const updated = { ...copy[index], [field]: isNo ? value.replace(/\D/g, "") : value };
+
+      // A series is normally 10,000 tickets, so the end follows the start. It can still be typed over.
+      if (field === "start_no") {
+        const start = parseInt(updated.start_no);
+        updated.end_no = start > 0 ? String(start + SERIES_SIZE - 1) : "";
+      }
 
       if (field === "ticket_form" || isNo) {
         const form = ticketForms.find((tf) => String(tf.id) === String(updated.ticket_form));
@@ -157,6 +175,10 @@ export function useRequisition() {
 
   // Add: no confirmation. The Save button shows "Saving..." and the form stays locked until the server answers.
   const handleSave = async () => {
+    if (!requestedBy) {
+      notify.error({ title: "Choose a supervisor", message: "Select the supervisor who requested these tickets." });
+      return;
+    }
     // Untouched blank rows are ignored; any row the user started (form, start or end) must be complete.
     const filled = seriesItems.filter((item) => item.ticket_form || item.start_no || item.end_no);
     if (filled.length === 0) {
@@ -174,12 +196,11 @@ export function useRequisition() {
     setSaving(true);
     try {
       const totalValue = computeTotal();
-      const currentUser = await apiService.request("/current-user/");
       const reqData = await apiService.request("/requisitions/", {
         method: "POST",
         body: JSON.stringify({
           total_value: totalValue,
-          requested_by: currentUser.id,
+          requested_by: requestedBy,
         }),
       });
 
@@ -213,7 +234,7 @@ export function useRequisition() {
         message: filled.length === 1 ? "1 ticket series was added to stock." : `${filled.length} ticket series were added to stock.`,
       });
     } catch (err) {
-      notify.error({ title: "Couldn't save requisition", message: errorMessage(err), onRetry: handleSave });
+      notify.error({ title: "Couldn't save requisition", message: errorMessage(err) });
     } finally {
       setSaving(false);
     }
@@ -274,25 +295,33 @@ export function useRequisition() {
 
   const handleRestore = async (id) => report(await restoreRequisition(id));
 
-  // Removes a mis-keyed series (the server refuses once any ticket or paper range uses it),
-  // so the same numbers can be entered again.
-  const deleteSeries = async (ts) => {
+  // Corrects a mis-keyed series in place (the server refuses once any ticket or paper range uses it).
+  const [editing, setEditing] = useState(null);
+
+  const startEdit = (ts) => setEditing({ id: ts.id, start_no: String(ts.start_no), end_no: String(ts.end_no) });
+
+  const updateEdit = (field, value) => setEditing((prev) => ({ ...prev, [field]: value.replace(/\D/g, "") }));
+
+  const saveEdit = async () => {
+    if (!editing.start_no || !editing.end_no) {
+      notify.error({ title: "Missing series numbers", message: "Enter both a start and end number." });
+      return;
+    }
+    setSaving(true);
     try {
-      await apiService.request(`/ticket-series/${ts.id}/void/`, { method: "POST" });
+      await apiService.patch(`/ticket-series/${editing.id}/`, {
+        start_no: editing.start_no,
+        end_no: editing.end_no,
+      });
+      setEditing(null);
       await fetchRequisitions();
-      return { success: { title: "Series deleted", message: `${ts.start_no}–${ts.end_no} can be entered again.` } };
+      notify.success({ title: "Series updated", message: `${editing.start_no}–${editing.end_no} is now in stock.` });
     } catch (err) {
-      return { error: { title: "Couldn't delete series", message: errorMessage(err), onRetry: () => deleteSeries(ts).then(report) } };
+      notify.error({ title: "Couldn't update series", message: errorMessage(err) });
+    } finally {
+      setSaving(false);
     }
   };
-
-  const handleDelete = (ts) => confirmAction({
-    title: "Delete this series?",
-    message: `Series ${ts.start_no}–${ts.end_no} will be removed from stock and its numbers can be entered again. This can't be undone.`,
-    confirmLabel: "Delete",
-    busyLabel: "Deleting...",
-    run: () => deleteSeries(ts),
-  });
 
   return {
     requisitions,
@@ -302,6 +331,9 @@ export function useRequisition() {
     showForm,
     setShowForm,
     seriesItems,
+    supervisors,
+    requestedBy,
+    setRequestedBy,
     updateSeriesItem,
     addSeriesItem,
     removeSeriesItem,
@@ -311,7 +343,11 @@ export function useRequisition() {
     handleIssue,
     handleArchive,
     handleRestore,
-    handleDelete,
+    editing,
+    setEditing,
+    startEdit,
+    updateEdit,
+    saveEdit,
     refresh: fetchRequisitions,
     allSeries,
     inventory,

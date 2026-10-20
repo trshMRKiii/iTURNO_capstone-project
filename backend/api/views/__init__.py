@@ -34,6 +34,7 @@ from .external_remittance import external_remittance, external_remittance_record
 
 from .system import (
     system_backups,
+    system_backup_settings,
     system_backup_detail,
     system_backup_download,
     system_backup_restore,

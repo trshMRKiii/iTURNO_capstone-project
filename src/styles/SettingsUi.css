@@ -670,6 +670,9 @@
 .ui-field-label span { font-weight: 400; color: var(--ui-muted); }
 
 .ui-inline-form { display: flex; gap: 12px; }
+.ui-settings-fields { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px 32px; margin-top: 16px; }
+.ui-settings-fields .ui-hint { margin: 6px 0 0; }
+.ui-settings-fields .ui-primary-btn { margin-top: 29px; }
 
 .ui-text-input {
   flex: 1 1 auto;
@@ -742,6 +745,7 @@
   .ui-info-row, .ui-card-row { grid-template-columns: minmax(0, 1fr); }
   .ui-search--fixed { flex-basis: 100%; }
   .ui-inline-form { flex-direction: column; }
+  .ui-settings-fields { flex-direction: column; align-items: stretch; }
 }
 
 /* ── Dialog (centered + drawer) ── */

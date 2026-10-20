@@ -142,7 +142,7 @@ export function shapeRequisition(r, ticketStatsBySeries = {}) {
     date_requested: r.date_requested,
     requested_by: r.requested_by,
     requested_by_name: r.requested_by_name || null,
-    approved_by_name: r.approved_by_name,
+    issued_by_name: r.issued_by_name,
     status: r.status,
     total_value: r.total_value,
     is_archived: r.is_archived,

@@ -1,5 +1,8 @@
 .otr { display: flex; flex-direction: column; gap: 24px; max-width: 760px; }
 
+.otr-tab { padding: 20px; }
+.otr-tab > .tbf-mode-switch { margin: 0; }
+
 .otr-step { display: flex; flex-direction: column; gap: 12px; }
 .otr-step-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .otr-step-title span {

@@ -1,5 +1,6 @@
 import React from "react";
 import { ButtonLabel } from "../../../components/ui/kit";
+import SupervisorPicker from "./SupervisorPicker";
 
 function numberToWords(num) {
   if (num === 0) return "Zero";
@@ -33,6 +34,9 @@ const RequisitionFormModal = ({
   showForm,
   setShowForm,
   seriesItems,
+  supervisors,
+  requestedBy,
+  setRequestedBy,
   updateSeriesItem,
   addSeriesItem,
   removeSeriesItem,
@@ -73,6 +77,9 @@ const RequisitionFormModal = ({
 
         {/* Body */}
         <div className="req-modal-body">
+          <h3 className="req-section-title">Requested By</h3>
+          <SupervisorPicker supervisors={supervisors} value={requestedBy} onChange={setRequestedBy} disabled={saving} />
+
           <h3 className="req-section-title">Ticket Series Items</h3>
 
           {seriesItems.map((item, i) => (
@@ -141,13 +148,11 @@ const RequisitionFormModal = ({
                 <div className="req-field">
                   <label className="req-label">Total Amount (₱)</label>
                   <input
-                    className="req-input"
-                    type="number"
-                    step="0.01"
+                    className="req-input req-input--readonly"
+                    readOnly
+                    tabIndex={-1}
+                    placeholder="0.00"
                     value={item.total_value}
-                    onChange={(e) =>
-                      updateSeriesItem(i, "total_value", e.target.value)
-                    }
                   />
                 </div>
               </div>

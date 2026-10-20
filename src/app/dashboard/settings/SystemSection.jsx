@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   DataTable, Toolbar, SearchInput, StatusBadge, IconButton, Pagination, SectionHeader, Card, SegmentedControl,
-  Dialog, ActionButton, ProgressDialog, useFeedback, PlusIcon, UploadIcon, DownloadIcon, RestoreIcon, TrashIcon, WarningIcon, FileIcon, CheckIcon, CloseIcon,
+  Dialog, ActionButton, ProgressDialog, UnitInput, useFeedback, PlusIcon, UploadIcon, DownloadIcon, RestoreIcon, TrashIcon, WarningIcon, FileIcon, CheckIcon, CloseIcon,
 } from "../../../components/ui/kit";
 
 const PAGE_SIZE = 10;
@@ -54,7 +54,7 @@ const STEP_MS = 1400;
 
 // Presentational only: backups, form state and every handler come from settings.jsx.
 function SystemSection({
-  backups, loading, rowStates, label, onLabelChange, onCreate,
+  backups, loading, rowStates, label, onLabelChange, onCreate, config, onSaveConfig,
   onRestoreFile,
   onDownload, onRollback, onDelete,
 }) {
@@ -142,6 +142,28 @@ function SystemSection({
     startRestoreFile(file);
   };
 
+  // Automatic backup schedule: edits sit on top of the saved config until saved. Number inputs hold strings so they can be cleared while typing.
+  const [edits, setEdits] = useState({});
+  const [savingConfig, setSavingConfig] = useState(false);
+  const draft = config && {
+    enabled: config.enabled, interval_days: String(config.interval_days), keep_days: String(config.keep_days), ...edits,
+  };
+  const setDraft = (patch) => setEdits((e) => ({ ...e, ...patch }));
+  const intervalDays = Number(draft?.interval_days);
+  const keepDays = Number(draft?.keep_days);
+  const configValid = Number.isInteger(intervalDays) && intervalDays >= 1 && intervalDays <= 90
+    && Number.isInteger(keepDays) && keepDays >= 1 && keepDays <= 365;
+  const configDirty = !!draft && (
+    draft.enabled !== config.enabled || intervalDays !== config.interval_days || keepDays !== config.keep_days
+  );
+  const saveConfig = async () => {
+    setSavingConfig(true);
+    const outcome = await onSaveConfig({ enabled: draft.enabled, interval_days: intervalDays, keep_days: keepDays });
+    if (outcome.success) setEdits({});
+    setSavingConfig(false);
+    report(outcome);
+  };
+
   const latestId = backups[0]?.id; // the API returns newest first
 
   const q = search.trim().toLowerCase();
@@ -184,7 +206,7 @@ function SystemSection({
       key: "source",
       header: "Source",
       render: (b) => (b.source === "AUTO"
-        ? <StatusBadge tone="info" dot={false}>Auto &middot; pre-restore</StatusBadge>
+        ? <StatusBadge tone="info" dot={false}>Automatic</StatusBadge>
         : <StatusBadge tone="neutral" dot={false}>Manual</StatusBadge>),
     },
     { key: "size", header: "Size", align: "right", render: (b) => formatBytes(b.size_bytes) },
@@ -287,6 +309,39 @@ function SystemSection({
         </Card>
       </div>
 
+      {draft && (
+        <Card
+          title="Automatic backups"
+          description="Backups made on a schedule, plus the safety snapshots saved before a restore. Manual backups are never deleted."
+        >
+          <label className="ui-check">
+            <input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ enabled: e.target.checked })} />
+            <span>Run scheduled backups</span>
+          </label>
+          <div className="ui-settings-fields">
+            <div>
+              <span className="ui-field-label">Back up every</span>
+              <UnitInput
+                label="Days between scheduled backups" suffix="days" min={1} value={draft.interval_days}
+                onChange={(v) => setDraft({ interval_days: v })}
+              />
+              <p className="ui-hint">1 = once a day</p>
+            </div>
+            <div>
+              <span className="ui-field-label">Delete after</span>
+              <UnitInput
+                label="Days before an automatic backup is deleted" suffix="days" min={1} value={draft.keep_days}
+                onChange={(v) => setDraft({ keep_days: v })}
+              />
+              <p className="ui-hint">The newest scheduled backup is always kept</p>
+            </div>
+            <ActionButton variant="primary" busy={savingConfig} busyLabel="Saving..." disabled={!configDirty || !configValid} onClick={saveConfig}>
+              Save changes
+            </ActionButton>
+          </div>
+        </Card>
+      )}
+
       <DataTable
         toolbar={
           <Toolbar>
@@ -357,7 +412,7 @@ function SystemSection({
                 <span className="ui-cell-sub">{formatLong(new Date(rollbackTarget.created_at))} &middot; {formatBytes(rollbackTarget.size_bytes)}</span>
               </div>
               <StatusBadge tone={rollbackTarget.source === "AUTO" ? "info" : "neutral"} dot={false}>
-                {rollbackTarget.source === "AUTO" ? "Auto · pre-restore" : "Manual"}
+                {rollbackTarget.source === "AUTO" ? "Automatic" : "Manual"}
               </StatusBadge>
             </div>
             <p className="ui-eyebrow">What happens</p>

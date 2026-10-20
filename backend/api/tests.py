@@ -473,3 +473,92 @@ class ExternalRemittanceTests(TestCase):
     def test_paper_date_is_required_only_with_paper_tickets(self):
         self.assertEqual(self._post(1, 8, commit=True, used_on=None).status_code, 400)
         self.assertEqual(self._post(1, 5, commit=True, used_on=None).status_code, 200)  # system tickets only
+
+
+class AutoBackupSettingsTests(TestCase):
+    URL = '/api/system/backups/settings/'
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        self.user = User.objects.create_user(username='root', password='x', role='SUPERADMIN')
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def _backup(self, source, label, age_days):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import BackupRecord
+        rec = BackupRecord.objects.create(filename=f'backup_{source}_{age_days}.json', label=label, source=source)
+        BackupRecord.objects.filter(pk=rec.pk).update(created_at=timezone.now() - timedelta(days=age_days))
+        return rec
+
+    def test_defaults_and_update(self):
+        self.assertEqual(self.client.get(self.URL).data, {'enabled': True, 'interval_days': 1, 'keep_days': 28})
+        res = self.client.put(self.URL, {'interval_days': 3, 'keep_days': 7}, format='json')
+        self.assertEqual((res.data['interval_days'], res.data['keep_days']), (3, 7))
+
+    def test_rejects_out_of_range(self):
+        self.assertEqual(self.client.put(self.URL, {'interval_days': 0}, format='json').status_code, 400)
+        self.assertEqual(self.client.put(self.URL, {'keep_days': 9999}, format='json').status_code, 400)
+
+    def test_settings_survive_restore(self):
+        from .models import BackupSettings
+        from .views.system import _backup_models
+        self.assertNotIn(BackupSettings, _backup_models())
+
+    def test_expiry_drops_old_automatic_but_never_manual(self):
+        from unittest import mock
+        from .auto_backup import _run_once
+        from .models import BackupRecord, BackupSettings
+        from .views.system import SCHEDULED_LABEL
+        BackupSettings.objects.create(pk=1, keep_days=7)
+        fresh = self._backup('AUTO', SCHEDULED_LABEL, 0)
+        old_auto = self._backup('AUTO', 'Pre-restore snapshot', 10)
+        old_manual = self._backup('MANUAL', 'Before payroll', 100)
+        with mock.patch('api.views.system.backup_storage'):
+            _run_once()
+        self.assertEqual(set(BackupRecord.objects.values_list('pk', flat=True)), {fresh.pk, old_manual.pk})
+        self.assertFalse(BackupRecord.objects.filter(pk=old_auto.pk).exists())
+
+    def test_disabled_makes_no_backup(self):
+        from unittest import mock
+        from .auto_backup import _run_once
+        from .models import BackupRecord, BackupSettings
+        BackupSettings.objects.create(pk=1, enabled=False)
+        with mock.patch('api.views.system._create_backup_file') as make:
+            _run_once()
+        make.assert_not_called()
+        self.assertFalse(BackupRecord.objects.exists())
+
+
+class RequisitionRequesterTests(TestCase):
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        self.sup = User.objects.create_user(username='sup@x.com', password='x', role='SUPERVISOR', first_name='Sam', last_name='Sup')
+        self.admin = User.objects.create_user(username='admin@x.com', password='x', role='SUPERADMIN', first_name='Ada', last_name='Min')
+        self.client = APIClient()
+
+    def _create(self, user, requested_by):
+        self.client.force_authenticate(user)
+        return self.client.post('/api/requisitions/', {'total_value': 0, 'requested_by': requested_by}, format='json')
+
+    def test_requester_is_the_chosen_supervisor_and_issuer_is_the_logged_in_user(self):
+        res = self._create(self.admin, self.sup.id)
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual((res.data['requested_by_name'], res.data['issued_by_name']), ('Sam Sup', 'Ada Min'))
+
+    def test_supervisor_can_request_and_issue_their_own(self):
+        res = self._create(self.sup, self.sup.id)
+        self.assertEqual((res.data['requested_by_name'], res.data['issued_by_name']), ('Sam Sup', 'Sam Sup'))
+
+    def test_requester_is_required_and_must_be_a_supervisor(self):
+        self.assertEqual(self._create(self.admin, None).status_code, 400)
+        self.assertEqual(self._create(self.admin, self.admin.id).status_code, 400)
+
+    def test_supervisor_list_is_open_to_non_admins(self):
+        from .models import User
+        self.client.force_authenticate(User.objects.create_user(username='p@x.com', password='x', role='PERSONNEL'))
+        res = self.client.get('/api/requisitions/supervisors/')
+        self.assertEqual([s['name'] for s in res.data], ['Sam Sup'])

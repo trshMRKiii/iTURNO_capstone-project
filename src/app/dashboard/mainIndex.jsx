@@ -29,6 +29,7 @@ import sfcLogo from "../../pictures/sfc-nobg-logo.png";
 
 const NAV_GROUPS = [
   [{ to: "/dashboard", label: "Dashboard", Icon: DashboardIcon }],
+  [{ to: "/dashboard/StaffRegistry", label: "User Management", Icon: UserIcon },],
   [
     { to: "/dashboard/Requisition", label: "Ticket Requisition", Icon: RequisitionIcon },   
   ],
@@ -38,7 +39,6 @@ const NAV_GROUPS = [
   ],
   [
     { to: "/dashboard/Registry", label: "Vehicle and Driver", Icon: VehicleIcon },
-    { to: "/dashboard/StaffRegistry", label: "User Management", Icon: UserIcon },
   ],
   [{ to: "/dashboard/Reports", label: "Report Generation", Icon: ReportIcon }],
   [{ to: "/dashboard/Settings", label: "Settings", Icon: SettingsIcon }],

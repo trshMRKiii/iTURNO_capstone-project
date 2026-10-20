@@ -420,6 +420,7 @@ function SettingsPage() {
   const [backupsLoading, setBackupsLoading] = useState(true);
   const [newBackupLabel, setNewBackupLabel] = useState("");
   const [backupRows, setBackupRows] = useState({});
+  const [backupConfig, setBackupConfig] = useState(null);
 
   const refreshBackups = useCallback(async () => {
     const res = await apiService.getSystemBackups();
@@ -435,7 +436,21 @@ function SettingsPage() {
         notify.error({ title: "Couldn't load backups", message: errorMessage(err), onRetry: () => refreshBackups().catch(() => {}) });
       })
       .finally(() => setBackupsLoading(false));
+    apiService.getBackupSettings().then(setBackupConfig).catch((err) => {
+      console.error("Failed to load backup settings:", err);
+      notify.error({ title: "Couldn't load automatic backup settings", message: errorMessage(err) });
+    });
   }, [activeTab, isAdmin, refreshBackups, notify]);
+
+  const saveBackupConfig = async (config) => {
+    try {
+      setBackupConfig(await apiService.updateBackupSettings(config));
+      return { success: { title: "Automatic backup settings saved" } };
+    } catch (err) {
+      console.error("Failed to save backup settings:", err);
+      return { error: { title: "Couldn't save settings", message: errorMessage(err), onRetry: () => saveBackupConfig(config) } };
+    }
+  };
 
   // Long operations (create, roll back, restore from file) are driven by SystemSection, which shows
   // the step dialog. `onStage` is called once the server call has finished and only the refresh is left.
@@ -628,6 +643,8 @@ function SettingsPage() {
             rowStates={backupRows}
             label={newBackupLabel}
             onLabelChange={setNewBackupLabel}
+            config={backupConfig}
+            onSaveConfig={saveBackupConfig}
             onCreate={createBackupOutcome}
             onRestoreFile={restoreFileOutcome}
             onDownload={handleDownloadBackup}

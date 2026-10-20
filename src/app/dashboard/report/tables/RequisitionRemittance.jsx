@@ -9,7 +9,7 @@ import { getBatchCashierName } from "../../remittance/useCashierName";
 import { useFeedback } from "../../../../components/ui/kit";
 import { matchesRequisitionRow, matchesRemittanceRow, useDebouncedSearchAll } from "../reportHook";
 
-const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Approved By", "Ticket Series", "Total Value"];
+const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Issued By", "Ticket Series", "Total Value"];
 const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Issued By", "Total Amount", "Actions"];
 // Main card shows a short preview like the other report cards (FleetRecords) —
 // "View All" opens the modal for the full paginated list.
@@ -126,7 +126,7 @@ export default function RequisitionRemittance({
         >
           <td className={cellClass}>{r.date_requested ? r.date_requested.slice(0, 10) : "—"}</td>
           <td className={`${cellClass} rpt-bold`}>{r.requested_by_name || "—"}</td>
-          <td className={cellClass}>{r.approved_by_name || <span className="rpt-na">—</span>}</td>
+          <td className={cellClass}>{r.issued_by_name || <span className="rpt-na">—</span>}</td>
           <td className={cellClass}>
             {hasSeries && (
               <span className={`req-expand-icon ${isExpanded ? "req-expand-icon--open" : ""}`}>&#9654;</span>

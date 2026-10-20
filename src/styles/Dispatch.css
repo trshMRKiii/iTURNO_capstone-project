@@ -192,10 +192,12 @@
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 16px;
   padding: 18px 24px 24px;
-  align-items: start;
 }
 
+/* Cards in the same grid row stretch to equal height, so the row reads flat. */
 .dispatch-route-card {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -372,21 +374,23 @@
 }
 .dispatch-upnext-actions { margin-left: auto; display: flex; gap: 6px; }
 
-.dispatch-upnext-row--dragging { opacity: 0.4; }
-.dispatch-upnext-row--drag-over {
-  background: rgba(183,121,31,0.1);
-  box-shadow: inset 0 2px 0 #b7791f;
-}
-
-.dispatch-drag-handle {
+.dispatch-move-group { display: inline-flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.dispatch-move-btn {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-surface);
   color: var(--text-secondary);
-  opacity: 0.5;
-  cursor: grab;
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
-.dispatch-upnext-row:hover .dispatch-drag-handle { opacity: 0.9; }
-.dispatch-drag-handle:active { cursor: grabbing; }
+.dispatch-move-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+.dispatch-move-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .dispatch-order-index {
   font-size: 11px;
@@ -727,5 +731,3 @@
   .dispatch-modal-footer { flex-direction: column; }
 }
 
-.dispatch-now--draggable { cursor: grab; border-radius: 8px; }
-.dispatch-now--draggable:active { cursor: grabbing; }

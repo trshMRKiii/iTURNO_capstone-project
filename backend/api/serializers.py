@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, PaperIssuance, AuditLog, BackupRecord, BackfillRecord, WipMode
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, PaperIssuance, AuditLog, BackupRecord, BackupSettings, BackfillRecord, WipMode
 from .sms import send_sms_async, queue_position_message
 from .sync.settings_outbox import next_offline_pk, park
 
@@ -535,6 +535,12 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "start_no": f"Range {start}–{end} overlaps an existing series ({o_start}–{o_end}). Ticket numbers must be unique across all series."
                 })
+
+        # Ticket.id is the primary key, so a number already issued (by any series) can't be in this range.
+        if self.instance is None or 'start_no' in attrs or 'end_no' in attrs:
+            taken = next((i for i in Ticket.objects.values_list('id', flat=True) if str(i).isdigit() and start <= int(i) <= end), None)
+            if taken is not None:
+                raise serializers.ValidationError({"start_no": f"Ticket number {taken} in this range was already issued."})
         return attrs
 
     class Meta:
@@ -560,13 +566,24 @@ class RequisitionSerializer(serializers.ModelSerializer):
             return full if full else user.username
         return None
 
+    def validate_requested_by(self, user):
+        if user is not None and user.role != 'SUPERVISOR':
+            raise serializers.ValidationError("A requisition can only be requested by a supervisor.")
+        return user
+
+    def validate(self, attrs):
+        if self.instance is None and not attrs.get('requested_by'):
+            raise serializers.ValidationError({"requested_by": "Choose the supervisor who requested this."})
+        return attrs
+
     class Meta:
         model = Requisition
         fields = [
             'id', 'date_requested', 'requested_by', 'requested_by_name',
-            'approved_by_name', 'status', 'total_value', 'is_archived',
+            'issued_by_name', 'status', 'total_value', 'is_archived',
             'ticket_series', 'created_at', 'updated_at',
         ]
+        read_only_fields = ['issued_by_name']
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
@@ -601,6 +618,16 @@ class AuditLogSerializer(serializers.ModelSerializer):
             return 'System'
         full = f"{user.first_name} {user.last_name}".strip()
         return full or user.username
+
+
+class BackupSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BackupSettings
+        fields = ['enabled', 'interval_days', 'keep_days']
+        extra_kwargs = {
+            'interval_days': {'min_value': 1, 'max_value': 90},
+            'keep_days': {'min_value': 1, 'max_value': 365},
+        }
 
 
 class BackupRecordSerializer(serializers.ModelSerializer):

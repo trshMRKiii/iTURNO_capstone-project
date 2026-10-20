@@ -12,7 +12,8 @@ export default function IssuedStatus({ date, isLate, data, loading }) {
   const label = isLate ? `Issued Last ${formatDay(date)}` : "Issued Today";
   // Only what's still unremitted: once recorded batches cover the expected cash, nothing is left to file.
   const pending = Number(data?.difference) > 0;
-  const count = pending ? Number(data.checkout_count) : 0;
+  // Batches record cash, not ticket ids, so the unremitted share of the day's tickets is estimated from the cash left.
+  const count = pending ? Math.round(Number(data.checkout_count) * Number(data.difference) / Number(data.expected_cash)) : 0;
 
   return (
     <>

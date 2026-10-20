@@ -11,15 +11,15 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from ..models import BackupRecord, SyncQueue
-from ..serializers import BackupRecordSerializer
+from ..models import BackupRecord, BackupSettings, SyncQueue
+from ..serializers import BackupRecordSerializer, BackupSettingsSerializer
 from ..sync.pause import paused
 from ..sync.registry import PUSH_MODELS
 from ..sync.signals import bulk_load
 from ..ws.broadcast import broadcast_queue_updated
 from .helpers import record_audit_log
 
-SCHEDULED_LABEL = "Scheduled daily backup"
+SCHEDULED_LABEL = "Scheduled backup"
 backup_storage = FileSystemStorage(location=settings.BASE_DIR / "backup")
 
 
@@ -30,19 +30,18 @@ class IsSuperAdmin(BasePermission):
         return bool(request.user and request.user.is_authenticated and request.user.role == "SUPERADMIN")
 
 
-def _backup_app_labels():
-    """All api-app models except BackupRecord itself, as 'api.Model' labels for dumpdata."""
-    return [
-        f"api.{model.__name__}"
-        for model in apps.get_app_config("api").get_models()
-        if model is not BackupRecord
-    ]
+NOT_BACKED_UP = (BackupRecord, BackupSettings)
+
+
+def _backup_models():
+    """Every api-app model that a backup captures and a restore replaces."""
+    return [m for m in apps.get_app_config("api").get_models() if m not in NOT_BACKED_UP]
 
 
 def _create_backup_file(user, label="", source="MANUAL"):
     buffer = io.StringIO()
     management.call_command(
-        "dumpdata", *_backup_app_labels(), indent=2, stdout=buffer, natural_foreign=False,
+        "dumpdata", *(f"api.{m.__name__}" for m in _backup_models()), indent=2, stdout=buffer, natural_foreign=False,
     )
     content = buffer.getvalue().encode("utf-8")
 
@@ -78,6 +77,28 @@ def system_backups(request):
 
     records = BackupRecord.objects.all()
     return Response({"backups": BackupRecordSerializer(records, many=True).data})
+
+
+@api_view(["GET", "PUT"])
+@permission_classes([IsSuperAdmin])
+def system_backup_settings(request):
+    current = BackupSettings.get_solo()
+    if request.method == "GET":
+        return Response(BackupSettingsSerializer(current).data)
+
+    serializer = BackupSettingsSerializer(current, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    before = BackupSettingsSerializer(current).data
+    serializer.save()
+    record_audit_log(
+        user=request.user,
+        action="UPDATE",
+        model_name="BackupSettings",
+        object_id=current.pk,
+        object_repr="Automatic backup settings",
+        changes={k: {"old": before[k], "new": v} for k, v in serializer.data.items() if before[k] != v},
+    )
+    return Response(serializer.data)
 
 
 @api_view(["DELETE"])
@@ -136,12 +157,10 @@ def _requeue_for_sync():
 
 
 def _restore_from_content(content_bytes):
-    """Wipe all api-app data (except BackupRecord) and reload it from a dumpdata JSON payload."""
+    """Wipe all backed-up api-app data and reload it from a dumpdata JSON payload."""
     tmp_path = f"_restore_tmp_{datetime.now().strftime('%Y%m%d_%H%M%S%f')}.json"
     saved_name = backup_storage.save(tmp_path, io.BytesIO(content_bytes))
     full_path = backup_storage.path(saved_name)
-
-    api_models = [m for m in apps.get_app_config("api").get_models() if m is not BackupRecord]
 
     with paused():
         with connection.cursor() as cursor:
@@ -149,7 +168,7 @@ def _restore_from_content(content_bytes):
         try:
             with transaction.atomic():
                 with bulk_load():
-                    for model in api_models:
+                    for model in _backup_models():
                         model.objects.all().delete()
                     management.call_command("loaddata", full_path)
                     _requeue_for_sync()

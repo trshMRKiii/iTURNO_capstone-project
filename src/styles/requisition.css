@@ -313,6 +313,47 @@
   box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.15);
 }
 
+.req-combo {
+  position: relative;
+  margin-bottom: 16px;
+}
+.req-combo-list {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+.req-combo-option {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.req-combo-option:hover {
+  background: var(--bg-hover);
+}
+.req-combo-empty {
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .req-add-btn {
   background: none;
   border: none;

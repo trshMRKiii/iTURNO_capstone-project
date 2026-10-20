@@ -1,0 +1,387 @@
+[
+{
+  "model": "api.user",
+  "pk": 29,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$0mMjfkI0GRYdwuuzUFjXqG$4sAtN2yL4Kdw/V7D+o9htaoHhxa9orOHn0Cs9SvxZ3k=",
+    "last_login": null,
+    "is_superuser": false,
+    "first_name": "Ashley",
+    "last_name": "Velasco",
+    "is_staff": false,
+    "date_joined": "2026-10-15T03:44:07.736Z",
+    "username": "velascoab@slc-sflu.edu.ph",
+    "role": "PERSONNEL",
+    "middle_name": "",
+    "contact": "",
+    "can_manage_fleet": false,
+    "created_at": "2026-10-15T03:44:10.628Z",
+    "is_active": true,
+    "updated_at": "2026-10-15T05:48:07.628Z",
+    "must_reset_password": false,
+    "email_verified": true,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.user",
+  "pk": 1000001,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$VnvQHZHwbTwv0nm0QOXZuE$pCeUZbQEJwIsQ/lOQMvCRmRx1mz83Oz1xrHD+yaVgYE=",
+    "last_login": "2026-10-14T12:51:56Z",
+    "is_superuser": true,
+    "first_name": "",
+    "last_name": "",
+    "is_staff": true,
+    "date_joined": "2026-10-14T12:48:49Z",
+    "username": "superadmin@g.com",
+    "role": "SUPERADMIN",
+    "middle_name": "",
+    "contact": "",
+    "can_manage_fleet": false,
+    "created_at": "2026-10-14T12:48:50.053Z",
+    "is_active": true,
+    "updated_at": "2026-10-14T12:52:18.769Z",
+    "must_reset_password": false,
+    "email_verified": true,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.user",
+  "pk": 1000002,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$6e2X0rB3yDbhUYTHc7whBh$2DLhVvxPvLFHNw/kaTQ0NjxRqu4XlawWEAqWLdd2QGs=",
+    "last_login": null,
+    "is_superuser": false,
+    "first_name": "Mark",
+    "last_name": "San",
+    "is_staff": false,
+    "date_joined": "2026-10-14T13:01:36.180Z",
+    "username": "22200058@slc-sflu.edu.ph",
+    "role": "SUPERADMIN",
+    "middle_name": "",
+    "contact": "",
+    "can_manage_fleet": false,
+    "created_at": "2026-10-14T13:01:36.752Z",
+    "is_active": true,
+    "updated_at": "2026-10-15T05:48:07.635Z",
+    "must_reset_password": false,
+    "email_verified": true,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.user",
+  "pk": 1000003,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$nxOTp0F3G1ojjgXPX30A9u$FcvJq/mDaX6fgjEFlDq+MMzkIM2m+2VzNYqZNN9HQ7g=",
+    "last_login": null,
+    "is_superuser": false,
+    "first_name": "Juan",
+    "last_name": "Reyes",
+    "is_staff": false,
+    "date_joined": "2026-10-14T13:14:25.028Z",
+    "username": "ms8251765@gmail.com",
+    "role": "MANAGER",
+    "middle_name": "",
+    "contact": "",
+    "can_manage_fleet": false,
+    "created_at": "2026-10-14T13:15:46.713Z",
+    "is_active": true,
+    "updated_at": "2026-10-14T13:17:27.330Z",
+    "must_reset_password": false,
+    "email_verified": true,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.route",
+  "pk": 20,
+  "fields": {
+    "origin": "BACNOTAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": 5,
+    "created_at": "2026-10-14T13:51:10.311Z",
+    "updated_at": "2026-10-15T05:48:07.844Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 21,
+  "fields": {
+    "origin": "LUNA VIA BALAOAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:56:52.663Z",
+    "updated_at": "2026-10-15T05:48:07.846Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 22,
+  "fields": {
+    "origin": "SAN GABRIAN VIA SAN JUAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:57:31.508Z",
+    "updated_at": "2026-10-15T05:48:07.852Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000001,
+  "fields": {
+    "origin": "ROSARIO",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:51:29.946Z",
+    "updated_at": "2026-10-15T05:48:07.851Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000002,
+  "fields": {
+    "origin": "NAGUILIAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:56:53.966Z",
+    "updated_at": "2026-10-15T05:48:07.850Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000003,
+  "fields": {
+    "origin": "LUNA VIA QUIRINO",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T16:19:24.363Z",
+    "updated_at": "2026-10-15T05:48:07.849Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000004,
+  "fields": {
+    "origin": "LUNA VIA DARIGAYOS",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T16:19:24.565Z",
+    "updated_at": "2026-10-15T05:48:07.848Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000005,
+  "fields": {
+    "origin": "SAN GABRIEL VIA STO. ROSARIO",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T16:19:24.873Z",
+    "updated_at": "2026-10-15T05:48:07.852Z"
+  }
+},
+{
+  "model": "api.ticketprice",
+  "pk": 1,
+  "fields": {
+    "amount": "10.00",
+    "effective_date": "2026-08-16T10:17:24.884Z"
+  }
+},
+{
+  "model": "api.puvtype",
+  "pk": 1,
+  "fields": {
+    "name": "Jeepney",
+    "terminal_price": "10.00",
+    "is_archived": false
+  }
+},
+{
+  "model": "api.puvtype",
+  "pk": 2,
+  "fields": {
+    "name": "UV",
+    "terminal_price": "40.00",
+    "is_archived": false
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 4,
+  "fields": {
+    "name": "Cash Tickets@5",
+    "price": "5.00"
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 1000001,
+  "fields": {
+    "name": "Cash Tickets@11",
+    "price": "11.00"
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 1000002,
+  "fields": {
+    "name": "Cash Tickets@10",
+    "price": "10.00"
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 1000003,
+  "fields": {
+    "name": "Cash Tickets@2",
+    "price": "2.00"
+  }
+},
+{
+  "model": "api.wipmode",
+  "pk": 1,
+  "fields": {
+    "is_active": false,
+    "updated_at": "2026-09-08T07:37:13.367Z"
+  }
+},
+{
+  "model": "api.auditlog",
+  "pk": 7,
+  "fields": {
+    "user": 1000001,
+    "action": "DELETE",
+    "model_name": "TicketForm",
+    "object_id": "1",
+    "object_repr": "Cash Tickets@2",
+    "changes": {},
+    "created_at": "2026-10-14T13:32:49.531Z"
+  }
+},
+{
+  "model": "api.auditlog",
+  "pk": 8,
+  "fields": {
+    "user": 1000001,
+    "action": "DELETE",
+    "model_name": "TicketForm",
+    "object_id": "2",
+    "object_repr": "Cash Tickets@10",
+    "changes": {},
+    "created_at": "2026-10-14T13:32:53.490Z"
+  }
+},
+{
+  "model": "api.auditlog",
+  "pk": 9,
+  "fields": {
+    "user": 1000001,
+    "action": "CREATE",
+    "model_name": "TicketForm",
+    "object_id": "1000001",
+    "object_repr": "Cash Tickets@11",
+    "changes": {
+      "name": "Cash Tickets@11",
+      "price": 11
+    },
+    "created_at": "2026-10-14T13:33:20.967Z"
+  }
+},
+{
+  "model": "api.auditlog",
+  "pk": 109,
+  "fields": {
+    "user": 1000001,
+    "action": "UPDATE",
+    "model_name": "System",
+    "object_id": "7",
+    "object_repr": "Restored from backup_20261014_213514.json",
+    "changes": {
+      "restored_backup_id": 7,
+      "safety_backup_id": 10
+    },
+    "created_at": "2026-10-15T05:46:05.976Z"
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 557861,
+  "fields": {
+    "model_label": "api.AuditLog",
+    "object_id": "9",
+    "queued_at": "2026-10-15T05:46:05.685Z",
+    "synced_at": null,
+    "attempts": 8,
+    "last_error": "insert or update on table \"api_auditlog\" violates foreign key constraint \"api_auditlog_user_id_b15d4175_fk_api_user_id\"\nDETAIL:  Key (user_id)=(1000001) is not present in table \"api_user\".",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 557862,
+  "fields": {
+    "model_label": "api.AuditLog",
+    "object_id": "8",
+    "queued_at": "2026-10-15T05:46:05.685Z",
+    "synced_at": null,
+    "attempts": 8,
+    "last_error": "insert or update on table \"api_auditlog\" violates foreign key constraint \"api_auditlog_user_id_b15d4175_fk_api_user_id\"\nDETAIL:  Key (user_id)=(1000001) is not present in table \"api_user\".",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 557863,
+  "fields": {
+    "model_label": "api.AuditLog",
+    "object_id": "7",
+    "queued_at": "2026-10-15T05:46:05.685Z",
+    "synced_at": null,
+    "attempts": 8,
+    "last_error": "insert or update on table \"api_auditlog\" violates foreign key constraint \"api_auditlog_user_id_b15d4175_fk_api_user_id\"\nDETAIL:  Key (user_id)=(1000001) is not present in table \"api_user\".",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 557864,
+  "fields": {
+    "model_label": "api.WipMode",
+    "object_id": "1",
+    "queued_at": "2026-10-15T05:46:05.685Z",
+    "synced_at": "2026-10-15T05:46:23.075Z",
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 557865,
+  "fields": {
+    "model_label": "api.AuditLog",
+    "object_id": "109",
+    "queued_at": "2026-10-15T05:46:05.980Z",
+    "synced_at": null,
+    "attempts": 8,
+    "last_error": "insert or update on table \"api_auditlog\" violates foreign key constraint \"api_auditlog_user_id_b15d4175_fk_api_user_id\"\nDETAIL:  Key (user_id)=(1000001) is not present in table \"api_user\".",
+    "pending_delete": false
+  }
+}
+]

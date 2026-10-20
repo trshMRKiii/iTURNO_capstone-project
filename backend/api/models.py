@@ -299,7 +299,8 @@ class Requisition(models.Model):
     date_requested = models.DateTimeField(auto_now_add=True)
     requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='requisitions_requested', null=True, blank=True)
     requested_by_name = models.CharField(max_length=150, blank=True, default="")
-    approved_by_name = models.CharField(max_length=150, blank=True, default="")
+    # Whoever keyed the requisition into the system (requested_by is the supervisor who asked for it).
+    issued_by_name = models.CharField(max_length=150, blank=True, default="")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     total_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_archived = models.BooleanField(default=False, db_index=True)
@@ -509,6 +510,20 @@ class BackupRecord(models.Model):
 
     def __str__(self):
         return f"{self.filename} ({self.created_at})"
+
+
+class BackupSettings(models.Model):
+    """Singleton: how often the scheduled backup runs and how long automatic backups
+    are kept. Like BackupRecord it is left out of backups and restores, so rolling
+    back never reverts these choices. Defaults mirror the AUTO_BACKUP_* settings."""
+    enabled = models.BooleanField(default=True)
+    interval_days = models.PositiveIntegerField(default=1)
+    keep_days = models.PositiveIntegerField(default=28)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
 
 
 class BackfillRecord(models.Model):

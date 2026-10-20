@@ -399,7 +399,7 @@ class Command(BaseCommand):
         req = Requisition.objects.create(
             id=ctx["next_requisition_id"],
             requested_by=admin_user,
-            approved_by_name=f"{admin_user.first_name} {admin_user.last_name}".strip() or admin_user.username,
+            issued_by_name=f"{admin_user.first_name} {admin_user.last_name}".strip() or admin_user.username,
             status="ISSUED",
             total_value=total,
         )

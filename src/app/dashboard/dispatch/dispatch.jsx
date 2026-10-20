@@ -27,8 +27,6 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
   const [extendingTicketId, setExtendingTicketId] = useState(null);
   const [roamingVehicleId, setRoamingVehicleId] = useState(null);
 
-  const [dragVehicleId, setDragVehicleId] = useState(null);
-  const [dragOverVehicleId, setDragOverVehicleId] = useState(null);
   const [reorderingRouteId, setReorderingRouteId] = useState(null);
   const [reorderError, setReorderError] = useState("");
 
@@ -127,7 +125,7 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
       : Number.POSITIVE_INFINITY;
   };
 
-  // Manual drag-and-drop order (see reorder-queue) takes priority; vehicles
+  // Manual up/down order (see reorder-queue) takes priority; vehicles
   // that were never reordered (or joined after) fall back to plain FIFO —
   // mirrors the backend's order_by('queue_rank', 'issued_at').
   const getQueueRank = (vehicle) => {
@@ -155,7 +153,15 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
     return groups;
   }, [queue, openTicketByVehicleId]);
 
-  const sortedRoutes = useMemo(() => Object.keys(groupedByRoute).sort(), [groupedByRoute]);
+  // Longest lines first so neighbouring cards in a grid row have similar heights.
+  const sortedRoutes = useMemo(
+    () =>
+      Object.keys(groupedByRoute).sort(
+        (a, b) =>
+          groupedByRoute[b].vehicles.length - groupedByRoute[a].vehicles.length || a.localeCompare(b),
+      ),
+    [groupedByRoute],
+  );
 
   // Deadline for the vehicle currently at the front of its route's line —
   // route's configured estimate (or the shared default), plus any one-off
@@ -284,23 +290,17 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
     });
   };
 
-  // Persists a drag-and-drop reorder within one route's line — the backend
-  // rewrites queue_rank for the whole route to match, and every connected
-  // client picks it up on the next queue_updated ping.
-  const handleReorderDrop = async (routeName, routeId, targetVehicleId) => {
-    const sourceId = dragVehicleId;
-    setDragVehicleId(null);
-    setDragOverVehicleId(null);
-    if (routeId == null || sourceId == null || sourceId === targetVehicleId) return;
+  // Moves a vehicle one slot up or down within its route's line (delta -1/+1) —
+  // the backend rewrites queue_rank for the whole route to match, and every
+  // connected client picks it up on the next queue_updated ping.
+  const handleMove = async (routeName, routeId, vehicleId, delta) => {
+    if (routeId == null || reorderingRouteId != null) return;
 
-    const currentOrder = groupedByRoute[routeName].vehicles.map((v) => v.id);
-    const fromIdx = currentOrder.indexOf(sourceId);
-    const toIdx = currentOrder.indexOf(targetVehicleId);
-    if (fromIdx === -1 || toIdx === -1) return;
-
-    const nextOrder = [...currentOrder];
-    nextOrder.splice(fromIdx, 1);
-    nextOrder.splice(toIdx, 0, sourceId);
+    const nextOrder = groupedByRoute[routeName].vehicles.map((v) => v.id);
+    const fromIdx = nextOrder.indexOf(vehicleId);
+    const toIdx = fromIdx + delta;
+    if (fromIdx === -1 || toIdx < 0 || toIdx >= nextOrder.length) return;
+    [nextOrder[fromIdx], nextOrder[toIdx]] = [nextOrder[toIdx], nextOrder[fromIdx]];
 
     setReorderingRouteId(routeId);
     setReorderError("");
@@ -312,28 +312,6 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
       setReorderingRouteId(null);
       fetchData(true);
     }
-  };
-
-  // Drag source + drop target props shared by the front vehicle and the up-next rows.
-  const dragProps = (vehicle, routeName, routeId) => {
-    const canReorder = routeId != null;
-    return {
-      draggable: canReorder,
-      onDragStart: () => canReorder && setDragVehicleId(vehicle.id),
-      onDragOver: (e) => {
-        if (!canReorder) return;
-        e.preventDefault();
-        if (dragOverVehicleId !== vehicle.id) setDragOverVehicleId(vehicle.id);
-      },
-      onDragEnd: () => {
-        setDragVehicleId(null);
-        setDragOverVehicleId(null);
-      },
-      onDrop: (e) => {
-        e.preventDefault();
-        handleReorderDrop(routeName, routeId, vehicle.id);
-      },
-    };
   };
 
   // Server already filters to status=ACTIVE — see fetchData().
@@ -533,10 +511,7 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
 
                     <div className="dispatch-route-card-body">
                       <span className="dispatch-eyebrow">Now loading</span>
-                      <div
-                        className={`dispatch-now${routeId != null ? " dispatch-now--draggable" : ""}${dragOverVehicleId === head.id ? " dispatch-upnext-row--drag-over" : ""}${dragVehicleId === head.id ? " dispatch-upnext-row--dragging" : ""}`}
-                        {...dragProps(head, routeName, routeId)}
-                      >
+                      <div className="dispatch-now">
                         <div className={`dispatch-ring${overdue ? " dispatch-ring--overdue" : ""}`}>
                           <svg viewBox="0 0 64 64" width="64" height="64">
                             <circle className="dispatch-ring-track" cx="32" cy="32" r="28" />
@@ -635,28 +610,43 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
                     {shownNext.length > 0 && (
                       <div className="dispatch-upnext">
                         <div className="dispatch-upnext-head">
-                          <span className="dispatch-upnext-hint">Drag (⠿) to move queue position</span>
+                          <span className="dispatch-upnext-hint">Use ▲ ▼ to move one position</span>
                           <span className="dispatch-eyebrow">Up next · {upNext.length}</span>
                         </div>
-                        {shownNext.map((vehicle) => (
-                          <div
-                            key={vehicle.id}
-                            className={`dispatch-upnext-row${dragOverVehicleId === vehicle.id ? " dispatch-upnext-row--drag-over" : ""}${dragVehicleId === vehicle.id ? " dispatch-upnext-row--dragging" : ""}`}
-                            {...dragProps(vehicle, routeName, routeId)}
-                          >
+                        {shownNext.map((vehicle) => {
+                          const pos = routeVehicles.indexOf(vehicle);
+                          const moveBusy = reorderingRouteId != null;
+                          return (
+                          <div key={vehicle.id} className="dispatch-upnext-row">
                             {canReorder && (
-                              <span className="dispatch-drag-handle" title="Drag to reorder this route's queue">
-                                <svg width="10" height="14" viewBox="0 0 12 16" fill="currentColor">
-                                  <circle cx="3" cy="2.5" r="1.4" />
-                                  <circle cx="9" cy="2.5" r="1.4" />
-                                  <circle cx="3" cy="8" r="1.4" />
-                                  <circle cx="9" cy="8" r="1.4" />
-                                  <circle cx="3" cy="13.5" r="1.4" />
-                                  <circle cx="9" cy="13.5" r="1.4" />
-                                </svg>
+                              <span className="dispatch-move-group">
+                                <button
+                                  type="button"
+                                  className="dispatch-move-btn"
+                                  onClick={() => handleMove(routeName, routeId, vehicle.id, -1)}
+                                  disabled={moveBusy}
+                                  title="Move up one position"
+                                  aria-label={`Move ${vehicle.plate_number} up`}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <path d="m6 15 6-6 6 6" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="dispatch-move-btn"
+                                  onClick={() => handleMove(routeName, routeId, vehicle.id, 1)}
+                                  disabled={moveBusy || pos === routeVehicles.length - 1}
+                                  title="Move down one position"
+                                  aria-label={`Move ${vehicle.plate_number} down`}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <path d="m6 9 6 6 6-6" />
+                                  </svg>
+                                </button>
                               </span>
                             )}
-                            <span className="dispatch-order-index">#{routeVehicles.indexOf(vehicle) + 1}</span>
+                            <span className="dispatch-order-index">#{pos + 1}</span>
                             <span className="dispatch-plate dispatch-plate--sm">{vehicle.plate_number}</span>
                             <span className="dispatch-upnext-actions">
                               <button
@@ -673,7 +663,8 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
                               </button>
                             </span>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </section>

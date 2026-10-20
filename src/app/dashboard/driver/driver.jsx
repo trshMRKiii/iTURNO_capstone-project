@@ -3,8 +3,10 @@ import { QRCodeSVG } from "qrcode.react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useDriver } from "./useDriver";
 import DriverFormModal from "./DriverFormModal";
+import TicketHistoryModal from "../registry/TicketHistoryModal";
+import RowMenu from "../registry/RowMenu";
 import { getDriverCode, getDriverDisplayName, getIwpStatus } from "./driver-utils";
-import { useFeedback, SkeletonRows } from "../../../components/ui/kit";
+import { useFeedback, SkeletonRows, HistoryIcon, ArchiveIcon } from "../../../components/ui/kit";
 import { exportDriversPDF } from "../registry/registryExport";
 import "../../../styles/Driver.css";
 import "../../../styles/FormModal.css";
@@ -34,6 +36,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
   const searchTerm = embedded ? externalSearch : internalSearch;
   const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
   const [currentPage, setCurrentPage] = useState(1);
+  const [historyDriver, setHistoryDriver] = useState(null);
   const PAGE_SIZE = 10;
 
   React.useEffect(() => {
@@ -303,26 +306,12 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                           Edit
                         </button>
 )}
-                        {canModify && (
-<button
-                          className="drv-btn drv-btn--delete"
-                          onClick={() => handleArchive(driver.id)}
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.2"
-                          >
-                            <rect x="3" y="4" width="18" height="4" rx="1" />
-                            <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
-                            <path d="M10 12h4" />
-                          </svg>
-                          Archive
-                        </button>
-)}
+                        <RowMenu
+                          items={[
+                            { label: "History", icon: <HistoryIcon size={14} />, onClick: () => setHistoryDriver(driver) },
+                            { label: "Archive", icon: <ArchiveIcon size={14} />, onClick: () => handleArchive(driver.id), danger: true, hidden: !canModify },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -353,6 +342,10 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
           </div>
         )}
       </div>
+
+      {historyDriver && (
+        <TicketHistoryModal driver={historyDriver} onClose={() => setHistoryDriver(null)} />
+      )}
 
       {isModalOpen && (
         <DriverFormModal

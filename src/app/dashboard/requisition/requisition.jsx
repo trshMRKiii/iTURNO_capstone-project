@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useRequisition } from "./useRequisition";
 import RequisitionFormModal from "./RequisitionFormModal";
+import EditSeriesModal from "./EditSeriesModal";
 import { IS_REMOTE } from "../../../lib/api-service";
 import "../../../styles/requisition.css";
 import "../../../components/ui/kit";
@@ -41,13 +42,20 @@ function Requisition() {
     showForm,
     setShowForm,
     seriesItems,
+    supervisors,
+    requestedBy,
+    setRequestedBy,
     updateSeriesItem,
     addSeriesItem,
     removeSeriesItem,
     computeTotal,
     handleSave,
     inventory,
-    handleDelete,
+    editing,
+    setEditing,
+    startEdit,
+    updateEdit,
+    saveEdit,
   } = useRequisition();
 
   const [expandedDenom, setExpandedDenom] = useState(null);
@@ -82,12 +90,23 @@ function Requisition() {
         showForm={showForm}
         setShowForm={setShowForm}
         seriesItems={seriesItems}
+        supervisors={supervisors}
+        requestedBy={requestedBy}
+        setRequestedBy={setRequestedBy}
         updateSeriesItem={updateSeriesItem}
         addSeriesItem={addSeriesItem}
         removeSeriesItem={removeSeriesItem}
         ticketForms={ticketForms}
         computeTotal={computeTotal}
         handleSave={handleSave}
+        saving={saving}
+      />
+
+      <EditSeriesModal
+        editing={editing}
+        setEditing={setEditing}
+        updateEdit={updateEdit}
+        saveEdit={saveEdit}
         saving={saving}
       />
 
@@ -176,9 +195,9 @@ function Requisition() {
                           <span className="rq-num">
                             {formatCurrency(ts.current_value)}
                             {!IS_REMOTE && (
-                              <button type="button" className="rq-link rq-link--danger" onClick={() => handleDelete(ts)}>
-                                  Delete
-                                </button>
+                              <button type="button" className="rq-link" onClick={() => startEdit(ts)}>
+                                Edit
+                              </button>
                             )}
                           </span>
                         </div>

@@ -10,6 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { apiService } from "../../lib/api-service";
+import { usePeriodFilter } from "../../lib/period";
+import PeriodFilter from "../../components/ui/PeriodFilter";
 import "../../styles/Dashboard.css";
 
 const peso = (n) => {
@@ -39,9 +41,8 @@ const TICKET_STATUS_ORDER = ["QUEUE", "UNLOAD"];
 // Matches AuditTrail.jsx's ACTION_COLORS exactly so audit entries look the same everywhere.
 const ACTION_COLORS = { CREATE: "#22c55e", UPDATE: "#3b82f6", DELETE: "#ef4444" };
 
-// Same stock thresholds already used on the Requisition page's inventory cards.
-const STOCK_LOW_THRESHOLD = 5000;
-const STOCK_HIGH_THRESHOLD = 10000;
+// A denomination is "low" once its cash value on hand drops under this (₱).
+const STOCK_LOW_AMOUNT = 30000;
 
 const ACTIVITY_PAGE_SIZE = 8;
 
@@ -232,40 +233,6 @@ function ActivityRow({ log }) {
   );
 }
 
-// Local (not UTC) YYYY-MM-DD — avoids toISOString's UTC-shift off-by-one.
-const todayStr = () => {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
-// Period chips for the header filter. "custom" keeps the current dates and
-// reveals the From/To inputs.
-const PERIODS = [
-  { key: "today", label: "Today" },
-  { key: "7d", label: "Last 7 days" },
-  { key: "month", label: "This month" },
-  { key: "year", label: "This year" },
-  { key: "custom", label: "Custom" },
-];
-
-const toDateStr = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-const getPeriodRange = (key) => {
-  const now = new Date();
-  const end = todayStr();
-  if (key === "today") return { from: end, to: end };
-  if (key === "7d")
-    return { from: toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)), to: end };
-  if (key === "month")
-    return { from: toDateStr(new Date(now.getFullYear(), now.getMonth(), 1)), to: end };
-  if (key === "year") return { from: `${now.getFullYear()}-01-01`, to: end };
-  return null;
-};
-
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -278,32 +245,8 @@ export default function Dashboard() {
   // "tickets" | "revenue"
   const [chartMode, setChartMode] = useState("tickets");
 
-  const today = todayStr();
-  const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
-
-  const [period, setPeriod] = useState("today");
-
-  const handlePeriodChange = (key) => {
-    setPeriod(key);
-    const range = getPeriodRange(key);
-    if (range) {
-      setFromDate(range.from);
-      setToDate(range.to);
-    }
-  };
-
-  const handleFromChange = (value) => {
-    if (!value || value > today) value = today;
-    setFromDate(value);
-    if (value > toDate) setToDate(value);
-  };
-
-  const handleToChange = (value) => {
-    if (!value || value > today) value = today;
-    setToDate(value);
-    if (value < fromDate) setFromDate(value);
-  };
+  const periodFilter = usePeriodFilter("today");
+  const { fromDate, toDate, today } = periodFilter;
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -362,18 +305,21 @@ export default function Dashboard() {
   const queuedCount = fleetStatus.QUEUED ?? 0;
   const queueByRoute = (stats?.queue_by_route || []).slice(0, 3);
   const queueMax = Math.max(...queueByRoute.map((r) => r.count), 1);
-  const ticketStock = stats?.ticket_stock_remaining ?? 0;
-  const stockByForm = stats?.stock_by_form || [];
-  const stockMax = Math.max(...stockByForm.map((f) => f.remaining), 1);
-  const stockIsLow = ticketStock < STOCK_LOW_THRESHOLD;
+  // Stock is shown in cash (pcs × price). Each denomination gets its own tone;
+  // its bar is the share of the in-stock series still unused, as on Requisition.
+  const stockByForm = (stats?.stock_by_form || []).map((f) => ({
+    ...f,
+    tone: f.remaining === 0 ? "bad" : f.amount < STOCK_LOW_AMOUNT ? "warn" : "good",
+    pct: f.original > 0 ? (f.remaining / f.original) * 100 : 0,
+  }));
+  const stockAmount = stockByForm.reduce((sum, f) => sum + f.amount, 0);
+  const lowCount = stockByForm.filter((f) => f.tone !== "good").length;
   const stockStatus =
-    ticketStock === 0
+    stockByForm.length === 0 || stockByForm.every((f) => f.remaining === 0)
       ? { label: "Out of stock", tone: "bad" }
-      : stockIsLow
-        ? { label: "Low stock", tone: "warn" }
-        : ticketStock >= STOCK_HIGH_THRESHOLD
-          ? { label: "Healthy", tone: "good" }
-          : { label: "Normal", tone: "good" };
+      : lowCount > 0
+        ? { label: lowCount === 1 ? "1 low" : `${lowCount} low`, tone: "warn" }
+        : { label: "Healthy", tone: "good" };
 
   return (
     <div className="dashboard-page">
@@ -386,42 +332,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="col-header-right">
-          <div className="dashboard-date-filter">
-            <div className="dashboard-chips">
-              {PERIODS.map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  className={`dashboard-chip${period === p.key ? " dashboard-chip--active" : ""}`}
-                  onClick={() => handlePeriodChange(p.key)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            {period === "custom" && (
-              <>
-                <label>
-                  From
-                  <input
-                    type="date"
-                    value={fromDate}
-                    max={today}
-                    onChange={(e) => handleFromChange(e.target.value)}
-                  />
-                </label>
-                <label>
-                  To
-                  <input
-                    type="date"
-                    value={toDate}
-                    max={today}
-                    onChange={(e) => handleToChange(e.target.value)}
-                  />
-                </label>
-              </>
-            )}
-          </div>
+          <PeriodFilter filter={periodFilter} />
         </div>
       </div>
 
@@ -491,23 +402,24 @@ export default function Dashboard() {
               }
             >
               <div className="ov-value ov-value--hero">
-                {ticketStock.toLocaleString()}
-                <span className="ov-unit">pcs on hand</span>
+                {peso(stockAmount)}
+                <span className="ov-unit">on hand</span>
               </div>
               {stockByForm.length > 0 && (
                 <ul className="ov-stock">
                   {stockByForm.map((f) => (
                     <li key={f.name}>
-                      <div className="ov-stock-row">
-                        <span>{f.name}</span>
-                        <strong>{f.remaining.toLocaleString()}</strong>
+                      <div className={`ov-stock-row ov-stock-row--${f.tone}`}>
+                        <span>
+                          {f.name}
+                          {f.tone !== "good" && (
+                            <em className="ov-stock-flag">{f.remaining === 0 ? "Out" : "Low"}</em>
+                          )}
+                        </span>
+                        <strong>{peso(f.amount)}</strong>
                       </div>
-                      <div className="ov-bar">
-                        <span
-                          style={{
-                            width: `${Math.max((f.remaining / stockMax) * 100, f.remaining > 0 ? 1.5 : 0)}%`,
-                          }}
-                        />
+                      <div className={`ov-bar ov-bar--${f.tone}`}>
+                        <span style={{ width: `${Math.max(f.pct, f.remaining > 0 ? 1.5 : 0)}%` }} />
                       </div>
                     </li>
                   ))}

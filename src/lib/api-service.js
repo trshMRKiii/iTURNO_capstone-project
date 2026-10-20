@@ -613,6 +613,14 @@ export const apiService = {
     return this.get("/system/backups/");
   },
 
+  getBackupSettings() {
+    return this.get("/system/backups/settings/");
+  },
+
+  updateBackupSettings(settings) {
+    return this.put("/system/backups/settings/", settings);
+  },
+
   createSystemBackup(label = "") {
     return this.post("/system/backups/", { label });
   },

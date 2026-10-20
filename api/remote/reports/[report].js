@@ -29,7 +29,7 @@ async function dashboardStats(req, res, supabase) {
     supabase.from("api_ticket").select("id,vehicle_id,driver_id,status,collection_amount,issued_at,dispatched_at"),
     supabase.from("api_vehicle").select("id,status,is_archived"),
     supabase.from("api_ticketprice").select("amount,effective_date").order("effective_date", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("api_ticketseries").select("id,start_no,end_no,tickets:api_ticket(id),requisition:api_requisition(is_archived)"),
+    supabase.from("api_ticketseries").select("id,start_no,end_no,tickets:api_ticket(id),requisition:api_requisition(is_archived),ticket_form:api_ticketform(name,price)"),
     supabase.from("api_paperissuance").select("series_id,from_no,to_no"),
   ]);
   if (ppErr) throw ppErr;
@@ -64,12 +64,19 @@ async function dashboardStats(req, res, supabase) {
   for (const v of allVehicles) if (!v.is_archived) fleetStatus[v.status] = (fleetStatus[v.status] || 0) + 1;
 
   let ticketStockRemaining = 0;
+  const stockByForm = {};
   for (const series of allSeries || []) {
     if (series.requisition?.is_archived) continue;
     const original = Math.max((Number(series.end_no) || 0) - (Number(series.start_no) || 0) + 1, 0);
     const paperUsed = (allPaper || []).filter((p) => p.series_id === series.id)
       .reduce((s, p) => s + (p.to_no - p.from_no + 1), 0);
-    ticketStockRemaining += Math.max(original - (series.tickets || []).length - paperUsed, 0);
+    const remaining = Math.max(original - (series.tickets || []).length - paperUsed, 0);
+    ticketStockRemaining += remaining;
+    const name = series.ticket_form?.name || "Unspecified";
+    const row = (stockByForm[name] ||= { name, remaining: 0, original: 0, amount: 0 });
+    row.remaining += remaining;
+    row.amount = Math.round((row.amount + remaining * (Number(series.ticket_form?.price) || 0)) * 100) / 100;
+    if (remaining > 0) row.original += original;
   }
 
   res.status(200).json({
@@ -85,6 +92,7 @@ async function dashboardStats(req, res, supabase) {
     ticket_status_breakdown: ticketStatusBreakdown,
     fleet_status: fleetStatus,
     ticket_stock_remaining: ticketStockRemaining,
+    stock_by_form: Object.values(stockByForm),
   });
 }
 

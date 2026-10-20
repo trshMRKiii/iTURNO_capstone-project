@@ -124,6 +124,8 @@ def dashboard_stats(request):
 
     # Total physical ticket stock left across active (non-archived) requisitions —
     # same "remaining" math as TicketSeriesSerializer.get_remaining, aggregated.
+    # Per denomination: pcs and cash left, plus the original size of the series
+    # still in stock — the Requisition page's "x of y" bar, summed per denomination.
     ticket_stock_remaining = 0
     stock_by_form = {}
     paper = paper_numbers_by_series()
@@ -132,7 +134,12 @@ def dashboard_stats(request):
         remaining = max(original - series.issued_count - len(paper.get(series.id, ())), 0)
         ticket_stock_remaining += remaining
         form_name = series.ticket_form.name if series.ticket_form else 'Unspecified'
-        stock_by_form[form_name] = stock_by_form.get(form_name, 0) + remaining
+        price = float(series.ticket_form.price or 0) if series.ticket_form else 0
+        row = stock_by_form.setdefault(form_name, {'name': form_name, 'remaining': 0, 'original': 0, 'amount': 0.0})
+        row['remaining'] += remaining
+        row['amount'] = round(row['amount'] + remaining * price, 2)
+        if remaining > 0:
+            row['original'] += original
 
     # Per-denomination split of the collections card, on the same dispatched_at basis.
     collections_by_form = {}
@@ -146,7 +153,7 @@ def dashboard_stats(request):
     return Response({
         'queue_by_route': queue_by_route,
         'collections_by_form': list(collections_by_form.values()),
-        'stock_by_form': [{'name': n, 'remaining': r} for n, r in stock_by_form.items()],
+        'stock_by_form': list(stock_by_form.values()),
         'today_total': summarize(range_dispatched, fallback_amount),
         'total_tickets': Ticket.objects.count(),
         'total_dispatched': Ticket.objects.filter(dispatched_at__isnull=False).count(),

@@ -194,8 +194,8 @@ function RecordForm() {
                   {(!usedOn || futureDate) && <span className="otr-hint otr-hint--error">{futureDate ? "The date can't be in the future." : "Enter the date."}</span>}
                 </label>
               )}
-              <label className="otr-note">
-                <span className="usr-label">Note (optional)</span>
+              <label className="otr-note">  
+                <span className="usr-label">Notes *</span>
                 <input className="usr-input" maxLength={255} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Remitted to treasury at 2:45 PM" />
               </label>
               <details className="otr-list">
@@ -221,7 +221,7 @@ export default function OutsideRemittanceTab() {
   const [view, setView] = useState("record");
   if (IS_REMOTE) return <p className="set-rewards-note">This only works from the LAN terminal itself.</p>;
   return (
-    <div className="otr">
+    <div className="otr otr-tab">
       <div className="tbf-mode-switch">
         {VIEWS.map(([key, label]) => (
           <button key={key} type="button" className={`tbf-mode-btn ${view === key ? "tbf-mode-btn--active" : ""}`} onClick={() => setView(key)}>

@@ -19,6 +19,7 @@ import { exportTablePDF } from "./exportPDF";
 import { useFeedback } from "../../../components/ui/kit";
 
 import QueueLog from "./tables/QueueLog";
+import RouteAnalytics from "./tables/RouteAnalytics";
 import AuditTrail from "./tables/AuditTrail";
 import RequisitionRemittance from "./tables/RequisitionRemittance";
 import { IS_REMOTE, authFetch } from "../../../lib/api-service";
@@ -288,7 +289,7 @@ export default function Report() {
   const buildRequisitionExportRow = (r) => ({
     "Date Requested": r.date_requested ? r.date_requested.slice(0, 10) : "—",
     "Requested By": r.requested_by_name || "—",
-    "Approved By": r.approved_by_name || "—",
+    "Issued By": r.issued_by_name || "—",
     "Ticket Series": r.ticket_series && r.ticket_series.length
       ? r.ticket_series.map((ts) => ts.series_no).join("; ")
       : "—",
@@ -347,6 +348,8 @@ export default function Report() {
     const rows = await fetchRoamingExportRows(search);
     exportTable(rows.filter((t) => matchesRoamingRow(t, search)).map(buildRoamingExportRow), "Roaming Logs");
   };
+
+  const handleExportRouteAnalyticsPDF = (rows) => exportTable(rows, "Route Analytics");
 
   const buildAuditExportRow = (l) => ({
     Timestamp: l.created_at ? new Date(l.created_at).toLocaleString() : "—",
@@ -462,6 +465,12 @@ export default function Report() {
         onRoamingFetchAll={fetchRoamingExportRows}
         STATUS_COLORS={STATUS_COLORS}
         pageSize={PAGE_SIZE}
+      />
+
+      <RouteAnalytics
+        onFetchQueue={fetchQueueExportRows}
+        onFetchRoaming={fetchRoamingExportRows}
+        onExportPDF={handleExportRouteAnalyticsPDF}
       />
 
       <AuditTrail
