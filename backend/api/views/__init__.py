@@ -27,8 +27,12 @@ from .records import (
     dashboard_stats,
     public_queue,
     server_time,
+    supervisors,
     remittance_batches,
+    amend_remittance_batch,
 )
+
+from .kiosk import kiosk_scan, kiosk_check_in, kiosk_sessions, kiosk_mark_paid, kiosk_cancel
 
 from .external_remittance import external_remittance, external_remittance_records, undo_external_remittance
 

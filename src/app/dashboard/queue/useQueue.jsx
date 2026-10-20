@@ -154,12 +154,10 @@ export function useQueue(userRole = "") {
   const driverHasActiveTicket = (driver) =>
     !!driver && tickets.some((t) => t.driver?.id === driver.id && t.status === "QUEUED");
 
-  // Issue ticket handler
-  // Overrides let the scan page issue straight from a QR hit without waiting for
-  // selection state to settle. Returns the issued ticket(s), or null on failure.
-  const handleIssueTicket = async (vehicleArg, driverArg) => {
-    const vehicle = vehicleArg || selectedVehicle;
-    const driver = driverArg || selectedDriver;
+  // Issue ticket handler. Returns { ticket } on success, { error } on failure.
+  const handleIssueTicket = async () => {
+    const vehicle = selectedVehicle;
+    const driver = selectedDriver;
     setSuccessMessage("");
     setIssueError("");
     const fail = (error) => {

@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import UserViewSet, DriverViewSet, VehicleViewSet, RouteViewSet, TicketViewSet, CurrentUserView, TicketPriceViewSet, PUVTypeViewSet, RemittanceBatchViewSet, TicketFormViewSet, RequisitionViewSet, TicketSeriesViewSet, PaperIssuanceViewSet
-from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, audit_logs, dashboard_stats, public_queue, server_time, export_collections_csv, remittance_batches, system_backups, system_backup_settings, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password, verify_email, change_password, wip_mode_config, backfill_batch, backfill_preview, backfill_import, backfill_history, backfill_history_detail, backfill_history_download, external_remittance, external_remittance_records, undo_external_remittance
+from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, audit_logs, dashboard_stats, public_queue, server_time, supervisors, export_collections_csv, remittance_batches, amend_remittance_batch, system_backups, system_backup_settings, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password, verify_email, change_password, wip_mode_config, backfill_batch, backfill_preview, backfill_import, backfill_history, backfill_history_detail, backfill_history_download, external_remittance, external_remittance_records, undo_external_remittance, kiosk_scan, kiosk_check_in, kiosk_sessions, kiosk_mark_paid, kiosk_cancel
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -28,10 +28,17 @@ urlpatterns = [
     path('audit-logs/', audit_logs),
     path('dashboard/stats/', dashboard_stats),
     path('queue/', public_queue),
+    path('kiosk/scan/', kiosk_scan),
+    path('kiosk/check-in/', kiosk_check_in),
+    path('kiosk/sessions/', kiosk_sessions),
+    path('kiosk/mark-paid/', kiosk_mark_paid),
+    path('kiosk/cancel/', kiosk_cancel),
     path('current-user/', CurrentUserView.as_view(), name='current-user'),
     path('server-time/', server_time),
+    path('supervisors/', supervisors),
     path("report/collections/export/", export_collections_csv, name="export_collections_csv"),
     path("report/remittance/", remittance_batches, name="remittance_batches"),
+    path("report/remittance/<int:batch_id>/amend/", amend_remittance_batch, name="amend_remittance_batch"),
     path("report/remittance/external/", external_remittance, name="external_remittance"),
     path("report/remittance/external/records/", external_remittance_records, name="external_remittance_records"),
     path("report/remittance/external/<int:batch_id>/", undo_external_remittance, name="undo_external_remittance"),

@@ -26,6 +26,28 @@ function seriesHasTicket(ts, query) {
   return Number.isFinite(n) && n >= Number(ts.start_no) && n <= Number(ts.end_no);
 }
 
+const SORT_VALUE = {
+  range: (ts) => Number(ts.start_no),
+  received: (ts) => new Date(ts.created_at).getTime() || 0,
+  remaining: (ts) => ts.remaining,
+  amount: (ts) => ts.current_value,
+};
+
+function SortHead({ id, sort, onSort, className = "", children }) {
+  const active = sort.key === id;
+  return (
+    <button
+      type="button"
+      className={`rq-sort ${className} ${active ? "rq-sort--active" : ""}`}
+      onClick={() => onSort(id)}
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      {children}
+      <span className="rq-sort-arrow" aria-hidden="true">{active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</span>
+    </button>
+  );
+}
+
 function Chevron({ open }) {
   return (
     <svg className={`rq-chevron ${open ? "rq-chevron--open" : ""}`} width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -60,6 +82,7 @@ function Requisition() {
 
   const [expandedDenom, setExpandedDenom] = useState(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState({ key: null, dir: "asc" });
 
   const query = search.replace(/[,\s]/g, "");
 
@@ -76,6 +99,14 @@ function Requisition() {
   );
 
   const toggleDenom = (denom) => setExpandedDenom((prev) => (prev === denom ? null : denom));
+
+  const onSort = (key) => setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  const sortSeries = (rows) => {
+    const val = SORT_VALUE[sort.key];
+    if (!val) return rows;
+    const sign = sort.dir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => (val(a) - val(b)) * sign);
+  };
 
   return (
     <div className="req-page">
@@ -171,13 +202,13 @@ function Requisition() {
                 {open && (
                   <div className="rq-series">
                     <div className="rq-cols rq-cols--series rq-series-head">
-                      <span>Series range</span>
-                      <span>Received</span>
+                      <SortHead id="range" sort={sort} onSort={onSort}>Series range</SortHead>
+                      <SortHead id="received" sort={sort} onSort={onSort}>Received</SortHead>
                       <span>Last issued no.</span>
-                      <span>Remaining</span>
-                      <span className="rq-num">Amount</span>
+                      <SortHead id="remaining" sort={sort} onSort={onSort}>Remaining</SortHead>
+                      <SortHead id="amount" sort={sort} onSort={onSort} className="rq-num">Amount</SortHead>
                     </div>
-                    {g.shown.map((ts) => {
+                    {sortSeries(g.shown).map((ts) => {
                       const total = ts.pcs || ts.remaining;
                       const pct = total > 0 ? Math.min(100, (ts.remaining / total) * 100) : 0;
                       return (

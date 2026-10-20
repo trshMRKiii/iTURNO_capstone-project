@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ButtonLabel, useFeedback } from "../../../components/ui/kit";
-import { downloadRemittancePDF } from "./exportRemittancePDF";
+import { downloadRemittancePDF, officerName } from "./exportRemittancePDF";
 import { useCashierName } from "./useCashierName";
 
 function formatCurrency(val) {
@@ -135,7 +135,7 @@ export default function ViewRemittance({ batch, onClose }) {
               <span><strong>Date:</strong> {formatDate(batch.issued_at)}</span>
             </div>
             <div className="rem-report-info-row">
-              <span><strong>Name of Accountable Officer:</strong> {batch.issued_by_name || "—"}</span>
+              <span><strong>Name of Accountable Officer:</strong> {officerName(batch) || "—"}</span>
               <span><strong>Report No.:</strong> {batch.batch_code || batch.id || "—"}</span>
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function ViewRemittance({ batch, onClose }) {
             <tbody>
               {deposits.map((d, i) => (
                 <tr key={i}>
-                  <td>{i === 0 ? (batch.issued_by_name || "—") : ""}</td>
+                  <td>{i === 0 ? (officerName(batch) || "—") : ""}</td>
                   <td>{d.type === "coin" ? "C" : d.denomination}</td>
                   <td style={{ textAlign: "right" }}>{d.quantity > 0 ? d.quantity : ""}</td>
                   <td style={{ textAlign: "right" }}>{formatAmount(d.depositAmount)}</td>
@@ -310,7 +310,7 @@ export default function ViewRemittance({ batch, onClose }) {
             <div className="rem-report-cert-box">
               <p className="rem-report-cert-label">CERTIFICATION:</p>
               <div className="rem-report-sig">
-                <strong>{batch.issued_by_name || "—"}</strong>
+                <strong>{officerName(batch) || "—"}</strong>
                 <span>Name and Signature of Accountable Officer</span>
               </div>
             </div>

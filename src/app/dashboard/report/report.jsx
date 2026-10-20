@@ -308,6 +308,7 @@ export default function Report() {
 
   const buildRemittanceExportRow = (b) => ({
     "Issued At": b.issued_at ? new Date(b.issued_at).toLocaleString() : "—",
+    "Prepared By": b.prepared_by_name || "—",
     "Issued By": b.issued_by_name || "—",
     Collections: b.collections ? b.collections.length : 0,
     "Total Amount": b.total_amount,

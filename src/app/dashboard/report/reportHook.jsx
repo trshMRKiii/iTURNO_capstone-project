@@ -116,7 +116,7 @@ export const matchesRequisitionRow = (r, query) =>
   fieldsMatch([r.requested_by_name, r.issued_by_name], query);
 
 export const matchesRemittanceRow = (b, query) =>
-  fieldsMatch([b.issued_by_name], query);
+  fieldsMatch([b.prepared_by_name, b.issued_by_name], query);
 
 export const matchesAuditRow = (l, query) =>
   fieldsMatch([l.created_at, l.action_display, l.model_name, l.object_repr, l.user_name], query);

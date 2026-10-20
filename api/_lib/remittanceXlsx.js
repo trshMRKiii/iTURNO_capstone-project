@@ -42,9 +42,10 @@ export async function renderRemittanceXlsx(batch) {
   const sheet2 = wb.getWorksheet("Sheet2");
 
   const issuedBy = batch.issued_by;
-  const officerName = issuedBy
+  // The accountable officer is the supervisor who prepared it; older batches fall back to who keyed them in.
+  const officerName = batch.prepared_by_name || (issuedBy
     ? `${issuedBy.first_name || ""} ${issuedBy.last_name || ""}`.trim() || issuedBy.username || ""
-    : "";
+    : "");
   const reportNo = batch.batch_code || String(batch.id ?? "");
   const dateStr = batch.issued_at ? phLongDate(batch.issued_at) : "";
 

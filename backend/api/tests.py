@@ -560,5 +560,193 @@ class RequisitionRequesterTests(TestCase):
     def test_supervisor_list_is_open_to_non_admins(self):
         from .models import User
         self.client.force_authenticate(User.objects.create_user(username='p@x.com', password='x', role='PERSONNEL'))
-        res = self.client.get('/api/requisitions/supervisors/')
+        res = self.client.get('/api/supervisors/')
         self.assertEqual([s['name'] for s in res.data], ['Sam Sup'])
+
+
+class RemittancePreparedByTests(TestCase):
+    URL = '/api/report/remittance/'
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        self.sup = User.objects.create_user(username='sup@x.com', password='x', role='SUPERVISOR', first_name='Sam', last_name='Sup')
+        self.staff = User.objects.create_user(username='p@x.com', password='x', role='PERSONNEL', first_name='Pat', last_name='Staff')
+        self.client = APIClient()
+        self.client.force_authenticate(self.staff)
+
+    def _post(self, prepared_by):
+        return self.client.post(self.URL, {'id': 'TER-1', 'total_amount': 0, 'prepared_by': prepared_by}, format='json')
+
+    def test_batch_records_the_supervisor_and_who_keyed_it_in(self):
+        from .models import RemittanceBatch
+        self.assertEqual(self._post(self.sup.id).status_code, 201)
+        batch = RemittanceBatch.objects.get()
+        self.assertEqual((batch.prepared_by_name, batch.issued_by), ('Sam Sup', self.staff))
+        listed = self.client.get(self.URL).data['results'][0]
+        self.assertEqual((listed['prepared_by_name'], listed['issued_by_name']), ('Sam Sup', 'Pat Staff'))
+
+    def test_preparer_is_required_and_must_be_a_supervisor(self):
+        from .models import RemittanceBatch
+        for bad in (None, '', 'abc', self.staff.id, 9999):
+            self.assertEqual(self._post(bad).status_code, 400, bad)
+        self.assertFalse(RemittanceBatch.objects.exists())
+
+
+class OneRemittancePerDayTests(TestCase):
+    URL = '/api/report/remittance/'
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        self.sup = User.objects.create_user(username='sup@x.com', password='x', role='SUPERVISOR', first_name='Sam', last_name='Sup')
+        self.client = APIClient()
+        self.client.force_authenticate(self.sup)
+
+    def _body(self, code, day, amount=100, **extra):
+        return {'id': code, 'prepared_by': self.sup.id, 'covers_date': day, 'total_amount': amount,
+                'collections': [{'ticketFormNo': 'Std', 'from': 500, 'to': 400, 'amount': amount}],
+                'deposits': [{'type': 'bill', 'denomination': 100, 'quantity': amount // 100, 'depositAmount': amount}], **extra}
+
+    def test_second_batch_for_the_same_day_is_refused(self):
+        from .models import RemittanceBatch
+        self.assertEqual(self.client.post(self.URL, self._body('TER-1', '2026-10-19'), format='json').status_code, 201)
+        res = self.client.post(self.URL, self._body('TER-1-2', '2026-10-19'), format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('TER-1', str(res.data))
+        self.assertEqual(self.client.post(self.URL, self._body('TER-2', '2026-10-20'), format='json').status_code, 201)
+        self.assertEqual(RemittanceBatch.objects.count(), 2)
+
+    def test_outside_remittance_does_not_block_the_day(self):
+        from .models import RemittanceBatch
+        RemittanceBatch.objects.create(batch_code='EXT-1', covers_date='2026-10-19', total_amount=50)
+        self.assertEqual(self.client.post(self.URL, self._body('TER-1', '2026-10-19'), format='json').status_code, 201)
+
+    def test_amend_replaces_lines_and_total_keeping_the_code(self):
+        from .models import Collection, Deposit, RemittanceBatch
+        self.client.post(self.URL, self._body('TER-1', '2026-10-19'), format='json')
+        batch = RemittanceBatch.objects.get()
+        res = self.client.post(f'{self.URL}{batch.id}/amend/', self._body('ignored', '2026-10-19', amount=300), format='json')
+        self.assertEqual(res.status_code, 200)
+        batch.refresh_from_db()
+        self.assertEqual((batch.batch_code, float(batch.total_amount)), ('TER-1', 300.0))
+        self.assertEqual([float(c.amount) for c in Collection.objects.filter(batch=batch)], [300.0])
+        self.assertEqual([d.quantity for d in Deposit.objects.filter(batch=batch)], [3])
+
+    def test_amend_refuses_outside_and_archived_batches(self):
+        from .models import RemittanceBatch
+        ext = RemittanceBatch.objects.create(batch_code='EXT-1', covers_date='2026-10-19', total_amount=50)
+        arch = RemittanceBatch.objects.create(batch_code='TER-9', covers_date='2026-10-18', total_amount=50, is_archived=True)
+        for b in (ext, arch):
+            self.assertEqual(self.client.post(f'{self.URL}{b.id}/amend/', self._body('x', '2026-10-19'), format='json').status_code, 400)
+
+
+class KioskTests(TestCase):
+    def setUp(self):
+        from unittest import mock
+        from rest_framework.test import APIClient
+        from .models import Requisition, Route, TicketForm, TicketSeries, User
+        for target in ('api.serializers.send_sms_async', 'api.views.viewsets.send_sms_async'):
+            patcher = mock.patch(target)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+        route = Route.objects.create(origin='Bacnotan')
+        puv = PUVType.objects.create(name='Jeep', terminal_price=10)
+        self.a = Vehicle.objects.create(plate_number='AAA111', qr_code='QR-A', route=route, transportation_id=puv)
+        self.b = Vehicle.objects.create(plate_number='BBB222', qr_code='QR-B', route=route, transportation_id=puv)
+        self.d1 = Driver.objects.create(first_name='Ana', last_name='Cruz', contact='09170000001')
+        self.d2 = Driver.objects.create(first_name='Ben', last_name='Diaz', contact='09170000002')
+        self.series = TicketSeries.objects.create(
+            series_no='S1', ticket_form=TicketForm.objects.create(name='Std', price=10),
+            start_no='1', end_no='100', unit_value=0, requisition=Requisition.objects.create(),
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(User.objects.create_user(username='cashier', password='x', role='SUPERADMIN'))
+
+    def _scan(self, text):
+        return self.client.post('/api/kiosk/scan/', {'text': text}, format='json').data
+
+    def _check_in(self, vehicle, driver, mode):
+        return self.client.post('/api/kiosk/check-in/', {
+            'vehicle_id': vehicle.id, 'driver_id': driver.id, 'mode': mode,
+        }, format='json').data
+
+    def _pay(self, vehicle, quantity=1):
+        return self.client.post('/api/kiosk/mark-paid/', {
+            'vehicle_id': vehicle.id, 'series_id': self.series.id, 'quantity': quantity,
+        }, format='json')
+
+    def test_unknown_qr(self):
+        self.assertEqual(self._scan('nope')['state'], 'UNKNOWN')
+
+    def test_queue_visit_must_be_paid_before_checkout(self):
+        scan = self._scan('QR-A')
+        self.assertEqual(scan['state'], 'CHECK_IN')
+        self.assertEqual({d['name'] for d in scan['drivers']}, {'Cruz, Ana', 'Diaz, Ben'})
+
+        self.assertEqual(self._check_in(self.a, self.d1, 'QUEUE')['state'], 'CHECKED_IN')
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.status, 'QUEUED')
+
+        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')  # unpaid: no checkout
+        placeholder = Ticket.objects.get(vehicle=self.a, status='QUEUED')
+        checked_in = placeholder.issued_at
+
+        self.assertEqual(self._pay(self.a).status_code, 200)
+        out = self._scan('QR-A')
+        self.assertEqual(out['state'], 'DEPARTED')
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.status, 'AVAILABLE')
+        ticket = Ticket.objects.get(id=out['tickets'][0])
+        self.assertEqual((ticket.status, ticket.mode, ticket.collection_amount), ('COLLECTED', 'QUEUE', 10))
+        # The dispatched ticket is brand new, but keeps the real arrival time for the stay.
+        self.assertEqual(ticket.checked_in_at, checked_in)
+        self.assertGreaterEqual(ticket.dispatched_at, ticket.checked_in_at)
+        self.assertEqual(self._scan('QR-A')['state'], 'CHECK_IN')  # visit is over
+
+    def test_paid_vehicle_waits_for_its_turn(self):
+        self._check_in(self.a, self.d1, 'QUEUE')
+        self._check_in(self.b, self.d2, 'QUEUE')
+        self._pay(self.b)
+        waiting = self._scan('QR-B')
+        self.assertEqual((waiting['state'], waiting['position']), ('WAIT_TURN', 2))
+        self.assertTrue(Ticket.objects.filter(vehicle=self.b, status='QUEUED').exists())
+
+    def test_roam_visit_pays_then_checks_out(self):
+        self.assertEqual(self._check_in(self.a, self.d1, 'ROAM')['state'], 'CHECKED_IN')
+        self.assertFalse(Ticket.objects.exists())  # nothing issued before payment
+        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')
+        pending = self.client.get('/api/kiosk/sessions/').data
+        self.assertEqual([(s['plate'], s['mode'], s['status']) for s in pending], [('AAA111', 'ROAM', 'AWAITING_PAYMENT')])
+
+        self._pay(self.a)
+        out = self._scan('QR-A')
+        self.assertEqual(out['state'], 'DEPARTED')
+        ticket = Ticket.objects.get(id=out['tickets'][0])
+        self.assertEqual((ticket.status, ticket.mode), ('COLLECTED', 'UNLOAD'))
+        # A kiosk roam's stay runs from its check-in scan to checkout.
+        self.assertLess(ticket.checked_in_at, ticket.dispatched_at)
+        self.assertEqual(self.client.get('/api/kiosk/sessions/').data, [])
+
+    def test_front_desk_queued_vehicle_can_be_marked_paid(self):
+        self.client.post('/api/tickets/', {
+            'id': 'Q-x', 'vehicle_id': self.a.id, 'driver_id': self.d1.id, 'route': self.a.route_id,
+            'status': 'QUEUED', 'mode': 'QUEUE', 'is_verified': False,
+        }, format='json')
+        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')
+        self._pay(self.a)
+        self.assertEqual(self._scan('QR-A')['state'], 'DEPARTED')
+
+    def test_mark_paid_total_must_match_terminal_price_and_can_be_undone(self):
+        self._check_in(self.a, self.d1, 'ROAM')
+        self.assertEqual(self._pay(self.a, quantity=2).status_code, 400)
+        self._pay(self.a)
+        self.client.post('/api/kiosk/mark-paid/', {'vehicle_id': self.a.id, 'paid': False}, format='json')
+        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')
+
+    def test_driver_cannot_check_in_twice_and_cancelled_roam_frees_the_vehicle(self):
+        self._check_in(self.a, self.d1, 'ROAM')
+        self.assertEqual(self._check_in(self.b, self.d1, 'QUEUE')['state'], 'ERROR')
+        self.client.post('/api/kiosk/cancel/', {'vehicle_id': self.a.id}, format='json')
+        self.assertEqual(self._scan('QR-A')['state'], 'CHECK_IN')

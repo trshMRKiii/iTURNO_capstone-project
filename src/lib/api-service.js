@@ -401,6 +401,26 @@ export const apiService = {
     });
   },
 
+  // Kiosk visits (self-service QR check-in): the cashier marks them paid, then the
+  // driver's next scan on the kiosk checks them out. The kiosk screen itself calls
+  // /kiosk/scan/ and /kiosk/check-in/ directly.
+  getKioskSessions() {
+    return this.get("/kiosk/sessions/");
+  },
+
+  markKioskPaid(vehicleId, { seriesId, quantity, paid = true }) {
+    return this.post("/kiosk/mark-paid/", {
+      vehicle_id: vehicleId,
+      series_id: seriesId,
+      quantity,
+      paid,
+    });
+  },
+
+  cancelKioskVisit(vehicleId) {
+    return this.post("/kiosk/cancel/", { vehicle_id: vehicleId });
+  },
+
   reorderQueue(routeId, vehicleIds) {
     return this.post("/tickets/reorder-queue/", {
       route_id: routeId,

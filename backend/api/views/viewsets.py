@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_MET
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import LOCAL_ADMIN_PK_BASE, PendingAccountEmail, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, WipMode
+from ..models import LOCAL_ADMIN_PK_BASE, KioskSession, PendingAccountEmail, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, WipMode
 from ..serializers import UserSerializer, SelfProfileSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, PaperIssuanceSerializer
 from ..sync.account_emails import flush_account_emails, queue_account_email
 from ..sync.fleet_access import flush_fleet_access
@@ -553,9 +553,11 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
         driver = placeholder.driver
         route = placeholder.route
         loading_started_at = placeholder.loading_started_at
+        checked_in_at = placeholder.issued_at
         active_user = request.user if request.user.is_authenticated else None
 
         placeholder.delete()
+        KioskSession.objects.filter(vehicle=vehicle, status__in=KioskSession.OPEN_STATUSES).update(status='DONE')
 
         new_tickets = [
             Ticket.objects.create(
@@ -571,6 +573,7 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
                 collection_amount=price,
                 dispatched_at=dispatched_at,
                 loading_started_at=loading_started_at,
+                checked_in_at=checked_in_at,
                 issuance_group=issuance_group,
             )
             for series, ticket_id in units
@@ -591,6 +594,64 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
             if new_first:
                 message = queue_next_message(route.full_name)
                 transaction.on_commit(lambda: send_sms_async(new_first.driver.contact, message))
+
+    return new_tickets
+
+
+def _check_can_issue(vehicle, driver):
+    """Shared by roam issuance and kiosk check-in: can this driver take this vehicle out?"""
+    if vehicle.status != 'AVAILABLE':
+        raise ValidationError({"vehicle_id": f"Vehicle is {vehicle.status} — cannot issue ticket."})
+    if driver.status != 'ACTIVE':
+        raise ValidationError({"driver_id": "Selected driver is not active."})
+    if vehicle.franchise_expired:
+        raise ValidationError({"vehicle_id": f"{vehicle.plate_number}'s franchise has expired."})
+    if driver.iwp_expired:
+        raise ValidationError({"driver_id": "Selected driver's IWP has expired."})
+
+
+def _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request, series_id=None):
+    """Roam core: the toll is paid on the spot, so tickets are born COLLECTED. Draws
+    numbers through the same FIFO allocator dispatch uses, so the two paths can't
+    hand out the same number."""
+    _check_can_issue(vehicle, driver)
+    price = ticket_form.price or 0
+    _check_terminal_price(vehicle, price, quantity)
+
+    with transaction.atomic():
+        units = _consume_series_fifo(ticket_form.id, quantity, series_id)
+
+        dispatched_at = timezone.now()
+        # A kiosk roam visit has been open since its scan; a front-desk roam is instant.
+        visit = KioskSession.objects.filter(
+            vehicle=vehicle, mode='ROAM', status__in=KioskSession.OPEN_STATUSES,
+        ).first()
+        checked_in_at = visit.created_at if visit else dispatched_at
+        issuance_group = uuid.uuid4().hex
+        active_user = request.user if request.user.is_authenticated else None
+
+        new_tickets = [
+            Ticket.objects.create(
+                id=ticket_id,
+                vehicle=vehicle,
+                driver=driver,
+                active_user=active_user,
+                route=vehicle.route,
+                mode='UNLOAD',
+                series=series,
+                status='COLLECTED',
+                is_verified=True,
+                collection_amount=price,
+                dispatched_at=dispatched_at,
+                checked_in_at=checked_in_at,
+                issuance_group=issuance_group,
+            )
+            for series, ticket_id in units
+        ]
+
+        vehicle.active_driver = driver
+        vehicle.save(update_fields=['active_driver', 'updated_at'])
+        KioskSession.objects.filter(vehicle=vehicle, status__in=KioskSession.OPEN_STATUSES).update(status='DONE')
 
     return new_tickets
 
@@ -808,46 +869,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         except TicketForm.DoesNotExist:
             raise ValidationError({"ticket_form_id": "Ticket form not found."})
 
-        if vehicle.status != 'AVAILABLE':
-            raise ValidationError({"vehicle_id": f"Vehicle is {vehicle.status} — cannot issue ticket."})
-        if driver.status != 'ACTIVE':
-            raise ValidationError({"driver_id": "Selected driver is not active."})
-        if vehicle.franchise_expired:
-            raise ValidationError({"vehicle_id": f"{vehicle.plate_number}'s franchise has expired."})
-        if driver.iwp_expired:
-            raise ValidationError({"driver_id": "Selected driver's IWP has expired."})
-
-        price = ticket_form.price or 0
-        _check_terminal_price(vehicle, price, quantity)
-
-        with transaction.atomic():
-            units = _consume_series_fifo(ticket_form.id, quantity)
-
-            dispatched_at = timezone.now()
-            issuance_group = uuid.uuid4().hex
-            active_user = request.user if request.user.is_authenticated else None
-
-            new_tickets = [
-                Ticket.objects.create(
-                    id=ticket_id,
-                    vehicle=vehicle,
-                    driver=driver,
-                    active_user=active_user,
-                    route=vehicle.route,
-                    mode='UNLOAD',
-                    series=series,
-                    status='COLLECTED',
-                    is_verified=True,
-                    collection_amount=price,
-                    dispatched_at=dispatched_at,
-                    issuance_group=issuance_group,
-                )
-                for series, ticket_id in units
-            ]
-
-            vehicle.active_driver = driver
-            vehicle.save(update_fields=['active_driver', 'updated_at'])
-
+        new_tickets = _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request)
         return Response(
             TicketSerializer(new_tickets, many=True, context={'request': request}).data
         )
@@ -860,8 +882,12 @@ class TicketViewSet(viewsets.ModelViewSet):
 
         # A cancelled front-of-line ticket frees up the loading zone for
         # whoever's next — same promotion that happens on dispatch.
-        if was_queued and ticket.status == 'CANCELLED' and route:
-            promote_queue_front(route)
+        if was_queued and ticket.status == 'CANCELLED':
+            KioskSession.objects.filter(
+                vehicle=ticket.vehicle, status__in=KioskSession.OPEN_STATUSES,
+            ).update(status='CANCELLED')
+            if route:
+                promote_queue_front(route)
 
         # Ticket issuance/status changes already appear in the Terminal Queue Log —
         # the audit trail only needs to capture who verified/collected a ticket.
@@ -979,18 +1005,8 @@ class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        user = self.request.user
-        requisition = serializer.save(issued_by_name=f"{user.first_name} {user.last_name}".strip() or user.username)
+        requisition = serializer.save(issued_by_name=self.request.user.display_name)
         self._audit('CREATE', requisition, self._safe_changes())
-
-    @action(detail=False, methods=['get'])
-    def supervisors(self, request):
-        """Who a requisition can be requested by. Open to anyone who can record one, since
-        the staff list itself is limited to admins."""
-        users = User.objects.filter(role='SUPERVISOR', is_active=True).order_by('first_name', 'last_name')
-        return Response([
-            {'id': u.id, 'name': f"{u.first_name} {u.last_name}".strip() or u.username} for u in users
-        ])
 
 
 class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../../lib/api-service";
-import { ButtonLabel, useFeedback } from "../../../components/ui/kit";
+import { ButtonLabel, SupervisorPicker, useFeedback } from "../../../components/ui/kit";
+import { useSupervisors } from "../../../lib/useSupervisors";
 import CashierNameInput from "./CashierNameInput";
 import { useCashierName } from "./useCashierName";
 import { downloadRemittancePDF } from "./exportRemittancePDF";
@@ -28,6 +29,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
   // Duplicate-batch and batch-ID-collision checks need the complete batch
   // history (both tabs), not just a page of it.
   const [existingBatches, setExistingBatches] = useState([]);
+  const [batchesLoaded, setBatchesLoaded] = useState(false);
   useEffect(() => {
     Promise.all(
       [false, true].map((archived) =>
@@ -37,10 +39,16 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
       .then((pages) =>
         setExistingBatches(pages.flatMap((res) => (Array.isArray(res) ? res : res.results || [])))
       )
-      .catch(() => setExistingBatches([]));
+      .catch(() => setExistingBatches([]))
+      .finally(() => setBatchesLoaded(true));
   }, []);
 
-  const [accountableOfficer, setAccountableOfficer] = useState("");
+  // Only a supervisor can prepare a batch. One keying in their own is the default; anyone else must choose.
+  const { supervisors, currentUser } = useSupervisors();
+  const [pickedPreparer, setPickedPreparer] = useState("");
+  const preparedBy = pickedPreparer || (currentUser?.role === "SUPERVISOR" ? currentUser.id : "");
+  const keyedByName = currentUser ? `${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() || currentUser.username : "";
+  const preparedByName = supervisors.find((s) => String(s.id) === String(preparedBy))?.name || "";
   const [collections, setCollections] = useState([
     { ticketFormNo: "", from: 0, to: 0, ticketsIssued: 0, amount: 0 },
   ]);
@@ -58,7 +66,9 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
 
   const [ticketFormOptions, setTicketFormOptions] = useState([]);
   const [todayTickets, setTodayTickets] = useState([]);
+  const [ticketsLoaded, setTicketsLoaded] = useState(false);
   const [ticketSeries, setTicketSeries] = useState([]);
+  const [amending, setAmending] = useState(false);
 
   const getTodayDateString = (date) => {
     const y = date.getFullYear();
@@ -75,7 +85,17 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
   // Batch ID is TER-<day of year>-<2-digit year> for the day being covered,
   // e.g. day 236 of 2026 -> TER-236-26. Suffixed with -2, -3, ... on the rare
   // case a batch already exists for that day (e.g. an intentional duplicate).
-  const batchId = (() => {
+  // A day is remitted once: the in-system batch already covering this date (outside "EXT-"
+  // batches are filed separately). Legacy batches without covers_date count by the day issued.
+  const phDay = (iso) => new Date(new Date(iso).getTime() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const existing = existingBatches.find(
+    (b) => !String(b.batch_code || "").startsWith("EXT-") &&
+      (b.covers_date ? b.covers_date === dateIssued : phDay(b.issued_at) === dateIssued)
+  );
+  const existingAmount = (name) =>
+    (existing?.collections || []).filter((c) => c.ticket_form_no === name).reduce((s, c) => s + Number(c.amount || 0), 0);
+
+  const batchId = amending ? existing.batch_code : (() => {
     const [year, month, day] = dateIssued.split("-").map(Number);
     const dayOfYear =
       Math.round((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000) + 1;
@@ -87,19 +107,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
     while (codes.has(`${base}-${n}`)) n++;
     return `${base}-${n}`;
   })();
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await apiService.get("/current-user/");
-        const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
-        setAccountableOfficer(fullName || user.username);
-      } catch (err) {
-        console.error("Failed to fetch current user", err);
-      }
-    };
-    fetchUser();
-  }, []);
 
   useEffect(() => {
     apiService.getTicketForms()
@@ -118,7 +125,8 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
           )
         );
       })
-      .catch(err => loadFailed("tickets", err));
+      .catch(err => loadFailed("tickets", err))
+      .finally(() => setTicketsLoaded(true));
 
     apiService.request("/ticket-series/")
       .then(data => setTicketSeries(Array.isArray(data) ? data : []))
@@ -138,7 +146,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
     );
     const totalCollected = matchingTickets.reduce(
       (sum, t) => sum + Number(t.collection_amount || 0), 0
-    );
+    ) + (amending ? existingAmount(name) : 0);
     const ticketsIssuedToday = matchingTickets.length;
     const beginningPcs = matchingSeries.reduce(
       (sum, s) => sum + (s.beginning ?? ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0))), 0
@@ -160,7 +168,21 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
   useEffect(() => {
     if (ticketFormOptions.length === 0) return;
     setCollections(ticketFormOptions.map(tf => computeRowForForm(tf.name)));
-  }, [ticketFormOptions, ticketSeries, todayTickets]);
+  }, [ticketFormOptions, ticketSeries, todayTickets, amending]);
+
+  // Editing the day's remittance starts from what was already deposited; the cashier then adds the new cash.
+  const startAmending = () => {
+    setDeposits((rows) => rows.map((row) => {
+      const old = (existing.deposits || []).find((d) => d.type === row.type && Number(d.denomination || 0) === Number(row.denomination));
+      return old ? { ...row, quantity: String(old.quantity), depositAmount: Number(old.deposit_amount || 0) } : row;
+    }));
+    setCertified(false);
+    setAmending(true);
+  };
+  const cancelAmending = () => {
+    setDeposits((rows) => rows.map((row) => ({ ...row, quantity: 0, depositAmount: 0 })));
+    setAmending(false);
+  };
 
   const updateDeposit = (index, field, value) => {
     const updated = [...deposits];
@@ -197,13 +219,13 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
   const cashier = useCashierName();
   const amountsMismatch = totalRemittances !== totalCollections;
   const nothingToRemit = totalRemittances <= 0;
-  const saveBlocked = amountsMismatch || nothingToRemit || !certified;
+  const saveBlocked = amountsMismatch || nothingToRemit || !certified || !preparedBy;
 
   const handleSave = async () => {
     if (saveBlocked || saving) return;
     const payload = {
       id: batchId,
-      issued_by: accountableOfficer,
+      prepared_by: preparedBy,
       total_amount: totalCollections,
       covers_date: dateIssued,
       collections,
@@ -213,7 +235,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
     setSaving(true);
     let cashierName = "";
     try {
-      await apiService.post("/report/remittance/", payload);
+      await apiService.post(amending ? `/report/remittance/${existing.id}/amend/` : "/report/remittance/", payload);
       cashierName = cashier.save(batchId);
     } catch (err) {
       console.error("Failed to save batch", err);
@@ -228,15 +250,43 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
     // the PDF can still be exported from the batch's view screen.
     try {
       await downloadRemittancePDF(
-        { id: batchId, batch_code: batchId, issued_by_name: accountableOfficer, issued_at: new Date().toISOString(), collections, deposits },
+        { id: batchId, batch_code: batchId, prepared_by_name: preparedByName, issued_by_name: keyedByName, issued_at: amending ? existing.issued_at : new Date().toISOString(), collections, deposits },
         cashierName,
       );
-      notify.success({ title: "Remittance batch saved", message: `${batchId} was recorded and its PDF downloaded.` });
+      notify.success({ title: amending ? "Remittance updated" : "Remittance batch saved", message: `${batchId} was ${amending ? "updated" : "recorded"} and its PDF downloaded.` });
     } catch (err) {
       console.error("Failed to download remittance PDF", err);
-      notify.success({ title: "Remittance batch saved", message: `${batchId} was recorded, but its PDF couldn't be downloaded. Export it from the batch view.` });
+      notify.success({ title: amending ? "Remittance updated" : "Remittance batch saved", message: `${batchId} was ${amending ? "updated" : "recorded"}, but its PDF couldn't be downloaded. Export it from the batch view.` });
     }
   };
+
+  if (!batchesLoaded || !ticketsLoaded) {
+    return <div className="rem-modal rem-form-page"><div className="rem-modal-body"><span className="ui-skel" style={{ width: "100%", height: 120 }} /></div></div>;
+  }
+
+  // The day is already remitted: block a second batch. New tickets can still be added by editing that one.
+  if (existing && !amending) {
+    const newTotal = todayTickets.reduce((s, t) => s + Number(t.collection_amount || 0), 0);
+    const n = todayTickets.length;
+    return (
+      <div className="rem-modal rem-form-page">
+        <div className="rem-modal-body">
+          <div className={`rem-alert${n ? "" : " rem-alert--info"}`}>
+            <span>
+              {n
+                ? `${dateIssued} was already remitted as ${existing.batch_code}, but ${n} new ${n === 1 ? "ticket" : "tickets"} (${formatCurrency(newTotal)}) ${n === 1 ? "was" : "were"} issued since. A day can only be remitted once — edit the existing remittance to include ${n === 1 ? "it" : "them"}.`
+                : `${dateIssued} has already been remitted as ${existing.batch_code}. A day can only be remitted once, and there are no new tickets to add.`}
+            </span>
+            {n > 0 && !existing.is_archived && (
+              <button type="button" className="rem-btn rem-btn--view" onClick={startAmending}>
+                Edit {existing.batch_code}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rem-modal rem-form-page">
@@ -250,10 +300,18 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
             <h2 className="rem-modal-title">
-              {isLate ? `Late Remittance for ${dateIssued}` : "New Remittance Batch"}
+              {amending ? `Edit Remittance ${batchId}` : isLate ? `Late Remittance for ${dateIssued}` : "New Remittance Batch"}
             </h2>
           </div>
+          {amending && (
+            <button type="button" className="rem-btn rem-btn--delete" onClick={cancelAmending} disabled={saving}>Cancel edit</button>
+          )}
         </div>
+        {amending && (
+          <div className="rem-alert rem-alert--info" style={{ margin: "0 16px" }}>
+            Collections now include the new tickets. Add their cash to the deposits so the totals match, then save.
+          </div>
+        )}
 
         <div className="rem-modal-body">
           {/* Batch Info */}
@@ -265,7 +323,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
               <input type="date" className="rem-input" value={dateIssued} disabled />
             </Field>
             <Field label="Accountable Officer">
-              <input type="text" className="rem-input" value={accountableOfficer} disabled />
+              <input type="text" className="rem-input" value={preparedByName} placeholder="Choose who prepared this below" disabled />
             </Field>
           </div>
 
@@ -416,8 +474,8 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
               <span>I certify that the above collections and deposits are accurate.</span>
             </label>
             <div className="rem-info-grid" style={{ gridTemplateColumns: "1fr" }}>
-              <Field label="Prepared By">
-                <input type="text" className="rem-input" value={accountableOfficer} disabled />
+              <Field label={<>Prepared By <span className="rem-required" aria-hidden="true">*</span></>}>
+                <SupervisorPicker className="rem-input" supervisors={supervisors} value={preparedBy} onChange={setPickedPreparer} disabled={saving} />
               </Field>
               <Field label="Cashier / Treasurer">
                 <CashierNameInput {...cashier} disabled={saving} className="rem-input" />
@@ -440,6 +498,11 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
               Total Deposits ({formatCurrency(totalRemittances)}) does not match Total Collections ({formatCurrency(totalCollections)}). Amounts must match to save.
             </div>
           )}
+          {!preparedBy && (
+            <div className="rem-alert" style={{ marginBottom: 12 }}>
+              Choose the supervisor who prepared this remittance.
+            </div>
+          )}
           <div className="rem-modal-footer">
             <button
               type="button"
@@ -449,7 +512,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
               aria-busy={saving || undefined}
               style={saveBlocked ?{ opacity: 0.5, cursor: "not-allowed" } : {}}
             >
-              <ButtonLabel busy={saving} busyLabel="Saving...">Save Batch</ButtonLabel>
+              <ButtonLabel busy={saving} busyLabel="Saving...">{amending ? "Save Changes" : "Save Batch"}</ButtonLabel>
             </button>
           </div>
         </div>

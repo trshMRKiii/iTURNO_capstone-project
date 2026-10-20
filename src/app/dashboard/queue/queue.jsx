@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useQueue } from "./useQueue";
 import Dispatch from "../dispatch/dispatch";
 import SeriesPicker from "./SeriesPicker";
-import { useScanChannel } from "../../../lib/useScanChannel";
 import { getIwpStatus, getExpiryStatus } from "../driver/driver-utils";
 import "../../../styles/Queue.css";
 import { RouteIcon, SearchIcon } from "./queueIcon";
 
 function Queue({ userRole }) {
-  const scannedPlate = useRef(null); // plate awaiting check-in after a scan
   const {
     vehicles,
     drivers,
@@ -75,59 +73,7 @@ function Queue({ userRole }) {
     }
   };
 
-  // A QR read by the /scan camera tab selects the
-  // vehicle here; the operator then checks in. The camera tab is only told about
-  // a pending vehicle and a successful check-in — never errors.
-  const postToCamera = useScanChannel((msg) => {
-    if (msg.type === "scan") handleScannedText(msg.text);
-  });
-
-  function handleScannedText(text) {
-    const vehicle = vehicles.find(
-      (v) =>
-        v.qr_code === text || v.plate_number === text || String(v.id) === text,
-    );
-    if (vehicle?.status === "AVAILABLE" && !issuingTicket) {
-      handleSelectVehicle(vehicle);
-      scannedPlate.current = vehicle.plate_number;
-      postToCamera({
-        type: "pending",
-        plate: vehicle.plate_number,
-        franchiseExpired: getExpiryStatus(vehicle.franchise_expiration_date) === "expired",
-      });
-    }
-  }
-
-  // The driver is assigned after the scan, so tell the camera tab once it is known
-  // whether the permit is expired — flags only, never the driver's name.
-  useEffect(() => {
-    if (scannedPlate.current && selectedDriver) {
-      postToCamera({
-        type: "pending",
-        plate: scannedPlate.current,
-        iwpExpired: getIwpStatus(selectedDriver) === "expired",
-        franchiseExpired: getExpiryStatus(selectedVehicle?.franchise_expiration_date) === "expired",
-      });
-    }
-  }, [selectedDriver, selectedVehicle]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const driverBusy = driverHasActiveTicket(selectedDriver);
-
-  const handleCheckIn = async () => {
-    const vehicle = selectedVehicle;
-    scannedPlate.current = null;
-    const { ticket } = await handleIssueTicket();
-    if (ticket) {
-      postToCamera({
-        type: "result",
-        mode: issuanceType,
-        plate: vehicle.plate_number,
-        queueCode: ticket.queue_code,
-        ticketId: ticket.id,
-        at: ticket.issued_at,
-      });
-    }
-  };
 
   // Ticket issuance clears the selected vehicle/driver in the hook, but the
   // plate/driver search inputs are local text state here — clear them too so
@@ -299,6 +245,17 @@ function Queue({ userRole }) {
               </div>
             )}
 
+            {/* Roaming only: cash denomination sits under the plate search. */}
+            {issuanceType === "ROAM" && (
+              <SeriesPicker
+                availableSeries={availableSeries}
+                allSeries={allSeries}
+                selectedSeriesId={selectedSeriesId}
+                setSelectedSeriesId={setSelectedSeriesId}
+                setSeriesOverrideId={setSeriesOverrideId}
+              />
+            )}
+
             {successMessage && (
               <div className="queue-alert queue-alert--success">
                 {successMessage}
@@ -313,7 +270,7 @@ function Queue({ userRole }) {
             <button
               type="button"
               className="queue-issue-btn"
-              onClick={handleCheckIn}
+              onClick={() => handleIssueTicket()}
               disabled={
                 issuingTicket ||
                 !selectedVehicle ||
@@ -336,8 +293,8 @@ function Queue({ userRole }) {
   );
 
   const modes = [
-    { type: "QUEUE", title: "Queue", sub: "Turno", other: "Roaming" },
-    { type: "ROAM", title: "Roaming", sub: "Payasyas", other: "Queue" },
+    { type: "QUEUE", title: "Queue", sub: "Turno" },
+    { type: "ROAM", title: "Roaming", sub: "Payasyas" },
   ];
 
   return (
@@ -365,55 +322,39 @@ function Queue({ userRole }) {
           <button
             type="button"
             className="dashboard-scan-btn"
-            onClick={() => window.open("/scan", "_blank", "noopener,noreferrer")}
+            // No "noopener": the kiosk tab inherits this tab's sessionStorage, which holds the login it needs.
+            onClick={() => window.open("/kiosk", "_blank")}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" />
               <line x1="7" y1="12" x2="17" y2="12" />
             </svg>
-            QR Camera
+            QR Kiosk
           </button>
         </div>
       </div>
 
       <div className="queue-single-col">
-        <div className="queue-modes">
-          {modes.map(({ type, title, sub, other }) => {
-            const active = issuanceType === type;
-            return (
-              <section
+        <section className="queue-mode">
+          {/* Mode switch — Roaming reveals the cash denomination, Queue hides it. */}
+          <div className="queue-mode-switch" role="tablist" aria-label="Issuance mode">
+            {modes.map(({ type, title, sub }) => (
+              <button
                 key={type}
-                className={`queue-mode${active ? " queue-mode--active" : " queue-mode--off"}`}
+                type="button"
+                role="tab"
+                aria-selected={issuanceType === type}
+                className={`queue-mode-tab${issuanceType === type ? " is-active" : ""}`}
+                onClick={() => setIssuanceType(type)}
               >
-                <h2 className="queue-mode-title">
-                  {title} - <em>{sub}</em>
-                </h2>
-                {active ? (
-                  <div className="queue-mode-body">
-                    {type === "ROAM" && (
-                      <SeriesPicker
-                        availableSeries={availableSeries}
-                        allSeries={allSeries}
-                        selectedSeriesId={selectedSeriesId}
-                        setSelectedSeriesId={setSelectedSeriesId}
-                        setSeriesOverrideId={setSeriesOverrideId}
-                      />
-                    )}
-                    {issueForm}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="queue-mode-off"
-                    onClick={() => setIssuanceType(type)}
-                  >
-                    <span className="queue-mode-off-note">Off while {other} is active — click to switch</span>
-                  </button>
-                )}
-              </section>
-            );
-          })}
-        </div>
+                {title} <em>{sub}</em>
+              </button>
+            ))}
+          </div>
+          <div className="queue-mode-body">
+            {issueForm}
+          </div>
+        </section>
 
         {/* ── Dispatch board (queued vehicles) ── */}
         <Dispatch

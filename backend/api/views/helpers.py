@@ -6,7 +6,7 @@ from django.db import connections, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from ..models import Ticket, TicketPrice, AuditLog, Vehicle, Route, User
+from ..models import Ticket, TicketPrice, AuditLog, Vehicle, Route, User, KioskSession
 from ..sync.pause import sync_enabled
 
 _SUPABASE_PROBE_TTL = 10
@@ -117,6 +117,11 @@ def expire_stale_queue_tickets():
     """
     now_ph = timezone.now() + timedelta(hours=8)
     today_start = parse_date_start(now_ph.strftime('%Y-%m-%d'))
+
+    # A kiosk visit left unfinished overnight (e.g. a roam never paid for) dies with the day.
+    KioskSession.objects.filter(
+        status__in=KioskSession.OPEN_STATUSES, created_at__lt=today_start,
+    ).update(status='CANCELLED')
 
     with transaction.atomic():
         stale = list(

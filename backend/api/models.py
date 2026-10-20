@@ -59,6 +59,10 @@ class User(AbstractUser):
     
     objects = UserManager()
 
+    @property
+    def display_name(self):
+        return f"{self.first_name} {self.last_name}".strip() or self.username
+
     ROLE_CHOICES = [('PERSONNEL', 'Personnel'), ('SUPERVISOR', 'Supervisor'), ('MANAGER', 'Manager'), ('SUPERADMIN', 'Admin')]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='PERSONNEL')
     middle_name = models.CharField(max_length=100, blank=True, default='')
@@ -254,6 +258,11 @@ class Ticket(models.Model):
     # reorder-queue action.
     queue_rank = models.IntegerField(null=True, blank=True, db_index=True)
     dispatched_at = models.DateTimeField(null=True, blank=True)
+    # When the vehicle actually checked in. Dispatch and roam checkout create a fresh
+    # COLLECTED ticket (issued_at = now), so without this the real arrival time is lost
+    # and dispatched_at - checked_in_at (the stay, queue or roam) can't be recovered.
+    # Null on older rows, where readers fall back to issued_at.
+    checked_in_at = models.DateTimeField(null=True, blank=True)
 
     issuance_group = models.CharField(max_length=40, blank=True, db_index=True)
     queue_code = models.CharField(max_length=20, blank=True, db_index=True)
@@ -292,6 +301,35 @@ class Ticket(models.Model):
             return f"Ticket {self.queue_code}"
         plate = self.vehicle.plate_number if self.vehicle_id else "?"
         return f"Roaming ticket ({plate})"
+
+class KioskSession(models.Model):
+    """One self-service QR visit: the driver checks in on the kiosk, a cashier marks it
+    paid (and picks the ticket series), and the next QR scan checks the vehicle out.
+    A QUEUE session rides on the vehicle's normal QUEUED ticket; a ROAM session has no
+    ticket until checkout, so this row is the only record of the pending roam.
+    Local-only (not in PUSH_MODELS) — the tickets it produces are what get synced."""
+    MODE_CHOICES = [('QUEUE', 'Queue'), ('ROAM', 'Roam')]
+    STATUS_CHOICES = [
+        ('AWAITING_PAYMENT', 'Awaiting payment'), ('PAID', 'Paid'),
+        ('DONE', 'Done'), ('CANCELLED', 'Cancelled'),
+    ]
+    OPEN_STATUSES = ('AWAITING_PAYMENT', 'PAID')
+
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='kiosk_sessions')
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='kiosk_sessions')
+    mode = models.CharField(max_length=10, choices=MODE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='AWAITING_PAYMENT', db_index=True)
+    # Chosen by the cashier when marking paid; drawn from at checkout.
+    series = models.ForeignKey('TicketSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    quantity = models.PositiveIntegerField(default=1)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    paid_by_name = models.CharField(max_length=150, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Kiosk {self.mode} {self.vehicle} ({self.status})"
+
 
 class Requisition(models.Model):
     STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('ISSUED', 'Issued')]
@@ -454,6 +492,8 @@ class RemoteBackfillRequest(models.Model):
 class RemittanceBatch(models.Model):
     batch_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
     issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    # The supervisor accountable for the batch; issued_by is whoever keyed it in.
+    prepared_by_name = models.CharField(max_length=150, blank=True, default="")
     issued_at = models.DateTimeField(auto_now_add=True)
     covers_date = models.DateField(null=True, blank=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)

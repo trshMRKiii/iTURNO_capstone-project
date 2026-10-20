@@ -1,0 +1,4521 @@
+[
+{
+  "model": "api.user",
+  "pk": 1000001,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$bA4dCWz2rMdO0wTNAG13pk$oNXUuHHGd/X07Ex3gG6UV9rVanJT+p9n7WaCxTgK1GE=",
+    "last_login": "2026-10-14T02:15:28Z",
+    "is_superuser": true,
+    "first_name": "Mark",
+    "last_name": "San",
+    "is_staff": true,
+    "date_joined": "2026-10-10T05:47:04Z",
+    "username": "superuser@g.com",
+    "role": "SUPERADMIN",
+    "middle_name": "",
+    "contact": "",
+    "can_manage_fleet": false,
+    "created_at": "2026-10-10T05:47:04.767Z",
+    "is_active": true,
+    "updated_at": "2026-10-14T12:02:50.536Z",
+    "must_reset_password": false,
+    "email_verified": true,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.user",
+  "pk": 1000002,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$6e2X0rB3yDbhUYTHc7whBh$2DLhVvxPvLFHNw/kaTQ0NjxRqu4XlawWEAqWLdd2QGs=",
+    "last_login": null,
+    "is_superuser": false,
+    "first_name": "Mark",
+    "last_name": "San",
+    "is_staff": false,
+    "date_joined": "2026-10-14T13:01:36.180Z",
+    "username": "22200058@slc-sflu.edu.ph",
+    "role": "SUPERADMIN",
+    "middle_name": "",
+    "contact": "",
+    "can_manage_fleet": false,
+    "created_at": "2026-10-14T13:01:36.752Z",
+    "is_active": true,
+    "updated_at": "2026-10-14T17:39:38.283Z",
+    "must_reset_password": false,
+    "email_verified": true,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.user",
+  "pk": 1000003,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$nxOTp0F3G1ojjgXPX30A9u$FcvJq/mDaX6fgjEFlDq+MMzkIM2m+2VzNYqZNN9HQ7g=",
+    "last_login": null,
+    "is_superuser": false,
+    "first_name": "Juan",
+    "last_name": "Reyes",
+    "is_staff": false,
+    "date_joined": "2026-10-14T13:14:25.028Z",
+    "username": "ms8251765@gmail.com",
+    "role": "MANAGER",
+    "middle_name": "",
+    "contact": "",
+    "can_manage_fleet": false,
+    "created_at": "2026-10-14T13:15:46.713Z",
+    "is_active": true,
+    "updated_at": "2026-10-14T17:39:38.271Z",
+    "must_reset_password": false,
+    "email_verified": true,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 56,
+  "fields": {
+    "iwp_number": "IWP-2025-0001",
+    "iwp_expiration_date": null,
+    "first_name": "Corazon",
+    "middle_name": "Reyes",
+    "last_name": "Peralta",
+    "gender": "FEMALE",
+    "birthdate": "1983-04-05",
+    "province": "La Union",
+    "city": "Rosario",
+    "barangay": "San Jose",
+    "street": "174 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0001",
+    "status": "INACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.353Z",
+    "updated_at": "2026-09-07T00:31:22.456Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 57,
+  "fields": {
+    "iwp_number": "IWP-2026-0002",
+    "iwp_expiration_date": null,
+    "first_name": "Herminia",
+    "middle_name": "Santos",
+    "last_name": "Reyes",
+    "gender": "FEMALE",
+    "birthdate": "1981-04-17",
+    "province": "La Union",
+    "city": "Aringay",
+    "barangay": "Poblacion",
+    "street": "144 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2026-0002",
+    "status": "INACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.357Z",
+    "updated_at": "2026-09-07T00:31:22.475Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 58,
+  "fields": {
+    "iwp_number": "IWP-2024-0003",
+    "iwp_expiration_date": null,
+    "first_name": "Milagros",
+    "middle_name": "Domingo",
+    "last_name": "Torres",
+    "gender": "FEMALE",
+    "birthdate": "1985-01-25",
+    "province": "La Union",
+    "city": "Sudipen",
+    "barangay": "Santo Rosario",
+    "street": "179 National Highway St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0003",
+    "status": "INACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.361Z",
+    "updated_at": "2026-09-07T00:31:22.494Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 59,
+  "fields": {
+    "iwp_number": "IWP-2025-0004",
+    "iwp_expiration_date": "2026-10-06",
+    "first_name": "Ricardo",
+    "middle_name": "Mendoza",
+    "last_name": "Agbayani",
+    "gender": "MALE",
+    "birthdate": "1974-02-13",
+    "province": "La Union",
+    "city": "Tubao",
+    "barangay": "San Jose",
+    "street": "92 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0004",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.364Z",
+    "updated_at": "2026-10-08T07:12:48.750Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 60,
+  "fields": {
+    "iwp_number": "202600054168",
+    "iwp_expiration_date": "2026-10-16",
+    "first_name": "Jose",
+    "middle_name": "Peralta",
+    "last_name": "Ramos",
+    "gender": "MALE",
+    "birthdate": "1975-07-03",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "Tammocalao",
+    "street": "161 Quezon St.",
+    "photo": "driver_photos/1b652c9ea51db08aad7c07b8707e47f3.jpg",
+    "contact": "09763317056",
+    "qr_code": "202600054168",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.368Z",
+    "updated_at": "2026-10-14T03:08:49.540Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 61,
+  "fields": {
+    "iwp_number": "202400061000",
+    "iwp_expiration_date": "2026-10-28",
+    "first_name": "Amalia",
+    "middle_name": "Rimando",
+    "last_name": "Cruz",
+    "gender": "FEMALE",
+    "birthdate": "1982-05-03",
+    "province": "La Union",
+    "city": "Agoo",
+    "barangay": "Cabaroan",
+    "street": "26 National Highway St.",
+    "photo": "",
+    "contact": "09922086429",
+    "qr_code": "202400061000",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.371Z",
+    "updated_at": "2026-10-12T13:52:10.183Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 62,
+  "fields": {
+    "iwp_number": "IWP-2025-0007",
+    "iwp_expiration_date": null,
+    "first_name": "Isagani",
+    "middle_name": "Castro",
+    "last_name": "Garcia",
+    "gender": "MALE",
+    "birthdate": "1990-04-22",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "Nagsabaran",
+    "street": "180 Rizal St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0007",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.375Z",
+    "updated_at": "2026-09-07T00:31:22.564Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 63,
+  "fields": {
+    "iwp_number": "IWP-2026-0008",
+    "iwp_expiration_date": null,
+    "first_name": "Josefina",
+    "middle_name": "Navarro",
+    "last_name": "Peralta",
+    "gender": "FEMALE",
+    "birthdate": "1978-08-13",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "Nagsabaran",
+    "street": "164 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0008",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.379Z",
+    "updated_at": "2026-09-07T00:31:22.582Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 64,
+  "fields": {
+    "iwp_number": "IWP-2024-0009",
+    "iwp_expiration_date": null,
+    "first_name": "Estrella",
+    "middle_name": "Agbayani",
+    "last_name": "Agbayani",
+    "gender": "FEMALE",
+    "birthdate": "1982-01-26",
+    "province": "La Union",
+    "city": "Agoo",
+    "barangay": "Paringao",
+    "street": "103 Mabini St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2024-0009",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.382Z",
+    "updated_at": "2026-09-07T00:31:22.598Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 65,
+  "fields": {
+    "iwp_number": "IWP-2025-0010",
+    "iwp_expiration_date": null,
+    "first_name": "Gilbert",
+    "middle_name": "Rimando",
+    "last_name": "Villanueva",
+    "gender": "MALE",
+    "birthdate": "1999-07-21",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Cabuluan",
+    "street": "37 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0010",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.386Z",
+    "updated_at": "2026-09-07T00:31:22.612Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 66,
+  "fields": {
+    "iwp_number": "IWP-2026-0011",
+    "iwp_expiration_date": null,
+    "first_name": "Mario",
+    "middle_name": "Navarro",
+    "last_name": "Navarro",
+    "gender": "MALE",
+    "birthdate": "1995-10-13",
+    "province": "La Union",
+    "city": "Rosario",
+    "barangay": "Pagdalagan",
+    "street": "57 Bonifacio St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2026-0011",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.389Z",
+    "updated_at": "2026-09-07T00:31:22.628Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 67,
+  "fields": {
+    "iwp_number": "IWP-2024-0012",
+    "iwp_expiration_date": null,
+    "first_name": "Antonio",
+    "middle_name": "Agbayani",
+    "last_name": "Santos",
+    "gender": "MALE",
+    "birthdate": "1977-11-06",
+    "province": "La Union",
+    "city": "Caba",
+    "barangay": "Sipulo",
+    "street": "153 Rizal St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0012",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.393Z",
+    "updated_at": "2026-09-07T00:31:22.646Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 68,
+  "fields": {
+    "iwp_number": "IWP-2025-0013",
+    "iwp_expiration_date": null,
+    "first_name": "Herminio",
+    "middle_name": "Ramos",
+    "last_name": "Pascual",
+    "gender": "MALE",
+    "birthdate": "1968-11-24",
+    "province": "La Union",
+    "city": "Rosario",
+    "barangay": "San Jose",
+    "street": "175 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0013",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.396Z",
+    "updated_at": "2026-09-07T00:31:22.661Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 69,
+  "fields": {
+    "iwp_number": "IWP-2026-0014",
+    "iwp_expiration_date": null,
+    "first_name": "Noel",
+    "middle_name": "Sagun",
+    "last_name": "Villanueva",
+    "gender": "MALE",
+    "birthdate": "1986-07-06",
+    "province": "La Union",
+    "city": "Caba",
+    "barangay": "Cabuluan",
+    "street": "1 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2026-0014",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.402Z",
+    "updated_at": "2026-09-07T00:31:22.675Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 70,
+  "fields": {
+    "iwp_number": "IWP-2024-0015",
+    "iwp_expiration_date": null,
+    "first_name": "Efren",
+    "middle_name": "Bautista",
+    "last_name": "Sagun",
+    "gender": "MALE",
+    "birthdate": "2000-10-07",
+    "province": "La Union",
+    "city": "Santo Tomas",
+    "barangay": "Santa Rita",
+    "street": "96 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0015",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.405Z",
+    "updated_at": "2026-09-07T00:31:22.690Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 71,
+  "fields": {
+    "iwp_number": "IWP-2025-0016",
+    "iwp_expiration_date": null,
+    "first_name": "Maria",
+    "middle_name": "Manalo",
+    "last_name": "Villanueva",
+    "gender": "FEMALE",
+    "birthdate": "1969-02-12",
+    "province": "La Union",
+    "city": "Santol",
+    "barangay": "Tammocalao",
+    "street": "62 Rizal St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0016",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.409Z",
+    "updated_at": "2026-09-07T00:31:22.705Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 72,
+  "fields": {
+    "iwp_number": "IWP-2026-0017",
+    "iwp_expiration_date": null,
+    "first_name": "Teresita",
+    "middle_name": "Cruz",
+    "last_name": "Peralta",
+    "gender": "FEMALE",
+    "birthdate": "1972-09-25",
+    "province": "La Union",
+    "city": "Santol",
+    "barangay": "Santa Rita",
+    "street": "33 National Highway St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0017",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.413Z",
+    "updated_at": "2026-09-07T00:31:22.745Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 73,
+  "fields": {
+    "iwp_number": "IWP-2024-0018",
+    "iwp_expiration_date": null,
+    "first_name": "Ernesto",
+    "middle_name": "Pascual",
+    "last_name": "Manalo",
+    "gender": "MALE",
+    "birthdate": "1981-09-25",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Bacsil",
+    "street": "183 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0018",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.416Z",
+    "updated_at": "2026-09-07T00:31:22.760Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 74,
+  "fields": {
+    "iwp_number": "IWP-2025-0019",
+    "iwp_expiration_date": null,
+    "first_name": "Feliza",
+    "middle_name": "Ramos",
+    "last_name": "Pascual",
+    "gender": "FEMALE",
+    "birthdate": "1975-04-08",
+    "province": "La Union",
+    "city": "Sudipen",
+    "barangay": "San Isidro",
+    "street": "87 Rizal St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0019",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.419Z",
+    "updated_at": "2026-09-07T00:31:22.776Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 75,
+  "fields": {
+    "iwp_number": "IWP-2026-0020",
+    "iwp_expiration_date": null,
+    "first_name": "Bernadette",
+    "middle_name": "Gonzales",
+    "last_name": "Torres",
+    "gender": "FEMALE",
+    "birthdate": "1972-12-21",
+    "province": "La Union",
+    "city": "Bauang",
+    "barangay": "San Vicente",
+    "street": "59 Rizal St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2026-0020",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.423Z",
+    "updated_at": "2026-09-07T00:31:22.794Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 76,
+  "fields": {
+    "iwp_number": "IWP-2024-0021",
+    "iwp_expiration_date": null,
+    "first_name": "Antonio",
+    "middle_name": "Pascual",
+    "last_name": "Torres",
+    "gender": "MALE",
+    "birthdate": "1999-04-18",
+    "province": "La Union",
+    "city": "Rosario",
+    "barangay": "Santa Rita",
+    "street": "186 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2024-0021",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.427Z",
+    "updated_at": "2026-09-07T00:31:22.815Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 77,
+  "fields": {
+    "iwp_number": "IWP-2025-0022",
+    "iwp_expiration_date": null,
+    "first_name": "Danilo",
+    "middle_name": "Baltazar",
+    "last_name": "Salvador",
+    "gender": "MALE",
+    "birthdate": "1980-02-04",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Sipulo",
+    "street": "91 National Highway St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0022",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.430Z",
+    "updated_at": "2026-09-07T00:31:22.829Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 78,
+  "fields": {
+    "iwp_number": "IWP-2026-0023",
+    "iwp_expiration_date": null,
+    "first_name": "Mario",
+    "middle_name": "Santos",
+    "last_name": "Bjuan",
+    "gender": "MALE",
+    "birthdate": "1971-07-24",
+    "province": "La Union",
+    "city": "Caba",
+    "barangay": "Paringao",
+    "street": "28 Bonifacio St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0023",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.434Z",
+    "updated_at": "2026-09-07T00:31:22.843Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 79,
+  "fields": {
+    "iwp_number": "IWP-2024-0024",
+    "iwp_expiration_date": null,
+    "first_name": "Federico",
+    "middle_name": "Ramos",
+    "last_name": "Ocampo",
+    "gender": "MALE",
+    "birthdate": "1979-05-15",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Cabaroan",
+    "street": "20 National Highway St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2024-0024",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.437Z",
+    "updated_at": "2026-09-07T00:31:22.857Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 80,
+  "fields": {
+    "iwp_number": "IWP-2025-0025",
+    "iwp_expiration_date": null,
+    "first_name": "Corazon",
+    "middle_name": "Santos",
+    "last_name": "Sagun",
+    "gender": "FEMALE",
+    "birthdate": "1968-02-25",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "Cabaroan",
+    "street": "43 National Highway St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0025",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.441Z",
+    "updated_at": "2026-09-07T00:31:22.870Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 81,
+  "fields": {
+    "iwp_number": "IWP-2026-0026",
+    "iwp_expiration_date": null,
+    "first_name": "Roberto",
+    "middle_name": "Aquino",
+    "last_name": "Santos",
+    "gender": "MALE",
+    "birthdate": "1992-01-13",
+    "province": "La Union",
+    "city": "San Juan",
+    "barangay": "Nagsabaran",
+    "street": "117 Mabini St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0026",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.444Z",
+    "updated_at": "2026-09-07T00:31:22.885Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 82,
+  "fields": {
+    "iwp_number": "IWP-2024-0027",
+    "iwp_expiration_date": null,
+    "first_name": "Milagros",
+    "middle_name": "Bjuan",
+    "last_name": "Rimando",
+    "gender": "FEMALE",
+    "birthdate": "1977-04-10",
+    "province": "La Union",
+    "city": "Santol",
+    "barangay": "Bacsil",
+    "street": "15 Quezon St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0027",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.448Z",
+    "updated_at": "2026-09-07T00:31:22.901Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 83,
+  "fields": {
+    "iwp_number": "IWP-2025-0028",
+    "iwp_expiration_date": null,
+    "first_name": "Rosario",
+    "middle_name": "Peralta",
+    "last_name": "Villanueva",
+    "gender": "FEMALE",
+    "birthdate": "1971-10-16",
+    "province": "La Union",
+    "city": "Agoo",
+    "barangay": "Santo Rosario",
+    "street": "15 Quezon St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0028",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.451Z",
+    "updated_at": "2026-09-07T00:31:22.916Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 84,
+  "fields": {
+    "iwp_number": "IWP-2026-0029",
+    "iwp_expiration_date": null,
+    "first_name": "Antonio",
+    "middle_name": "Manalo",
+    "last_name": "Cruz",
+    "gender": "MALE",
+    "birthdate": "1993-02-19",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "Cabaroan",
+    "street": "149 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0029",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.454Z",
+    "updated_at": "2026-09-07T00:31:22.934Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 85,
+  "fields": {
+    "iwp_number": "IWP-2024-0030",
+    "iwp_expiration_date": null,
+    "first_name": "Teresita",
+    "middle_name": "Domingo",
+    "last_name": "Bjuan",
+    "gender": "FEMALE",
+    "birthdate": "2001-06-09",
+    "province": "La Union",
+    "city": "Bangar",
+    "barangay": "Bacsil",
+    "street": "172 Mabini St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2024-0030",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.459Z",
+    "updated_at": "2026-09-07T00:31:22.951Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 86,
+  "fields": {
+    "iwp_number": "IWP-2025-0031",
+    "iwp_expiration_date": null,
+    "first_name": "Arnel",
+    "middle_name": "Ocampo",
+    "last_name": "Bjuan",
+    "gender": "MALE",
+    "birthdate": "1997-06-25",
+    "province": "La Union",
+    "city": "Santo Tomas",
+    "barangay": "San Isidro",
+    "street": "3 National Highway St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0031",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.462Z",
+    "updated_at": "2026-09-07T00:31:22.967Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 87,
+  "fields": {
+    "iwp_number": "IWP-2026-0032",
+    "iwp_expiration_date": null,
+    "first_name": "Corazon",
+    "middle_name": "Cruz",
+    "last_name": "Navarro",
+    "gender": "FEMALE",
+    "birthdate": "2000-05-05",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Pagdalagan",
+    "street": "18 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2026-0032",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.466Z",
+    "updated_at": "2026-09-07T00:31:22.983Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 88,
+  "fields": {
+    "iwp_number": "IWP-2024-0033",
+    "iwp_expiration_date": null,
+    "first_name": "Eduardo",
+    "middle_name": "Ramos",
+    "last_name": "Navarro",
+    "gender": "MALE",
+    "birthdate": "2001-01-22",
+    "province": "La Union",
+    "city": "Santo Tomas",
+    "barangay": "Tammocalao",
+    "street": "170 Rizal St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0033",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.470Z",
+    "updated_at": "2026-09-07T00:31:22.999Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 89,
+  "fields": {
+    "iwp_number": "IWP-2025-0034",
+    "iwp_expiration_date": null,
+    "first_name": "Ramon",
+    "middle_name": "Bautista",
+    "last_name": "Peralta",
+    "gender": "MALE",
+    "birthdate": "1977-05-10",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "Bacsil",
+    "street": "184 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0034",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.473Z",
+    "updated_at": "2026-09-07T00:31:23.015Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 90,
+  "fields": {
+    "iwp_number": "IWP-2026-0035",
+    "iwp_expiration_date": null,
+    "first_name": "Carmelita",
+    "middle_name": "Pascual",
+    "last_name": "Salvador",
+    "gender": "FEMALE",
+    "birthdate": "1971-02-21",
+    "province": "La Union",
+    "city": "Rosario",
+    "barangay": "Sipulo",
+    "street": "71 Rizal St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0035",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.477Z",
+    "updated_at": "2026-09-07T00:31:23.032Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 91,
+  "fields": {
+    "iwp_number": "IWP-2024-0036",
+    "iwp_expiration_date": null,
+    "first_name": "Noel",
+    "middle_name": "Ocampo",
+    "last_name": "Sagun",
+    "gender": "MALE",
+    "birthdate": "1978-12-15",
+    "province": "La Union",
+    "city": "Rosario",
+    "barangay": "Sipulo",
+    "street": "144 Rizal St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2024-0036",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.480Z",
+    "updated_at": "2026-09-07T00:31:23.049Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 92,
+  "fields": {
+    "iwp_number": "IWP-2025-0037",
+    "iwp_expiration_date": null,
+    "first_name": "Leonardo",
+    "middle_name": "Ocampo",
+    "last_name": "Navarro",
+    "gender": "MALE",
+    "birthdate": "1991-10-18",
+    "province": "La Union",
+    "city": "Agoo",
+    "barangay": "Santa Rita",
+    "street": "111 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0037",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.484Z",
+    "updated_at": "2026-09-07T00:31:23.066Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 93,
+  "fields": {
+    "iwp_number": "IWP-2026-0038",
+    "iwp_expiration_date": null,
+    "first_name": "Reynaldo",
+    "middle_name": "Baltazar",
+    "last_name": "Santos",
+    "gender": "MALE",
+    "birthdate": "1981-11-08",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "San Jose",
+    "street": "91 Quezon St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2026-0038",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.487Z",
+    "updated_at": "2026-09-07T00:31:23.079Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 94,
+  "fields": {
+    "iwp_number": "IWP-2024-0039",
+    "iwp_expiration_date": null,
+    "first_name": "Elena",
+    "middle_name": "Torres",
+    "last_name": "Garcia",
+    "gender": "FEMALE",
+    "birthdate": "1994-01-06",
+    "province": "La Union",
+    "city": "San Juan",
+    "barangay": "Paringao",
+    "street": "106 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0039",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.494Z",
+    "updated_at": "2026-09-07T00:31:23.095Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 95,
+  "fields": {
+    "iwp_number": "IWP-2025-0040",
+    "iwp_expiration_date": null,
+    "first_name": "Leonardo",
+    "middle_name": "Bautista",
+    "last_name": "Aquino",
+    "gender": "MALE",
+    "birthdate": "1998-04-07",
+    "province": "La Union",
+    "city": "Agoo",
+    "barangay": "Cabuluan",
+    "street": "90 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0040",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.499Z",
+    "updated_at": "2026-09-07T00:31:23.110Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 96,
+  "fields": {
+    "iwp_number": "IWP-2026-0041",
+    "iwp_expiration_date": null,
+    "first_name": "Danilo",
+    "middle_name": "Reyes",
+    "last_name": "Bjuan",
+    "gender": "MALE",
+    "birthdate": "1993-06-09",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "San Isidro",
+    "street": "198 Mabini St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0041",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.504Z",
+    "updated_at": "2026-09-07T00:31:23.125Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 97,
+  "fields": {
+    "iwp_number": "IWP-2024-0042",
+    "iwp_expiration_date": null,
+    "first_name": "Lourdes",
+    "middle_name": "Aquino",
+    "last_name": "Bjuan",
+    "gender": "FEMALE",
+    "birthdate": "1989-01-04",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "Nagsabaran",
+    "street": "46 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2024-0042",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.509Z",
+    "updated_at": "2026-09-07T00:31:23.140Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 98,
+  "fields": {
+    "iwp_number": "IWP-2025-0043",
+    "iwp_expiration_date": null,
+    "first_name": "Ramon",
+    "middle_name": "Manalo",
+    "last_name": "Domingo",
+    "gender": "MALE",
+    "birthdate": "1988-07-20",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "San Jose",
+    "street": "99 Quezon St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0043",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.513Z",
+    "updated_at": "2026-09-07T00:31:23.155Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 99,
+  "fields": {
+    "iwp_number": "IWP-2026-0044",
+    "iwp_expiration_date": null,
+    "first_name": "Jose",
+    "middle_name": "Rimando",
+    "last_name": "Domingo",
+    "gender": "MALE",
+    "birthdate": "2001-09-22",
+    "province": "La Union",
+    "city": "Bauang",
+    "barangay": "Bacsil",
+    "street": "94 National Highway St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0044",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.517Z",
+    "updated_at": "2026-09-07T00:31:23.173Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 100,
+  "fields": {
+    "iwp_number": "IWP-2024-0045",
+    "iwp_expiration_date": null,
+    "first_name": "Estrella",
+    "middle_name": "Manalo",
+    "last_name": "Villanueva",
+    "gender": "FEMALE",
+    "birthdate": "1987-09-10",
+    "province": "La Union",
+    "city": "Caba",
+    "barangay": "Sipulo",
+    "street": "84 National Highway St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2024-0045",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.522Z",
+    "updated_at": "2026-09-07T00:31:23.188Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 101,
+  "fields": {
+    "iwp_number": "IWP-2025-0046",
+    "iwp_expiration_date": null,
+    "first_name": "Federico",
+    "middle_name": "Ocampo",
+    "last_name": "Mendoza",
+    "gender": "MALE",
+    "birthdate": "1992-11-24",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Santo Rosario",
+    "street": "158 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0046",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.527Z",
+    "updated_at": "2026-09-07T00:31:23.205Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 102,
+  "fields": {
+    "iwp_number": "IWP-2026-0047",
+    "iwp_expiration_date": null,
+    "first_name": "Federico",
+    "middle_name": "Reyes",
+    "last_name": "Rivera",
+    "gender": "MALE",
+    "birthdate": "1981-07-26",
+    "province": "La Union",
+    "city": "Santo Tomas",
+    "barangay": "Paringao",
+    "street": "120 National Highway St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2026-0047",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.532Z",
+    "updated_at": "2026-09-07T00:31:23.219Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 103,
+  "fields": {
+    "iwp_number": "IWP-2024-0048",
+    "iwp_expiration_date": null,
+    "first_name": "Amalia",
+    "middle_name": "Pascual",
+    "last_name": "Salvador",
+    "gender": "FEMALE",
+    "birthdate": "1973-05-17",
+    "province": "La Union",
+    "city": "San Juan",
+    "barangay": "Paringao",
+    "street": "24 Bonifacio St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2024-0048",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.537Z",
+    "updated_at": "2026-09-07T00:31:23.235Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 104,
+  "fields": {
+    "iwp_number": "IWP-2025-0049",
+    "iwp_expiration_date": null,
+    "first_name": "Danilo",
+    "middle_name": "Baltazar",
+    "last_name": "Mendoza",
+    "gender": "MALE",
+    "birthdate": "1969-01-08",
+    "province": "La Union",
+    "city": "Naguilian",
+    "barangay": "Camansi",
+    "street": "157 Rizal St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0049",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.542Z",
+    "updated_at": "2026-09-07T00:31:23.253Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 105,
+  "fields": {
+    "iwp_number": "IWP-2026-0050",
+    "iwp_expiration_date": null,
+    "first_name": "Isagani",
+    "middle_name": "Gonzales",
+    "last_name": "Mendoza",
+    "gender": "MALE",
+    "birthdate": "1999-07-08",
+    "province": "La Union",
+    "city": "Balaoan",
+    "barangay": "Santa Rita",
+    "street": "168 Rizal St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2026-0050",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.547Z",
+    "updated_at": "2026-09-07T00:31:23.268Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 106,
+  "fields": {
+    "iwp_number": "IWP-2025-0001",
+    "iwp_expiration_date": null,
+    "first_name": "Mark",
+    "middle_name": "",
+    "last_name": "San",
+    "gender": "",
+    "birthdate": null,
+    "province": "La Union",
+    "city": "",
+    "barangay": "",
+    "street": "",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0001",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-06T22:28:23.184Z",
+    "updated_at": "2026-09-07T00:31:23.284Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 107,
+  "fields": {
+    "iwp_number": "IWP-2025-0051",
+    "iwp_expiration_date": null,
+    "first_name": "Nenita",
+    "middle_name": "Pascual",
+    "last_name": "Reyes",
+    "gender": "FEMALE",
+    "birthdate": "1999-12-02",
+    "province": "La Union",
+    "city": "Naguilian",
+    "barangay": "Pagdalagan",
+    "street": "54 Bonifacio St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0051",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.413Z",
+    "updated_at": "2026-09-16T07:04:15.413Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 108,
+  "fields": {
+    "iwp_number": "IWP-2025-0052",
+    "iwp_expiration_date": null,
+    "first_name": "Roberto",
+    "middle_name": "Agbayani",
+    "last_name": "Aquino",
+    "gender": "MALE",
+    "birthdate": "1978-10-02",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "Santo Rosario",
+    "street": "113 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0052",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.432Z",
+    "updated_at": "2026-09-16T07:04:15.432Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 109,
+  "fields": {
+    "iwp_number": "IWP-2025-0053",
+    "iwp_expiration_date": null,
+    "first_name": "Ramon",
+    "middle_name": "Garcia",
+    "last_name": "Navarro",
+    "gender": "MALE",
+    "birthdate": "1980-04-02",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "Pagdalagan",
+    "street": "177 Mabini St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0053",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.450Z",
+    "updated_at": "2026-09-16T07:04:15.450Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 110,
+  "fields": {
+    "iwp_number": "IWP-2025-0054",
+    "iwp_expiration_date": null,
+    "first_name": "Teresita",
+    "middle_name": "Bautista",
+    "last_name": "Ocampo",
+    "gender": "FEMALE",
+    "birthdate": "1982-06-24",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "Poblacion",
+    "street": "46 Mabini St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0054",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.465Z",
+    "updated_at": "2026-09-16T07:04:15.465Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 111,
+  "fields": {
+    "iwp_number": "IWP-2025-0055",
+    "iwp_expiration_date": null,
+    "first_name": "Mario",
+    "middle_name": "Gonzales",
+    "last_name": "Bjuan",
+    "gender": "MALE",
+    "birthdate": "1983-04-19",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Paringao",
+    "street": "140 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0055",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.480Z",
+    "updated_at": "2026-09-16T07:04:15.480Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 112,
+  "fields": {
+    "iwp_number": "IWP-2025-0056",
+    "iwp_expiration_date": null,
+    "first_name": "Rodrigo",
+    "middle_name": "Domingo",
+    "last_name": "Agbayani",
+    "gender": "MALE",
+    "birthdate": "1973-05-18",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "San Vicente",
+    "street": "156 National Highway St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0056",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.496Z",
+    "updated_at": "2026-09-16T07:04:15.496Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 113,
+  "fields": {
+    "iwp_number": "IWP-2025-0057",
+    "iwp_expiration_date": null,
+    "first_name": "Marlon",
+    "middle_name": "Manalo",
+    "last_name": "Garcia",
+    "gender": "MALE",
+    "birthdate": "2001-01-03",
+    "province": "La Union",
+    "city": "Naguilian",
+    "barangay": "Bacsil",
+    "street": "178 Rizal St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0057",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.511Z",
+    "updated_at": "2026-09-16T07:04:15.511Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 114,
+  "fields": {
+    "iwp_number": "IWP-2025-0058",
+    "iwp_expiration_date": null,
+    "first_name": "Josefina",
+    "middle_name": "Reyes",
+    "last_name": "Aquino",
+    "gender": "FEMALE",
+    "birthdate": "1999-12-25",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Tammocalao",
+    "street": "171 National Highway St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0058",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.528Z",
+    "updated_at": "2026-09-16T07:04:15.528Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 115,
+  "fields": {
+    "iwp_number": "IWP-2025-0059",
+    "iwp_expiration_date": null,
+    "first_name": "Leonardo",
+    "middle_name": "Mendoza",
+    "last_name": "Rivera",
+    "gender": "MALE",
+    "birthdate": "1990-08-11",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Dili",
+    "street": "175 Quezon St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0059",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.541Z",
+    "updated_at": "2026-09-16T07:04:15.541Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 116,
+  "fields": {
+    "iwp_number": "IWP-2025-0060",
+    "iwp_expiration_date": null,
+    "first_name": "Jose",
+    "middle_name": "Torres",
+    "last_name": "Baltazar",
+    "gender": "MALE",
+    "birthdate": "2000-11-18",
+    "province": "La Union",
+    "city": "San Juan",
+    "barangay": "Cabaroan",
+    "street": "194 Mabini St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0060",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.556Z",
+    "updated_at": "2026-09-16T07:04:15.556Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 117,
+  "fields": {
+    "iwp_number": "IWP-2025-0061",
+    "iwp_expiration_date": null,
+    "first_name": "Milagros",
+    "middle_name": "Rivera",
+    "last_name": "Bjuan",
+    "gender": "FEMALE",
+    "birthdate": "1987-05-19",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "Paringao",
+    "street": "61 Mabini St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0061",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.571Z",
+    "updated_at": "2026-09-16T07:04:15.571Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 118,
+  "fields": {
+    "iwp_number": "IWP-2025-0062",
+    "iwp_expiration_date": null,
+    "first_name": "Elena",
+    "middle_name": "Rivera",
+    "last_name": "Navarro",
+    "gender": "FEMALE",
+    "birthdate": "1969-06-02",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Tammocalao",
+    "street": "34 Quezon St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0062",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.587Z",
+    "updated_at": "2026-09-16T07:04:15.587Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 119,
+  "fields": {
+    "iwp_number": "IWP-2025-0063",
+    "iwp_expiration_date": null,
+    "first_name": "Herminia",
+    "middle_name": "Rivera",
+    "last_name": "Ocampo",
+    "gender": "FEMALE",
+    "birthdate": "1993-06-21",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "San Isidro",
+    "street": "190 Rizal St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0063",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.603Z",
+    "updated_at": "2026-09-16T07:04:15.603Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 120,
+  "fields": {
+    "iwp_number": "IWP-2025-0064",
+    "iwp_expiration_date": null,
+    "first_name": "Maria",
+    "middle_name": "Navarro",
+    "last_name": "Peralta",
+    "gender": "FEMALE",
+    "birthdate": "2001-04-13",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Cabuluan",
+    "street": "178 Mabini St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0064",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.620Z",
+    "updated_at": "2026-09-16T07:04:15.620Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 121,
+  "fields": {
+    "iwp_number": "IWP-2025-0065",
+    "iwp_expiration_date": null,
+    "first_name": "Corazon",
+    "middle_name": "Agbayani",
+    "last_name": "Sagun",
+    "gender": "FEMALE",
+    "birthdate": "2001-04-26",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Sipulo",
+    "street": "154 National Highway St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0065",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.636Z",
+    "updated_at": "2026-09-16T07:04:15.636Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 122,
+  "fields": {
+    "iwp_number": "IWP-2025-0066",
+    "iwp_expiration_date": null,
+    "first_name": "Arnel",
+    "middle_name": "Flores",
+    "last_name": "Pascual",
+    "gender": "MALE",
+    "birthdate": "1995-05-26",
+    "province": "La Union",
+    "city": "San Juan",
+    "barangay": "Dili",
+    "street": "10 Rizal St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0066",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.650Z",
+    "updated_at": "2026-09-16T07:04:15.650Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 123,
+  "fields": {
+    "iwp_number": "IWP-2025-0067",
+    "iwp_expiration_date": null,
+    "first_name": "Imelda",
+    "middle_name": "Baltazar",
+    "last_name": "Bjuan",
+    "gender": "FEMALE",
+    "birthdate": "1991-06-09",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "Tammocalao",
+    "street": "9 Quezon St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0067",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.666Z",
+    "updated_at": "2026-09-16T07:04:15.666Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 124,
+  "fields": {
+    "iwp_number": "IWP-2025-0068",
+    "iwp_expiration_date": null,
+    "first_name": "Domingo",
+    "middle_name": "Peralta",
+    "last_name": "Navarro",
+    "gender": "MALE",
+    "birthdate": "1973-03-26",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Cabaroan",
+    "street": "196 Bonifacio St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0068",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.679Z",
+    "updated_at": "2026-09-16T07:04:15.679Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 125,
+  "fields": {
+    "iwp_number": "IWP-2025-0069",
+    "iwp_expiration_date": null,
+    "first_name": "Ramon",
+    "middle_name": "Gonzales",
+    "last_name": "Aquino",
+    "gender": "MALE",
+    "birthdate": "1978-09-10",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "Dili",
+    "street": "34 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0069",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.696Z",
+    "updated_at": "2026-09-16T07:04:15.696Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 126,
+  "fields": {
+    "iwp_number": "IWP-2025-0070",
+    "iwp_expiration_date": null,
+    "first_name": "Nenita",
+    "middle_name": "Sagun",
+    "last_name": "Peralta",
+    "gender": "FEMALE",
+    "birthdate": "1977-01-04",
+    "province": "La Union",
+    "city": "Burgos",
+    "barangay": "Santa Rita",
+    "street": "42 Quezon St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0070",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.713Z",
+    "updated_at": "2026-09-16T07:04:15.713Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 127,
+  "fields": {
+    "iwp_number": "IWP-2025-0071",
+    "iwp_expiration_date": null,
+    "first_name": "Nenita",
+    "middle_name": "Aquino",
+    "last_name": "Garcia",
+    "gender": "FEMALE",
+    "birthdate": "1974-08-01",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Cabuluan",
+    "street": "100 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0071",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.730Z",
+    "updated_at": "2026-09-16T07:04:15.730Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 128,
+  "fields": {
+    "iwp_number": "IWP-2025-0072",
+    "iwp_expiration_date": null,
+    "first_name": "Gloria",
+    "middle_name": "Garcia",
+    "last_name": "Pascual",
+    "gender": "FEMALE",
+    "birthdate": "1994-10-07",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Cabaroan",
+    "street": "48 Bonifacio St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0072",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.759Z",
+    "updated_at": "2026-09-16T07:04:15.759Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 129,
+  "fields": {
+    "iwp_number": "IWP-2025-0073",
+    "iwp_expiration_date": null,
+    "first_name": "Rosario",
+    "middle_name": "Garcia",
+    "last_name": "Bjuan",
+    "gender": "FEMALE",
+    "birthdate": "1994-03-17",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Camansi",
+    "street": "174 National Highway St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0073",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.781Z",
+    "updated_at": "2026-09-16T07:04:15.781Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 130,
+  "fields": {
+    "iwp_number": "IWP-2025-0074",
+    "iwp_expiration_date": null,
+    "first_name": "Maria",
+    "middle_name": "Manalo",
+    "last_name": "Garcia",
+    "gender": "FEMALE",
+    "birthdate": "1968-02-22",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Camansi",
+    "street": "69 Bonifacio St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0074",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.803Z",
+    "updated_at": "2026-09-16T07:04:15.803Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 131,
+  "fields": {
+    "iwp_number": "IWP-2025-0075",
+    "iwp_expiration_date": null,
+    "first_name": "Federico",
+    "middle_name": "Salvador",
+    "last_name": "Rimando",
+    "gender": "MALE",
+    "birthdate": "1968-04-04",
+    "province": "La Union",
+    "city": "San Juan",
+    "barangay": "Cabuluan",
+    "street": "30 Rizal St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0075",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.820Z",
+    "updated_at": "2026-09-16T07:04:15.820Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 132,
+  "fields": {
+    "iwp_number": "IWP-2025-0076",
+    "iwp_expiration_date": null,
+    "first_name": "Ricardo",
+    "middle_name": "Agbayani",
+    "last_name": "Reyes",
+    "gender": "MALE",
+    "birthdate": "1976-07-01",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Camansi",
+    "street": "1 Bonifacio St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0076",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.836Z",
+    "updated_at": "2026-09-16T07:04:15.836Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 133,
+  "fields": {
+    "iwp_number": "IWP-2025-0077",
+    "iwp_expiration_date": null,
+    "first_name": "Gilbert",
+    "middle_name": "Rimando",
+    "last_name": "Pascual",
+    "gender": "MALE",
+    "birthdate": "1989-10-21",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Bacsil",
+    "street": "165 Quezon St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0077",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.852Z",
+    "updated_at": "2026-09-16T07:04:15.852Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 134,
+  "fields": {
+    "iwp_number": "IWP-2025-0078",
+    "iwp_expiration_date": null,
+    "first_name": "Gloria",
+    "middle_name": "Manalo",
+    "last_name": "Flores",
+    "gender": "FEMALE",
+    "birthdate": "1984-11-14",
+    "province": "La Union",
+    "city": "Bauang",
+    "barangay": "San Isidro",
+    "street": "33 Rizal St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0078",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.866Z",
+    "updated_at": "2026-09-16T07:04:15.866Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 135,
+  "fields": {
+    "iwp_number": "IWP-2025-0079",
+    "iwp_expiration_date": null,
+    "first_name": "Ramon",
+    "middle_name": "Baltazar",
+    "last_name": "Salvador",
+    "gender": "MALE",
+    "birthdate": "1968-05-20",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Sipulo",
+    "street": "116 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0079",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.881Z",
+    "updated_at": "2026-09-16T07:04:15.881Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 136,
+  "fields": {
+    "iwp_number": "IWP-2025-0080",
+    "iwp_expiration_date": null,
+    "first_name": "Jose",
+    "middle_name": "Domingo",
+    "last_name": "Santos",
+    "gender": "MALE",
+    "birthdate": "1973-10-24",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "San Jose",
+    "street": "89 Mabini St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0080",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.896Z",
+    "updated_at": "2026-09-16T07:04:15.896Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 137,
+  "fields": {
+    "iwp_number": "IWP-2025-0081",
+    "iwp_expiration_date": null,
+    "first_name": "Cesar",
+    "middle_name": "Ramos",
+    "last_name": "Castro",
+    "gender": "MALE",
+    "birthdate": "1999-08-22",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "Santo Rosario",
+    "street": "170 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0081",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.913Z",
+    "updated_at": "2026-09-16T07:04:15.913Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 138,
+  "fields": {
+    "iwp_number": "IWP-2025-0082",
+    "iwp_expiration_date": null,
+    "first_name": "Perla",
+    "middle_name": "Navarro",
+    "last_name": "Flores",
+    "gender": "FEMALE",
+    "birthdate": "1981-07-11",
+    "province": "La Union",
+    "city": "Luna",
+    "barangay": "Tammocalao",
+    "street": "162 Bonifacio St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0082",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.930Z",
+    "updated_at": "2026-09-16T07:04:15.930Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 139,
+  "fields": {
+    "iwp_number": "IWP-2025-0083",
+    "iwp_expiration_date": null,
+    "first_name": "Antonio",
+    "middle_name": "Peralta",
+    "last_name": "Sagun",
+    "gender": "MALE",
+    "birthdate": "1970-09-25",
+    "province": "La Union",
+    "city": "Bauang",
+    "barangay": "San Isidro",
+    "street": "174 Bonifacio St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0083",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.945Z",
+    "updated_at": "2026-09-16T07:04:15.945Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 140,
+  "fields": {
+    "iwp_number": "IWP-2025-0084",
+    "iwp_expiration_date": null,
+    "first_name": "Reynaldo",
+    "middle_name": "Mendoza",
+    "last_name": "Garcia",
+    "gender": "MALE",
+    "birthdate": "1976-01-20",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Camansi",
+    "street": "159 Bonifacio St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0084",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.960Z",
+    "updated_at": "2026-09-16T07:04:15.960Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 141,
+  "fields": {
+    "iwp_number": "IWP-2025-0085",
+    "iwp_expiration_date": null,
+    "first_name": "Reynaldo",
+    "middle_name": "Manalo",
+    "last_name": "Bautista",
+    "gender": "MALE",
+    "birthdate": "1999-06-19",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "Cabuluan",
+    "street": "184 Quezon St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0085",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.976Z",
+    "updated_at": "2026-09-16T07:04:15.976Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 142,
+  "fields": {
+    "iwp_number": "IWP-2025-0086",
+    "iwp_expiration_date": null,
+    "first_name": "Juan",
+    "middle_name": "Agbayani",
+    "last_name": "Domingo",
+    "gender": "MALE",
+    "birthdate": "1992-04-22",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "San Vicente",
+    "street": "190 Mabini St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0086",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:15.993Z",
+    "updated_at": "2026-09-16T07:04:15.993Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 143,
+  "fields": {
+    "iwp_number": "IWP-2025-0087",
+    "iwp_expiration_date": null,
+    "first_name": "Herminio",
+    "middle_name": "Sagun",
+    "last_name": "Domingo",
+    "gender": "MALE",
+    "birthdate": "1977-04-28",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "Tammocalao",
+    "street": "174 Rizal St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0087",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.616Z",
+    "updated_at": "2026-09-16T07:06:22.616Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 144,
+  "fields": {
+    "iwp_number": "IWP-2025-0088",
+    "iwp_expiration_date": null,
+    "first_name": "Domingo",
+    "middle_name": "Manalo",
+    "last_name": "Rimando",
+    "gender": "MALE",
+    "birthdate": "1981-10-10",
+    "province": "La Union",
+    "city": "San Gabriel",
+    "barangay": "Bacsil",
+    "street": "168 Bonifacio St.",
+    "photo": "",
+    "contact": "09763317056",
+    "qr_code": "IWP-2025-0088",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.636Z",
+    "updated_at": "2026-09-16T07:06:22.636Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 145,
+  "fields": {
+    "iwp_number": "IWP-2025-0089",
+    "iwp_expiration_date": null,
+    "first_name": "Herminia",
+    "middle_name": "Baltazar",
+    "last_name": "Ocampo",
+    "gender": "FEMALE",
+    "birthdate": "1982-01-22",
+    "province": "La Union",
+    "city": "Bacnotan",
+    "barangay": "Dili",
+    "street": "48 Mabini St.",
+    "photo": "",
+    "contact": "09953658074",
+    "qr_code": "IWP-2025-0089",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.661Z",
+    "updated_at": "2026-09-16T07:06:22.661Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 146,
+  "fields": {
+    "iwp_number": "IWP-2025-0090",
+    "iwp_expiration_date": null,
+    "first_name": "Rodrigo",
+    "middle_name": "Bjuan",
+    "last_name": "Manalo",
+    "gender": "MALE",
+    "birthdate": "1998-01-10",
+    "province": "La Union",
+    "city": "Bagulin",
+    "barangay": "Poblacion",
+    "street": "103 Bonifacio St.",
+    "photo": "",
+    "contact": "09456780183",
+    "qr_code": "IWP-2025-0090",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.680Z",
+    "updated_at": "2026-09-16T07:06:22.680Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 149,
+  "fields": {
+    "iwp_number": "IWP-094",
+    "iwp_expiration_date": null,
+    "first_name": "L",
+    "middle_name": "O",
+    "last_name": "U",
+    "gender": "FEMALE",
+    "birthdate": null,
+    "province": "La Union",
+    "city": "",
+    "barangay": "",
+    "street": "",
+    "photo": "",
+    "contact": "09691661940",
+    "qr_code": "IWP-094",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-09-28T06:35:30.331Z",
+    "updated_at": "2026-09-28T06:35:30.331Z"
+  }
+},
+{
+  "model": "api.driver",
+  "pk": 150,
+  "fields": {
+    "iwp_number": "123123",
+    "iwp_expiration_date": "2026-10-11",
+    "first_name": "Trial",
+    "middle_name": "",
+    "last_name": "User",
+    "gender": "MALE",
+    "birthdate": null,
+    "province": "La Union",
+    "city": "",
+    "barangay": "",
+    "street": "",
+    "photo": "",
+    "contact": "09276595498",
+    "qr_code": "123123",
+    "status": "ACTIVE",
+    "is_archived": false,
+    "created_at": "2026-10-09T02:56:11.712Z",
+    "updated_at": "2026-10-09T02:56:11.712Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 20,
+  "fields": {
+    "origin": "BACNOTAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:51:10.311Z",
+    "updated_at": "2026-10-14T17:39:38.490Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 21,
+  "fields": {
+    "origin": "LUNA VIA BALAOAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:56:52.663Z",
+    "updated_at": "2026-10-14T17:39:38.512Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 22,
+  "fields": {
+    "origin": "SAN GABRIAN VIA SAN JUAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:57:31.508Z",
+    "updated_at": "2026-10-14T17:39:38.518Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000001,
+  "fields": {
+    "origin": "CAPITOL",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T06:52:57.806Z",
+    "updated_at": "2026-10-14T06:52:57.806Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000002,
+  "fields": {
+    "origin": "NAGUILIAN",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T13:56:53.966Z",
+    "updated_at": "2026-10-14T17:39:38.517Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000003,
+  "fields": {
+    "origin": "LUNA VIA QUIRINO",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T16:19:24.363Z",
+    "updated_at": "2026-10-14T17:39:38.516Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000004,
+  "fields": {
+    "origin": "LUNA VIA DARIGAYOS",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T16:19:24.565Z",
+    "updated_at": "2026-10-14T17:39:38.514Z"
+  }
+},
+{
+  "model": "api.route",
+  "pk": 1000005,
+  "fields": {
+    "origin": "SAN GABRIEL VIA STO. ROSARIO",
+    "is_active": true,
+    "is_archived": false,
+    "estimated_loading_minutes": null,
+    "created_at": "2026-10-14T16:19:24.873Z",
+    "updated_at": "2026-10-14T17:39:38.519Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 49,
+  "fields": {
+    "plate_number": "FVT 8611",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-83060",
+    "franchise_expiration_date": "2026-10-05",
+    "route": null,
+    "operator_address": "Cabaroan, Agoo, La Union",
+    "qr_code": "FVT 8611",
+    "status": "AVAILABLE",
+    "owner_driver": 59,
+    "active_driver": 59,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.555Z",
+    "updated_at": "2026-10-10T09:33:46.150Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 50,
+  "fields": {
+    "plate_number": "VSZ 6198",
+    "transportation_id": 2,
+    "franchise_number": "24-16846",
+    "franchise_expiration_date": "2026-10-21",
+    "route": null,
+    "operator_address": "Sipulo, Agoo, La Union",
+    "qr_code": "VSZ 6198",
+    "status": "AVAILABLE",
+    "owner_driver": 60,
+    "active_driver": 60,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.565Z",
+    "updated_at": "2026-10-14T11:57:39.137Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 51,
+  "fields": {
+    "plate_number": "DWL 5050",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-78327",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Camansi, Tubao, La Union",
+    "qr_code": "DWL 5050",
+    "status": "AVAILABLE",
+    "owner_driver": 61,
+    "active_driver": 61,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.594Z",
+    "updated_at": "2026-10-14T03:11:57.524Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 52,
+  "fields": {
+    "plate_number": "LTF 6502",
+    "transportation_id": 1,
+    "franchise_number": "2023-LTFRB-80798",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Sudipen, La Union",
+    "qr_code": "LTF 6502",
+    "status": "AVAILABLE",
+    "owner_driver": 62,
+    "active_driver": 149,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.641Z",
+    "updated_at": "2026-10-12T14:27:09.024Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 53,
+  "fields": {
+    "plate_number": "JDE 7797",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-53369",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, Agoo, La Union",
+    "qr_code": "JDE 7797",
+    "status": "AVAILABLE",
+    "owner_driver": 63,
+    "active_driver": 63,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.650Z",
+    "updated_at": "2026-10-12T16:45:03.431Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 54,
+  "fields": {
+    "plate_number": "WJU 1320",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-72518",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Poblacion, Caba, La Union",
+    "qr_code": "WJU 1320",
+    "status": "AVAILABLE",
+    "owner_driver": 64,
+    "active_driver": 64,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.665Z",
+    "updated_at": "2026-10-14T11:57:38.957Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 55,
+  "fields": {
+    "plate_number": "JXW 9818",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-73993",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabaroan, Aringay, La Union",
+    "qr_code": "JXW 9818",
+    "status": "AVAILABLE",
+    "owner_driver": 65,
+    "active_driver": 65,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.673Z",
+    "updated_at": "2026-10-14T11:57:38.755Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 56,
+  "fields": {
+    "plate_number": "AHS 7624",
+    "transportation_id": 1,
+    "franchise_number": "2020-LTFRB-71261",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Santa Rita, Bacnotan, La Union",
+    "qr_code": "AHS 7624",
+    "status": "AVAILABLE",
+    "owner_driver": 66,
+    "active_driver": 66,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.682Z",
+    "updated_at": "2026-10-14T11:57:38.574Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 57,
+  "fields": {
+    "plate_number": "XPS 2375",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-27786",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, Bagulin, La Union",
+    "qr_code": "XPS 2375",
+    "status": "AVAILABLE",
+    "owner_driver": 67,
+    "active_driver": 67,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.692Z",
+    "updated_at": "2026-10-12T14:26:19.824Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 58,
+  "fields": {
+    "plate_number": "JEH 7211",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-65255",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Nagsabaran, Naguilian, La Union",
+    "qr_code": "JEH 7211",
+    "status": "AVAILABLE",
+    "owner_driver": 68,
+    "active_driver": 68,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.702Z",
+    "updated_at": "2026-10-14T11:57:38.383Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 59,
+  "fields": {
+    "plate_number": "UBY 4673",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-95426",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Vicente, Agoo, La Union",
+    "qr_code": "UBY 4673",
+    "status": "AVAILABLE",
+    "owner_driver": 69,
+    "active_driver": 69,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.712Z",
+    "updated_at": "2026-10-14T11:57:38.190Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 60,
+  "fields": {
+    "plate_number": "WRF 8758",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-83920",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Bacsil, Bauang, La Union",
+    "qr_code": "WRF 8758",
+    "status": "AVAILABLE",
+    "owner_driver": 70,
+    "active_driver": 70,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.721Z",
+    "updated_at": "2026-10-14T11:57:37.993Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 61,
+  "fields": {
+    "plate_number": "UDP 2876",
+    "transportation_id": 1,
+    "franchise_number": "2020-LTFRB-50768",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Jose, Rosario, La Union",
+    "qr_code": "UDP 2876",
+    "status": "AVAILABLE",
+    "owner_driver": 71,
+    "active_driver": 71,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.730Z",
+    "updated_at": "2026-10-14T11:57:37.804Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 62,
+  "fields": {
+    "plate_number": "HSZ 7498",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-19961",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabaroan, Balaoan, La Union",
+    "qr_code": "HSZ 7498",
+    "status": "AVAILABLE",
+    "owner_driver": 72,
+    "active_driver": 72,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.739Z",
+    "updated_at": "2026-10-14T11:57:37.625Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 63,
+  "fields": {
+    "plate_number": "GSV 1672",
+    "transportation_id": 1,
+    "franchise_number": "2023-LTFRB-79827",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Sipulo, Agoo, La Union",
+    "qr_code": "GSV 1672",
+    "status": "AVAILABLE",
+    "owner_driver": 73,
+    "active_driver": 73,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.747Z",
+    "updated_at": "2026-10-14T11:57:37.421Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 64,
+  "fields": {
+    "plate_number": "MHW 9031",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-66822",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Pagdalagan, Pugo, La Union",
+    "qr_code": "MHW 9031",
+    "status": "AVAILABLE",
+    "owner_driver": 74,
+    "active_driver": 74,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.756Z",
+    "updated_at": "2026-10-14T11:57:37.223Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 65,
+  "fields": {
+    "plate_number": "TLT 5425",
+    "transportation_id": null,
+    "franchise_number": "2025-LTFRB-70931",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Sipulo, Sudipen, La Union",
+    "qr_code": "TLT 5425",
+    "status": "AVAILABLE",
+    "owner_driver": 75,
+    "active_driver": 75,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.765Z",
+    "updated_at": "2026-10-14T11:57:36.844Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 66,
+  "fields": {
+    "plate_number": "WWB 8385",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-70910",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Dili, Balaoan, La Union",
+    "qr_code": "WWB 8385",
+    "status": "AVAILABLE",
+    "owner_driver": 76,
+    "active_driver": 76,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.774Z",
+    "updated_at": "2026-10-14T11:57:36.630Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 67,
+  "fields": {
+    "plate_number": "WEE 5232",
+    "transportation_id": 1,
+    "franchise_number": "2023-LTFRB-46655",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Nagsabaran, Aringay, La Union",
+    "qr_code": "WEE 5232",
+    "status": "AVAILABLE",
+    "owner_driver": 106,
+    "active_driver": 106,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.783Z",
+    "updated_at": "2026-10-10T05:37:02.346Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 68,
+  "fields": {
+    "plate_number": "YBT 9004",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-72402",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Camansi, Tubao, La Union",
+    "qr_code": "YBT 9004",
+    "status": "AVAILABLE",
+    "owner_driver": 78,
+    "active_driver": 75,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.792Z",
+    "updated_at": "2026-10-14T11:57:36.425Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 69,
+  "fields": {
+    "plate_number": "CFS 6016",
+    "transportation_id": 1,
+    "franchise_number": "2023-LTFRB-72031",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Pagdalagan, Rosario, La Union",
+    "qr_code": "CFS 6016",
+    "status": "AVAILABLE",
+    "owner_driver": 79,
+    "active_driver": 79,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.801Z",
+    "updated_at": "2026-10-10T05:37:02.346Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 70,
+  "fields": {
+    "plate_number": "JLH 4777",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-35242",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Paringao, Rosario, La Union",
+    "qr_code": "JLH 4777",
+    "status": "AVAILABLE",
+    "owner_driver": 80,
+    "active_driver": 80,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.810Z",
+    "updated_at": "2026-10-10T05:37:02.346Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 71,
+  "fields": {
+    "plate_number": "YSE 8933",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-87278",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Tammocalao, Agoo, La Union",
+    "qr_code": "YSE 8933",
+    "status": "AVAILABLE",
+    "owner_driver": 81,
+    "active_driver": 81,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.819Z",
+    "updated_at": "2026-10-14T11:57:36.243Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 72,
+  "fields": {
+    "plate_number": "GJG 9751",
+    "transportation_id": 1,
+    "franchise_number": "2020-LTFRB-45954",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Vicente, Agoo, La Union",
+    "qr_code": "GJG 9751",
+    "status": "AVAILABLE",
+    "owner_driver": 82,
+    "active_driver": 82,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.828Z",
+    "updated_at": "2026-10-10T05:37:02.346Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 73,
+  "fields": {
+    "plate_number": "TCW 9042",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-11607",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Tammocalao, Bauang, La Union",
+    "qr_code": "TCW 9042",
+    "status": "AVAILABLE",
+    "owner_driver": 83,
+    "active_driver": 83,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.837Z",
+    "updated_at": "2026-10-14T11:57:36.068Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 74,
+  "fields": {
+    "plate_number": "HZF 8827",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-18564",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Dili, Santo Tomas, La Union",
+    "qr_code": "HZF 8827",
+    "status": "AVAILABLE",
+    "owner_driver": 84,
+    "active_driver": 84,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.847Z",
+    "updated_at": "2026-10-09T03:20:48.640Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 75,
+  "fields": {
+    "plate_number": "RBD 5978",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-42530",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Jose, Santo Tomas, La Union",
+    "qr_code": "RBD 5978",
+    "status": "AVAILABLE",
+    "owner_driver": 85,
+    "active_driver": 85,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.855Z",
+    "updated_at": "2026-10-10T05:37:02.346Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 76,
+  "fields": {
+    "plate_number": "PVF 9561",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-69049",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, Tubao, La Union",
+    "qr_code": "PVF 9561",
+    "status": "AVAILABLE",
+    "owner_driver": 86,
+    "active_driver": 86,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.864Z",
+    "updated_at": "2026-10-14T11:57:35.866Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 77,
+  "fields": {
+    "plate_number": "HRR 2625",
+    "transportation_id": null,
+    "franchise_number": "2021-LTFRB-91987",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Bacsil, Bacnotan, La Union",
+    "qr_code": "HRR 2625",
+    "status": "AVAILABLE",
+    "owner_driver": 87,
+    "active_driver": 87,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.873Z",
+    "updated_at": "2026-10-14T11:57:35.683Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 78,
+  "fields": {
+    "plate_number": "DDB 1043",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-69048",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Camansi, San Juan, La Union",
+    "qr_code": "DDB 1043",
+    "status": "AVAILABLE",
+    "owner_driver": 88,
+    "active_driver": 88,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.882Z",
+    "updated_at": "2026-10-14T11:57:35.354Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 79,
+  "fields": {
+    "plate_number": "GGW 2166",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-44675",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Bacsil, Bacnotan, La Union",
+    "qr_code": "GGW 2166",
+    "status": "AVAILABLE",
+    "owner_driver": 89,
+    "active_driver": 89,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.892Z",
+    "updated_at": "2026-10-14T11:57:35.148Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 80,
+  "fields": {
+    "plate_number": "FDG 3330",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-17816",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Santo Rosario, Rosario, La Union",
+    "qr_code": "FDG 3330",
+    "status": "AVAILABLE",
+    "owner_driver": 90,
+    "active_driver": 90,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.901Z",
+    "updated_at": "2026-10-12T06:56:14.860Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 81,
+  "fields": {
+    "plate_number": "VYL 8679",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-62757",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Nagsabaran, Bacnotan, La Union",
+    "qr_code": "VYL 8679",
+    "status": "AVAILABLE",
+    "owner_driver": 91,
+    "active_driver": 91,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.910Z",
+    "updated_at": "2026-10-14T11:57:34.960Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 82,
+  "fields": {
+    "plate_number": "LPX 6280",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-13390",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Luna, La Union",
+    "qr_code": "LPX 6280",
+    "status": "AVAILABLE",
+    "owner_driver": 92,
+    "active_driver": 92,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.920Z",
+    "updated_at": "2026-10-12T06:57:00.407Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 83,
+  "fields": {
+    "plate_number": "ZSG 1659",
+    "transportation_id": 1,
+    "franchise_number": "2020-LTFRB-71669",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, San Juan, La Union",
+    "qr_code": "ZSG 1659",
+    "status": "AVAILABLE",
+    "owner_driver": 93,
+    "active_driver": 93,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.929Z",
+    "updated_at": "2026-10-14T11:57:34.771Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 84,
+  "fields": {
+    "plate_number": "PRM 2494",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-55607",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Sipulo, Bacnotan, La Union",
+    "qr_code": "PRM 2494",
+    "status": "AVAILABLE",
+    "owner_driver": 94,
+    "active_driver": 94,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.938Z",
+    "updated_at": "2026-10-14T11:57:34.574Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 85,
+  "fields": {
+    "plate_number": "CDK 9117",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-96846",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Dili, Aringay, La Union",
+    "qr_code": "CDK 9117",
+    "status": "AVAILABLE",
+    "owner_driver": 95,
+    "active_driver": 95,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.947Z",
+    "updated_at": "2026-10-14T11:57:34.379Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 86,
+  "fields": {
+    "plate_number": "CFC 7622",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-96200",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, Tubao, La Union",
+    "qr_code": "CFC 7622",
+    "status": "AVAILABLE",
+    "owner_driver": 96,
+    "active_driver": 96,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.957Z",
+    "updated_at": "2026-10-14T11:57:34.188Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 87,
+  "fields": {
+    "plate_number": "MRM 8242",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-36680",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Nagsabaran, Caba, La Union",
+    "qr_code": "MRM 8242",
+    "status": "AVAILABLE",
+    "owner_driver": 97,
+    "active_driver": 97,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.967Z",
+    "updated_at": "2026-10-09T03:20:54.376Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 88,
+  "fields": {
+    "plate_number": "GXM 1472",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-30758",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Tammocalao, Tubao, La Union",
+    "qr_code": "GXM 1472",
+    "status": "AVAILABLE",
+    "owner_driver": 98,
+    "active_driver": 98,
+    "is_archived": false,
+    "created_at": "2026-08-25T13:01:10.976Z",
+    "updated_at": "2026-10-14T11:57:33.984Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 89,
+  "fields": {
+    "plate_number": "AVZ 3371",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-66205",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Nagsabaran, Luna, La Union",
+    "qr_code": "AVZ 3371",
+    "status": "AVAILABLE",
+    "owner_driver": 107,
+    "active_driver": 107,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.026Z",
+    "updated_at": "2026-10-09T03:21:46.842Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 90,
+  "fields": {
+    "plate_number": "GRE 9908",
+    "transportation_id": 1,
+    "franchise_number": "2023-LTFRB-74236",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Bacnotan, La Union",
+    "qr_code": "GRE 9908",
+    "status": "AVAILABLE",
+    "owner_driver": 108,
+    "active_driver": 108,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.128Z",
+    "updated_at": "2026-10-14T11:57:33.777Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 91,
+  "fields": {
+    "plate_number": "YBP 5493",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-56524",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, Burgos, La Union",
+    "qr_code": "YBP 5493",
+    "status": "AVAILABLE",
+    "owner_driver": 109,
+    "active_driver": 109,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.146Z",
+    "updated_at": "2026-09-16T07:04:16.146Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 92,
+  "fields": {
+    "plate_number": "GAT 8085",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-86083",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Bacnotan, La Union",
+    "qr_code": "GAT 8085",
+    "status": "AVAILABLE",
+    "owner_driver": 110,
+    "active_driver": 110,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.163Z",
+    "updated_at": "2026-10-14T11:57:33.578Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 93,
+  "fields": {
+    "plate_number": "WJB 9033",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-92874",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Vicente, Naguilian, La Union",
+    "qr_code": "WJB 9033",
+    "status": "AVAILABLE",
+    "owner_driver": 111,
+    "active_driver": 111,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.182Z",
+    "updated_at": "2026-10-14T11:57:33.359Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 94,
+  "fields": {
+    "plate_number": "HGK 7271",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-97976",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Vicente, Bauang, La Union",
+    "qr_code": "HGK 7271",
+    "status": "AVAILABLE",
+    "owner_driver": 112,
+    "active_driver": 112,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.199Z",
+    "updated_at": "2026-10-14T11:57:33.143Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 95,
+  "fields": {
+    "plate_number": "DWL 6244",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-46256",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabaroan, Burgos, La Union",
+    "qr_code": "DWL 6244",
+    "status": "AVAILABLE",
+    "owner_driver": 113,
+    "active_driver": 113,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.218Z",
+    "updated_at": "2026-09-16T07:04:16.218Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 96,
+  "fields": {
+    "plate_number": "GYD 6758",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-89276",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Poblacion, San Gabriel, La Union",
+    "qr_code": "GYD 6758",
+    "status": "AVAILABLE",
+    "owner_driver": 114,
+    "active_driver": 114,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.238Z",
+    "updated_at": "2026-10-14T11:57:32.815Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 97,
+  "fields": {
+    "plate_number": "HYZ 1654",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-98589",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Santa Rita, Bauang, La Union",
+    "qr_code": "HYZ 1654",
+    "status": "AVAILABLE",
+    "owner_driver": 115,
+    "active_driver": 115,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.256Z",
+    "updated_at": "2026-10-14T11:57:32.243Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 98,
+  "fields": {
+    "plate_number": "CEN 8935",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-37599",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Pagdalagan, Luna, La Union",
+    "qr_code": "CEN 8935",
+    "status": "AVAILABLE",
+    "owner_driver": 116,
+    "active_driver": 116,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.275Z",
+    "updated_at": "2026-10-06T06:03:16.285Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 99,
+  "fields": {
+    "plate_number": "GNY 6895",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-69221",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Camansi, Bagulin, La Union",
+    "qr_code": "GNY 6895",
+    "status": "AVAILABLE",
+    "owner_driver": 117,
+    "active_driver": 117,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.295Z",
+    "updated_at": "2026-09-16T07:04:16.295Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 100,
+  "fields": {
+    "plate_number": "GZA 5587",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-67032",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Pagdalagan, Bacnotan, La Union",
+    "qr_code": "GZA 5587",
+    "status": "AVAILABLE",
+    "owner_driver": 118,
+    "active_driver": 118,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.315Z",
+    "updated_at": "2026-10-14T11:57:31.596Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 101,
+  "fields": {
+    "plate_number": "ZKB 8680",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-27010",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Vicente, Bagulin, La Union",
+    "qr_code": "ZKB 8680",
+    "status": "AVAILABLE",
+    "owner_driver": 119,
+    "active_driver": 119,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:04:16.335Z",
+    "updated_at": "2026-09-16T07:04:16.335Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 102,
+  "fields": {
+    "plate_number": "SFC 7902",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-19544",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, Burgos, La Union",
+    "qr_code": "SFC 7902",
+    "status": "AVAILABLE",
+    "owner_driver": 120,
+    "active_driver": 120,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.706Z",
+    "updated_at": "2026-09-16T07:06:22.706Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 103,
+  "fields": {
+    "plate_number": "HML 8313",
+    "transportation_id": 1,
+    "franchise_number": "2023-LTFRB-86414",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Dili, Burgos, La Union",
+    "qr_code": "HML 8313",
+    "status": "AVAILABLE",
+    "owner_driver": 121,
+    "active_driver": 121,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.747Z",
+    "updated_at": "2026-09-16T07:06:22.747Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 104,
+  "fields": {
+    "plate_number": "YWR 5788",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-42502",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Nagsabaran, Bacnotan, La Union",
+    "qr_code": "YWR 5788",
+    "status": "AVAILABLE",
+    "owner_driver": 122,
+    "active_driver": 122,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.775Z",
+    "updated_at": "2026-10-06T08:11:55.317Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 105,
+  "fields": {
+    "plate_number": "CEL 9355",
+    "transportation_id": 1,
+    "franchise_number": "2020-LTFRB-79707",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Pagdalagan, Bagulin, La Union",
+    "qr_code": "CEL 9355",
+    "status": "AVAILABLE",
+    "owner_driver": 123,
+    "active_driver": 123,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.801Z",
+    "updated_at": "2026-10-01T23:02:13.285Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 106,
+  "fields": {
+    "plate_number": "YRZ 3619",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-10849",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Dili, Bacnotan, La Union",
+    "qr_code": "YRZ 3619",
+    "status": "AVAILABLE",
+    "owner_driver": 124,
+    "active_driver": 124,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.823Z",
+    "updated_at": "2026-09-28T06:40:47.020Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 107,
+  "fields": {
+    "plate_number": "YUJ 4913",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-50509",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Bauang, La Union",
+    "qr_code": "YUJ 4913",
+    "status": "AVAILABLE",
+    "owner_driver": 125,
+    "active_driver": 125,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.845Z",
+    "updated_at": "2026-09-16T07:06:22.845Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 108,
+  "fields": {
+    "plate_number": "FAN 3674",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-99708",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Dili, San Juan, La Union",
+    "qr_code": "FAN 3674",
+    "status": "AVAILABLE",
+    "owner_driver": 126,
+    "active_driver": 126,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.869Z",
+    "updated_at": "2026-09-16T07:06:22.869Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 109,
+  "fields": {
+    "plate_number": "LUK 5931",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-76586",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabaroan, Naguilian, La Union",
+    "qr_code": "LUK 5931",
+    "status": "AVAILABLE",
+    "owner_driver": 127,
+    "active_driver": 127,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.896Z",
+    "updated_at": "2026-10-10T05:37:02.346Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 110,
+  "fields": {
+    "plate_number": "NLT 9325",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-25165",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Camansi, San Gabriel, La Union",
+    "qr_code": "NLT 9325",
+    "status": "AVAILABLE",
+    "owner_driver": 128,
+    "active_driver": 128,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.926Z",
+    "updated_at": "2026-09-16T07:06:22.926Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 111,
+  "fields": {
+    "plate_number": "KZD 8014",
+    "transportation_id": 1,
+    "franchise_number": "2023-LTFRB-34119",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Santa Rita, Luna, La Union",
+    "qr_code": "KZD 8014",
+    "status": "AVAILABLE",
+    "owner_driver": 129,
+    "active_driver": 129,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.952Z",
+    "updated_at": "2026-09-16T07:06:22.952Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 112,
+  "fields": {
+    "plate_number": "UYU 7908",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-24751",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Santo Rosario, Bauang, La Union",
+    "qr_code": "UYU 7908",
+    "status": "AVAILABLE",
+    "owner_driver": 130,
+    "active_driver": 130,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:22.980Z",
+    "updated_at": "2026-09-16T07:06:22.981Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 113,
+  "fields": {
+    "plate_number": "ZXZ 1428",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-33547",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabuluan, Burgos, La Union",
+    "qr_code": "ZXZ 1428",
+    "status": "AVAILABLE",
+    "owner_driver": 131,
+    "active_driver": 131,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.003Z",
+    "updated_at": "2026-09-16T07:06:23.003Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 114,
+  "fields": {
+    "plate_number": "LXP 1637",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-93761",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Naguilian, La Union",
+    "qr_code": "LXP 1637",
+    "status": "AVAILABLE",
+    "owner_driver": 132,
+    "active_driver": 132,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.056Z",
+    "updated_at": "2026-10-08T15:41:45.137Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 115,
+  "fields": {
+    "plate_number": "CDB 5779",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-17960",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Poblacion, San Gabriel, La Union",
+    "qr_code": "CDB 5779",
+    "status": "AVAILABLE",
+    "owner_driver": 133,
+    "active_driver": 133,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.115Z",
+    "updated_at": "2026-09-16T07:06:23.115Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 116,
+  "fields": {
+    "plate_number": "NMT 4603",
+    "transportation_id": 1,
+    "franchise_number": "2020-LTFRB-31232",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Santo Rosario, San Gabriel, La Union",
+    "qr_code": "NMT 4603",
+    "status": "AVAILABLE",
+    "owner_driver": 134,
+    "active_driver": 134,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.145Z",
+    "updated_at": "2026-10-10T05:37:02.346Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 117,
+  "fields": {
+    "plate_number": "SEF 8197",
+    "transportation_id": 1,
+    "franchise_number": "2021-LTFRB-68505",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Pagdalagan, Bacnotan, La Union",
+    "qr_code": "SEF 8197",
+    "status": "AVAILABLE",
+    "owner_driver": 135,
+    "active_driver": 135,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.171Z",
+    "updated_at": "2026-09-16T07:06:23.171Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 118,
+  "fields": {
+    "plate_number": "GWB 2968",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-42800",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Luna, La Union",
+    "qr_code": "GWB 2968",
+    "status": "AVAILABLE",
+    "owner_driver": 136,
+    "active_driver": 136,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.195Z",
+    "updated_at": "2026-09-23T11:15:19.629Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 119,
+  "fields": {
+    "plate_number": "EBD 8883",
+    "transportation_id": 1,
+    "franchise_number": "2022-LTFRB-91194",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Camansi, Bagulin, La Union",
+    "qr_code": "EBD 8883",
+    "status": "AVAILABLE",
+    "owner_driver": 137,
+    "active_driver": 137,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.222Z",
+    "updated_at": "2026-09-16T07:06:23.222Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 120,
+  "fields": {
+    "plate_number": "ZFF 1863",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-98380",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Poblacion, San Gabriel, La Union",
+    "qr_code": "ZFF 1863",
+    "status": "AVAILABLE",
+    "owner_driver": 138,
+    "active_driver": 138,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.248Z",
+    "updated_at": "2026-09-16T07:06:23.248Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 121,
+  "fields": {
+    "plate_number": "XJV 6925",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-98550",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Bacsil, Naguilian, La Union",
+    "qr_code": "XJV 6925",
+    "status": "AVAILABLE",
+    "owner_driver": 139,
+    "active_driver": 139,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.273Z",
+    "updated_at": "2026-09-16T07:06:23.273Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 122,
+  "fields": {
+    "plate_number": "LZA 7170",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-13762",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Paringao, Burgos, La Union",
+    "qr_code": "LZA 7170",
+    "status": "AVAILABLE",
+    "owner_driver": 140,
+    "active_driver": 140,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.296Z",
+    "updated_at": "2026-09-16T07:06:23.296Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 123,
+  "fields": {
+    "plate_number": "NCX 3596",
+    "transportation_id": 1,
+    "franchise_number": "2020-LTFRB-68147",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Cabaroan, San Juan, La Union",
+    "qr_code": "NCX 3596",
+    "status": "AVAILABLE",
+    "owner_driver": 141,
+    "active_driver": 141,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.323Z",
+    "updated_at": "2026-09-16T07:06:23.323Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 124,
+  "fields": {
+    "plate_number": "XMZ 8957",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-78179",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Poblacion, Bagulin, La Union",
+    "qr_code": "XMZ 8957",
+    "status": "AVAILABLE",
+    "owner_driver": 142,
+    "active_driver": 142,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.347Z",
+    "updated_at": "2026-09-16T07:06:23.347Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 125,
+  "fields": {
+    "plate_number": "EMP 1731",
+    "transportation_id": 1,
+    "franchise_number": "2025-LTFRB-62359",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Vicente, San Juan, La Union",
+    "qr_code": "EMP 1731",
+    "status": "AVAILABLE",
+    "owner_driver": 143,
+    "active_driver": 143,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.369Z",
+    "updated_at": "2026-09-16T07:06:23.369Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 126,
+  "fields": {
+    "plate_number": "ALF 5852",
+    "transportation_id": 1,
+    "franchise_number": "2019-LTFRB-96908",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "San Isidro, Bagulin, La Union",
+    "qr_code": "ALF 5852",
+    "status": "AVAILABLE",
+    "owner_driver": 144,
+    "active_driver": 144,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.390Z",
+    "updated_at": "2026-09-16T07:06:23.390Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 127,
+  "fields": {
+    "plate_number": "WPT 4632",
+    "transportation_id": 1,
+    "franchise_number": "2024-LTFRB-95751",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Nagsabaran, Bauang, La Union",
+    "qr_code": "WPT 4632",
+    "status": "AVAILABLE",
+    "owner_driver": 145,
+    "active_driver": 145,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.411Z",
+    "updated_at": "2026-09-23T11:15:17.974Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 128,
+  "fields": {
+    "plate_number": "DFL 2808",
+    "transportation_id": 1,
+    "franchise_number": "2018-LTFRB-68589",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "Sipulo, San Juan, La Union",
+    "qr_code": "DFL 2808",
+    "status": "AVAILABLE",
+    "owner_driver": 146,
+    "active_driver": 146,
+    "is_archived": false,
+    "created_at": "2026-09-16T07:06:23.431Z",
+    "updated_at": "2026-09-16T07:06:23.431Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 131,
+  "fields": {
+    "plate_number": "AAA-1111",
+    "transportation_id": 1,
+    "franchise_number": "f00000000",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "26 National Highway St., Cabaroan, Agoo, La Union",
+    "qr_code": "QR-AAA-1111-MUEY90ZW",
+    "status": "AVAILABLE",
+    "owner_driver": 61,
+    "active_driver": 61,
+    "is_archived": false,
+    "created_at": "2026-09-24T03:05:35.363Z",
+    "updated_at": "2026-09-24T03:05:35.363Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 132,
+  "fields": {
+    "plate_number": "SDF-5463",
+    "transportation_id": null,
+    "franchise_number": "",
+    "franchise_expiration_date": null,
+    "route": null,
+    "operator_address": "",
+    "qr_code": "QR-SDF-5463-MV5FKJVL",
+    "status": "AVAILABLE",
+    "owner_driver": null,
+    "active_driver": null,
+    "is_archived": false,
+    "created_at": "2026-10-12T15:52:26.601Z",
+    "updated_at": "2026-10-12T15:52:26.601Z"
+  }
+},
+{
+  "model": "api.vehicle",
+  "pk": 133,
+  "fields": {
+    "plate_number": "DSH-6456",
+    "transportation_id": 1,
+    "franchise_number": "56-45634",
+    "franchise_expiration_date": "2026-10-30",
+    "route": null,
+    "operator_address": "144 Rizal St., Sipulo, Rosario, La Union",
+    "qr_code": "QR-DSH-6456-MV5FNSSN",
+    "status": "AVAILABLE",
+    "owner_driver": 91,
+    "active_driver": 91,
+    "is_archived": false,
+    "created_at": "2026-10-12T15:54:58.544Z",
+    "updated_at": "2026-10-12T15:54:58.544Z"
+  }
+},
+{
+  "model": "api.puvtype",
+  "pk": 1,
+  "fields": {
+    "name": "Jeepney",
+    "terminal_price": "10.00",
+    "is_archived": false
+  }
+},
+{
+  "model": "api.puvtype",
+  "pk": 2,
+  "fields": {
+    "name": "UV",
+    "terminal_price": "40.00",
+    "is_archived": false
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 1000002,
+  "fields": {
+    "name": "Cash Tickets@10",
+    "price": "10.00"
+  }
+},
+{
+  "model": "api.ticketform",
+  "pk": 1000003,
+  "fields": {
+    "name": "Cash Tickets@2",
+    "price": "2.00"
+  }
+},
+{
+  "model": "api.wipmode",
+  "pk": 1,
+  "fields": {
+    "is_active": false,
+    "updated_at": "2026-10-12T06:52:20.555Z"
+  }
+},
+{
+  "model": "api.pendingfleetaccess",
+  "pk": 1,
+  "fields": {
+    "user_id": 1000006,
+    "can_manage_fleet": true,
+    "queued_at": "2026-10-14T06:51:18.410Z"
+  }
+},
+{
+  "model": "api.pendingsetting",
+  "pk": 1,
+  "fields": {
+    "model_label": "api.PUVType",
+    "obj_id": 2,
+    "is_delete": false,
+    "queued_at": "2026-10-14T02:07:56.155Z"
+  }
+},
+{
+  "model": "api.pendingsetting",
+  "pk": 2,
+  "fields": {
+    "model_label": "api.Route",
+    "obj_id": 1000001,
+    "is_delete": false,
+    "queued_at": "2026-10-14T06:52:57.815Z"
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253610,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "134",
+    "queued_at": "2026-10-14T11:51:35.338Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": true
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253611,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "100",
+    "queued_at": "2026-10-14T11:57:31.605Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253612,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "97",
+    "queued_at": "2026-10-14T11:57:32.250Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253613,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "96",
+    "queued_at": "2026-10-14T11:57:32.823Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253614,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "94",
+    "queued_at": "2026-10-14T11:57:33.150Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253615,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "93",
+    "queued_at": "2026-10-14T11:57:33.364Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253616,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "92",
+    "queued_at": "2026-10-14T11:57:33.581Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253617,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "90",
+    "queued_at": "2026-10-14T11:57:33.782Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253618,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "88",
+    "queued_at": "2026-10-14T11:57:33.988Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253619,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "86",
+    "queued_at": "2026-10-14T11:57:34.192Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253620,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "85",
+    "queued_at": "2026-10-14T11:57:34.382Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253621,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "84",
+    "queued_at": "2026-10-14T11:57:34.578Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253622,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "83",
+    "queued_at": "2026-10-14T11:57:34.774Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253623,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "81",
+    "queued_at": "2026-10-14T11:57:34.965Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253624,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "79",
+    "queued_at": "2026-10-14T11:57:35.152Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253625,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "78",
+    "queued_at": "2026-10-14T11:57:35.361Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253626,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "77",
+    "queued_at": "2026-10-14T11:57:35.689Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253627,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "76",
+    "queued_at": "2026-10-14T11:57:35.873Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253628,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "73",
+    "queued_at": "2026-10-14T11:57:36.074Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253629,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "71",
+    "queued_at": "2026-10-14T11:57:36.246Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253630,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "68",
+    "queued_at": "2026-10-14T11:57:36.433Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253631,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "66",
+    "queued_at": "2026-10-14T11:57:36.637Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253632,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "65",
+    "queued_at": "2026-10-14T11:57:36.849Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253633,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "64",
+    "queued_at": "2026-10-14T11:57:37.227Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253634,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "63",
+    "queued_at": "2026-10-14T11:57:37.425Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253635,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "62",
+    "queued_at": "2026-10-14T11:57:37.634Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253636,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "61",
+    "queued_at": "2026-10-14T11:57:37.809Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253637,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "60",
+    "queued_at": "2026-10-14T11:57:37.998Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253638,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "59",
+    "queued_at": "2026-10-14T11:57:38.197Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253639,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "58",
+    "queued_at": "2026-10-14T11:57:38.387Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253640,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "56",
+    "queued_at": "2026-10-14T11:57:38.577Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253641,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "55",
+    "queued_at": "2026-10-14T11:57:38.760Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253642,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "54",
+    "queued_at": "2026-10-14T11:57:38.962Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253643,
+  "fields": {
+    "model_label": "api.Vehicle",
+    "object_id": "50",
+    "queued_at": "2026-10-14T11:57:39.141Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253644,
+  "fields": {
+    "model_label": "api.AuditLog",
+    "object_id": "4",
+    "queued_at": "2026-10-14T12:02:50.546Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+},
+{
+  "model": "api.syncqueue",
+  "pk": 253645,
+  "fields": {
+    "model_label": "api.AuditLog",
+    "object_id": "5",
+    "queued_at": "2026-10-14T12:05:27.073Z",
+    "synced_at": null,
+    "attempts": 0,
+    "last_error": "",
+    "pending_delete": false
+  }
+}
+]

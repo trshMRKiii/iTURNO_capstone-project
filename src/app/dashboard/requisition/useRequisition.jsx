@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { apiService } from "../../../lib/api-service";
 import { useFeedback } from "../../../components/ui/kit";
+import { useSupervisors } from "../../../lib/useSupervisors";
 
 const EMPTY_SERIES = {
   ticket_form: "",
@@ -27,8 +28,7 @@ export function useRequisition() {
 
   const [showForm, setFormOpen] = useState(false);
   const [seriesItems, setSeriesItems] = useState([{ ...EMPTY_SERIES }]);
-  const [supervisors, setSupervisors] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
+  const { supervisors, currentUser } = useSupervisors();
   const [requestedBy, setRequestedBy] = useState("");
 
   // The first load shows skeleton rows. Reloads after a save refresh quietly.
@@ -63,11 +63,6 @@ export function useRequisition() {
     fetchTicketForms();
   }, [fetchRequisitions, fetchTicketForms]);
 
-  // Who can be named as the requester, and who is keying this in (a supervisor is their own requester by default).
-  useEffect(() => {
-    apiService.request("/requisitions/supervisors/").then(setSupervisors).catch(() => {});
-    apiService.getCurrentUser().then(setCurrentUser).catch(() => {});
-  }, []);
 
   const activeRequisitions = useMemo(
     () => requisitions.filter((r) => !r.is_archived),

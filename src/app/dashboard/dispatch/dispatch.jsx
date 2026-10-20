@@ -4,6 +4,7 @@ import { useQueueSocket } from "../../../lib/useQueueSocket";
 import { getDriverPhotoUrl } from "../driver/driver-utils";
 import { ticketsNeeded } from "../queue/useQueue";
 import SeriesPicker from "../queue/SeriesPicker";
+import { MarkPaidButton, RoamPaymentStrip } from "./KioskPayments";
 import { useFeedback, SkeletonList } from "../../../components/ui/kit";
 import "../../../styles/Dispatch.css";
 
@@ -20,6 +21,8 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
   const [tickets, setTickets] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [routes, setRoutes] = useState([]);
+  const [kioskSessions, setKioskSessions] = useState([]);
+  const [payingVehicleId, setPayingVehicleId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -67,15 +70,17 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
     const seq = ++fetchSeq.current;
     if (!silent) setLoading(true);
     try {
-      const [vehicleData, ticketData, driverData, routeData] = await Promise.all([
+      const [vehicleData, ticketData, driverData, routeData, sessionData] = await Promise.all([
         apiService.getVehicles({ status: "QUEUED", is_archived: "false" }),
         apiService.getTickets({ status: "QUEUED" }),
         silent ? null : apiService.getDrivers({ status: "ACTIVE", is_archived: "false" }),
         silent ? null : apiService.getRoutes(),
+        apiService.getKioskSessions().catch(() => []), // LAN-only; the board still works without it
       ]);
       if (seq !== fetchSeq.current) return;
       setVehicles(vehicleData);
       setTickets(ticketData);
+      setKioskSessions(sessionData);
       if (driverData) setDrivers(driverData);
       if (routeData) setRoutes(routeData);
     } catch (err) {
@@ -222,6 +227,51 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
   });
 
   const quantityFor = (vehicle) => ticketsNeeded(vehicle, Number(selected?.ticket_form_price || 0));
+
+  // Kiosk visits: queued vehicles show Paid/Mark paid on their card; roam visits have
+  // no card, so they get their own strip.
+  const queueSessionByVehicleId = useMemo(
+    () => new Map(kioskSessions.filter((s) => s.mode === "QUEUE").map((s) => [s.vehicle_id, s])),
+    [kioskSessions],
+  );
+  const roamSessions = useMemo(() => kioskSessions.filter((s) => s.mode === "ROAM"), [kioskSessions]);
+
+  // `target` is a queue vehicle or a roam session row; amount is the vehicle's terminal price.
+  const setPaid = async ({ id, plate, amount }, paid) => {
+    if (paid && !selectedSeriesId) {
+      setDispatchError("Please select a ticket series before marking paid.");
+      return;
+    }
+    setPayingVehicleId(id);
+    setDispatchError("");
+    try {
+      await apiService.markKioskPaid(id, {
+        seriesId: selectedSeriesId,
+        quantity: quantityFor({ terminal_price: amount }),
+        paid,
+      });
+      notify.success({ title: paid ? `${plate} marked paid` : `${plate} payment undone` });
+      fetchData(true);
+    } catch (err) {
+      setDispatchError(err.message || "Failed to update payment.");
+    } finally {
+      setPayingVehicleId(null);
+    }
+  };
+  const vehicleTarget = (v) => ({ id: v.id, plate: v.plate_number, amount: v.terminal_price });
+  const sessionTarget = (s) => ({ id: s.vehicle_id, plate: s.plate, amount: s.amount });
+
+  const handleCancelRoam = async (s) => {
+    setPayingVehicleId(s.vehicle_id);
+    try {
+      await apiService.cancelKioskVisit(s.vehicle_id);
+      fetchData(true);
+    } catch (err) {
+      setDispatchError(err.message || "Failed to cancel roam visit.");
+    } finally {
+      setPayingVehicleId(null);
+    }
+  };
 
   // Shared by Dispatch and Roam: both pay the terminal fee with the picked series
   // and take the vehicle off the board.
@@ -430,6 +480,14 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
           <span className="dispatch-modal-field-error dispatch-settings-error">{dispatchError}</span>
         )}
 
+        <RoamPaymentStrip
+          sessions={roamSessions}
+          busyId={payingVehicleId}
+          onMark={(s) => setPaid(sessionTarget(s), true)}
+          onUndo={(s) => setPaid(sessionTarget(s), false)}
+          onCancel={handleCancelRoam}
+        />
+
         <div className="dispatch-chips">
           <div className="dispatch-chips-list">
             {!loading && queue.length > 0 && (
@@ -598,6 +656,12 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
                           </svg>
                           {dispatchingVehicleId === head.id ? "Dispatching…" : "Dispatch"}
                         </button>
+                        <MarkPaidButton
+                          session={queueSessionByVehicleId.get(head.id)}
+                          busy={payingVehicleId === head.id}
+                          onMark={() => setPaid(vehicleTarget(head), true)}
+                          onUndo={() => setPaid(vehicleTarget(head), false)}
+                        />
                         <button type="button" className="dispatch-btn dispatch-btn--swap" onClick={() => openSwapModal(head)}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                             <path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3" />
@@ -649,6 +713,13 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
                             <span className="dispatch-order-index">#{pos + 1}</span>
                             <span className="dispatch-plate dispatch-plate--sm">{vehicle.plate_number}</span>
                             <span className="dispatch-upnext-actions">
+                              <MarkPaidButton
+                                small
+                                session={queueSessionByVehicleId.get(vehicle.id)}
+                                busy={payingVehicleId === vehicle.id}
+                                onMark={() => setPaid(vehicleTarget(vehicle), true)}
+                                onUndo={() => setPaid(vehicleTarget(vehicle), false)}
+                              />
                               <button
                                 type="button"
                                 className="dispatch-btn dispatch-btn--roam dispatch-btn--sm"

@@ -369,14 +369,6 @@
   color: var(--text-label);
 }
 
-/* Hidden canvas for QR frame decoding on the /scan tab */
-.queue-scanner-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
 
 .queue-select {
   width: 100%;
@@ -1198,82 +1190,68 @@
   letter-spacing: 0.03em;
   color: inherit;
 }
-/* ── Queue / Roaming mode panels ── */
-.queue-modes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
+/* ── Queue / Roaming mode card ── */
 .queue-mode {
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--navy);
+  box-shadow: 0 0 0 3px rgba(26, 39, 68, 0.08);
   border-radius: 12px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.queue-mode--active {
-  border: 1.5px solid var(--navy);
-  box-shadow: 0 0 0 3px rgba(26, 39, 68, 0.08);
-}
-
-.dark .queue-mode--active {
+.dark .queue-mode {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.12);
 }
 
-.queue-mode-title {
-  margin: 0;
-  font-size: 17px;
+.queue-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-page);
+  border: 1px solid var(--border-soft);
+}
+
+.queue-mode-tab {
+  padding: 9px 12px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
   font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.queue-mode-tab em {
+  font-weight: 500;
+}
+
+.queue-mode-tab:hover:not(.is-active) {
   color: var(--text-primary);
 }
 
-.queue-mode-title em {
-  font-weight: 600;
+.queue-mode-tab.is-active {
+  background: var(--navy);
+  color: #fff;
+}
+
+.dark .queue-mode-tab.is-active {
+  background: var(--gold);
+  color: var(--navy);
 }
 
 .queue-mode-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.queue-mode-off {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
-}
-
-.queue-mode-off-note {
-  padding: 11px 14px;
-  border-radius: 8px;
-  background: var(--bg-page);
-  border: 1px solid var(--border-soft);
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.queue-mode-off::after {
-  content: "";
-  height: 44px;
-  border-radius: 8px;
-  background: var(--border-soft);
-}
-
-.queue-mode-off:hover .queue-mode-off-note {
-  border-color: rgba(201, 168, 76, 0.5);
 }
 
 .queue-roam-series {
@@ -1339,8 +1317,3 @@
   cursor: pointer;
 }
 
-@media (max-width: 900px) {
-  .queue-modes {
-    grid-template-columns: 1fr;
-  }
-}

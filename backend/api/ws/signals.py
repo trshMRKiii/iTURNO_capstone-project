@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from api.models import Ticket, Vehicle
+from api.models import KioskSession, Ticket, Vehicle
 from api.sync.signals import is_bulk_loading
 
 from .broadcast import broadcast_queue_updated
@@ -12,6 +12,7 @@ from .broadcast import broadcast_queue_updated
 @receiver(post_delete, sender=Vehicle)
 @receiver(post_save, sender=Ticket)
 @receiver(post_delete, sender=Ticket)
+@receiver(post_save, sender=KioskSession)  # "Mark paid" / a roam check-in changes the Dispatch board
 def notify_queue_changed(sender, **kwargs):
     # The sync engine re-saves these same models into 'supabase' (see
     # api/sync/push.py) — ignore that echo so a background sync cycle

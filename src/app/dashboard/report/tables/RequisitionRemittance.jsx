@@ -10,7 +10,7 @@ import { useFeedback } from "../../../../components/ui/kit";
 import { matchesRequisitionRow, matchesRemittanceRow, useDebouncedSearchAll } from "../reportHook";
 
 const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Issued By", "Ticket Series", "Total Value"];
-const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Issued By", "Total Amount", "Actions"];
+const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Prepared By", "Issued By", "Total Amount", "Actions"];
 // Main card shows a short preview like the other report cards (FleetRecords) —
 // "View All" opens the modal for the full paginated list.
 const PREVIEW_SIZE = 5;
@@ -184,7 +184,8 @@ export default function RequisitionRemittance({
     <tr key={b.id} className={rowClass}>
       <td className={cellClass}>{b.batch_code || b.id}</td>
       <td className={cellClass}>{b.issued_at ? new Date(b.issued_at).toLocaleString() : "—"}</td>
-      <td className={`${cellClass} rpt-bold`}>{b.issued_by_name || "—"}</td>
+      <td className={`${cellClass} rpt-bold`}>{b.prepared_by_name || <span className="rpt-na">—</span>}</td>
+      <td className={cellClass}>{b.issued_by_name || "—"}</td>
       <td className={cellClass}>{peso(b.total_amount)}</td>
       <td className={cellClass}>
         <div className="rpt-row-actions rpt-row-actions--center">

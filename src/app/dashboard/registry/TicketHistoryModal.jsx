@@ -26,6 +26,23 @@ const VIEWS = [
   { key: "CANCELLED", label: "Cancelled", match: (t) => t.status === "CANCELLED" },
 ];
 
+// Check-in / check-out stamps and the stay between them. Dispatch creates a fresh
+// ticket, so checked_in_at carries the real arrival; older rows fall back to issued_at.
+// A cancelled visit has no check-out, so its stay runs until it was cancelled.
+const visitOf = (t) => {
+  const cancelled = t.status === "CANCELLED";
+  const inAt = t.checked_in_at || t.issued_at;
+  const open = t.status === "QUEUED" && !t.dispatched_at; // still waiting in line
+  const end = cancelled ? t.updated_at : t.dispatched_at || (open ? new Date() : null);
+  const mins = inAt && end ? Math.max(0, Math.round((new Date(end) - new Date(inAt)) / 60000)) : null;
+  let stay = "—";
+  if (mins !== null) {
+    const h = Math.floor(mins / 60);
+    stay = mins < 1 ? "< 1 min" : h ? `${h}h ${mins % 60}m` : `${mins} min`;
+  }
+  return { inAt, outAt: cancelled ? null : t.dispatched_at, stay: open ? `${stay} so far` : stay, open };
+};
+
 // Ticket history for one vehicle or one driver; the other party gets a column.
 function TicketHistoryModal({ vehicle, driver, onClose }) {
   const isDriver = !!driver;
@@ -95,13 +112,18 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
     const range = fromDate ? ` · ${fromDate === toDate ? fromDate : `${fromDate} to ${toDate}`}` : "";
     const name = isDriver ? getDriverDisplayName(driver) : vehicle.plate_number;
     exportTablePDF(
-      matches.map((t) => ({
-        "Ticket ID": t.id,
-        Date: formatDate(t.issued_at),
-        [isDriver ? "Vehicle" : "Driver"]: (isDriver ? t.vehicle?.plate_number : t.driver?.name) || "—",
-        Type: badgeOf(t).label,
-        Amount: peso(t.collection_amount),
-      })),
+      matches.map((t) => {
+        const { inAt, outAt, stay, open } = visitOf(t);
+        return {
+          "Ticket ID": t.id,
+          "Check-in": formatDate(inAt),
+          "Check-out": open ? "In queue" : formatDate(outAt),
+          Stayed: stay,
+          [isDriver ? "Vehicle" : "Driver"]: (isDriver ? t.vehicle?.plate_number : t.driver?.name) || "—",
+          Type: badgeOf(t).label,
+          Amount: peso(t.collection_amount),
+        };
+      }),
       `Ticket History — ${name} (${viewLabel}${range})`
     );
   };
@@ -185,18 +207,22 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
                 <table className="veh-table">
                   <thead>
                     <tr>
-                      {["Ticket ID", "Date", isDriver ? "Vehicle" : "Driver", ...(view === "ALL" ? ["Status"] : []), "Amount"].map((h) => (
+                      {["Ticket ID", "Check-in", "Check-out", "Stayed", isDriver ? "Vehicle" : "Driver", ...(view === "ALL" ? ["Status"] : []), "Amount"].map((h) => (
                         <th key={h}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((t, i) => (
+                    {filtered.map((t, i) => {
+                      const { inAt, outAt, stay, open } = visitOf(t);
+                      return (
                       <tr key={t.id || i} className="veh-row">
                         <td>
                           <span className="veh-code">{t.id}</span>
                         </td>
-                        <td className="veh-td-route">{formatDate(t.issued_at)}</td>
+                        <td className="veh-td-route">{formatDate(inAt)}</td>
+                        <td className="veh-td-route">{open ? "In queue" : formatDate(outAt)}</td>
+                        <td style={{ fontWeight: 600 }}>{stay}</td>
                         <td>
                           {(isDriver ? t.vehicle?.plate_number : t.driver?.name) || <span className="veh-na">—</span>}
                         </td>
@@ -212,7 +238,8 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
                         )}
                         <td style={{ fontWeight: 600 }}>{peso(t.collection_amount)}</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

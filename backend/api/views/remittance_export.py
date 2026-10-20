@@ -55,7 +55,7 @@ def render_remittance_xlsx(batch, serialized):
     sheet1 = wb[SHEET1]
     sheet2 = wb[SHEET2]
 
-    officer_name = serialized.get("issued_by_name") or ""
+    officer_name = serialized.get("prepared_by_name") or serialized.get("issued_by_name") or ""
     report_no = serialized.get("batch_code") or str(serialized.get("id") or "")
     date_str = (
         (batch.issued_at + timedelta(hours=8)).strftime("%B %d, %Y")

@@ -456,6 +456,25 @@
 .dispatch-btn--swap { padding: 0 16px; }
 .dispatch-btn--sm { padding: 5px 10px; font-size: 11px; }
 
+/* Kiosk payment: cashier confirms the driver paid, so their QR scan can check them out */
+.dispatch-btn--paid { padding: 0 14px; border-color: #15803d; color: #15803d; }
+.dispatch-btn--sm.dispatch-btn--paid { padding: 5px 10px; }
+.dispatch-btn--paid:hover:not(:disabled) { background: rgba(21, 128, 61, 0.08); }
+.dispatch-btn--paid-on { background: #15803d; color: #fff; }
+.dispatch-btn--paid-on:hover:not(:disabled) { background: #166534; }
+.dispatch-roam-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 24px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+.dispatch-roam-row { display: flex; align-items: center; gap: 10px; }
+.dispatch-roam-info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-secondary); }
+
 /* ── Loading dots ── */
 .dispatch-loading-dots {
   display: flex;

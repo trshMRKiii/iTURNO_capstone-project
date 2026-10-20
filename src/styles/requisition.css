@@ -313,45 +313,26 @@
   box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.15);
 }
 
-.req-combo {
-  position: relative;
+.req-requester {
   margin-bottom: 16px;
 }
-.req-combo-list {
-  position: absolute;
-  z-index: 20;
-  left: 0;
-  right: 0;
-  margin: 4px 0 0;
-  padding: 4px;
-  list-style: none;
-  max-height: 200px;
-  overflow-y: auto;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+.req-requester .req-section-title {
+  margin-bottom: 8px;
 }
-.req-combo-option {
-  display: block;
-  width: 100%;
-  padding: 7px 10px;
-  text-align: left;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+
+/* Required marker, and the red state a field takes after a failed save. */
+.req-required {
+  color: #dc2626;
 }
-.req-combo-option:hover {
-  background: var(--bg-hover);
+.req-error {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #dc2626;
 }
-.req-combo-empty {
-  padding: 7px 10px;
-  font-size: 13px;
-  color: var(--text-secondary);
+.req-field--invalid .req-input {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
 }
 
 .req-add-btn {
@@ -449,7 +430,9 @@
 .req-save-btn:hover {
   background: #2d3e5f;
 }
-.req-save-btn:disabled {
+/* aria-disabled = incomplete form: looks locked but stays clickable to reveal what's missing. */
+.req-save-btn:disabled,
+.req-save-btn[aria-disabled="true"] {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -835,6 +818,25 @@
 .dark .rq-chevron--open { background: var(--gold); color: var(--navy); }
 
 .rq-series { padding: 4px 16px 14px 52px; background: var(--bg-page); }
+.rq-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+  justify-self: start;
+}
+.rq-sort.rq-num { justify-self: end; }
+.rq-sort:hover, .rq-sort--active { color: var(--text-primary, inherit); }
+.rq-sort-arrow { font-size: 9px; opacity: 0.5; }
+.rq-sort--active .rq-sort-arrow { opacity: 1; }
+
 .rq-series-head {
   padding-top: 8px;
   padding-bottom: 6px;

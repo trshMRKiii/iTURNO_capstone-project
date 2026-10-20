@@ -1,6 +1,5 @@
-import React from "react";
-import { ButtonLabel } from "../../../components/ui/kit";
-import SupervisorPicker from "./SupervisorPicker";
+import React, { useRef, useState } from "react";
+import { ButtonLabel, SupervisorPicker } from "../../../components/ui/kit";
 
 function numberToWords(num) {
   if (num === 0) return "Zero";
@@ -30,8 +29,27 @@ function numberToWords(num) {
   return words;
 }
 
-const RequisitionFormModal = ({
-  showForm,
+const ITEM_FIELDS = [
+  ["ticket_form", "Select a ticket form."],
+  ["start_no", "Enter a start number."],
+  ["end_no", "Enter an end number."],
+];
+
+// A labelled required field; `error` (shown only after a save attempt) turns it red.
+function Field({ id, label, error, children }) {
+  return (
+    <div className={`req-field${error ? " req-field--invalid" : ""}`} data-field={id}>
+      <label className="req-label">{label} <span className="req-required" aria-hidden="true">*</span></label>
+      {children}
+      {error && <span className="req-error">{error}</span>}
+    </div>
+  );
+}
+
+const RequisitionFormModal = (props) => (props.showForm ? <RequisitionForm {...props} /> : null);
+
+// Mounted only while open, so a cancelled attempt never leaves red fields behind.
+function RequisitionForm({
   setShowForm,
   seriesItems,
   supervisors,
@@ -44,11 +62,32 @@ const RequisitionFormModal = ({
   computeTotal,
   handleSave,
   saving,
-}) => {
-  if (!showForm) return null;
+}) {
+  const [attempted, setAttempted] = useState(false);
+  const bodyRef = useRef(null);
 
   // Locked while saving so nobody can double-submit or close mid-request.
   const close = () => { if (!saving) setShowForm(false); };
+
+  // Blank rows are ignored on save, but at least one row must be complete (the first, if all are blank).
+  const isFilled = (it) => it.ticket_form || it.start_no || it.end_no;
+  const anyFilled = seriesItems.some(isFilled);
+  const problems = [];
+  if (!requestedBy) problems.push(["requester", "Choose the supervisor who requested this."]);
+  seriesItems.forEach((it, i) => {
+    if (!isFilled(it) && (anyFilled || i > 0)) return;
+    ITEM_FIELDS.forEach(([field, message]) => { if (!it[field]) problems.push([`${i}-${field}`, message]); });
+  });
+  const errors = attempted ? Object.fromEntries(problems) : {};
+
+  // Nothing saves while the form is incomplete; clicking shows what's missing and scrolls to the first gap.
+  const submit = () => {
+    if (problems.length === 0) return handleSave();
+    setAttempted(true);
+    const target = bodyRef.current?.querySelector(`[data-field="${problems[0][0]}"]`);
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    target?.querySelector("input, select")?.focus({ preventScroll: true });
+  };
 
   return (
     <div className="req-overlay" onClick={close}>
@@ -76,9 +115,12 @@ const RequisitionFormModal = ({
         </div>
 
         {/* Body */}
-        <div className="req-modal-body">
-          <h3 className="req-section-title">Requested By</h3>
-          <SupervisorPicker supervisors={supervisors} value={requestedBy} onChange={setRequestedBy} disabled={saving} />
+        <div className="req-modal-body" ref={bodyRef}>
+          <div className={`req-requester${errors.requester ? " req-field--invalid" : ""}`} data-field="requester">
+            <h3 className="req-section-title">Requested By <span className="req-required" aria-hidden="true">*</span></h3>
+            <SupervisorPicker className="req-input" supervisors={supervisors} value={requestedBy} onChange={setRequestedBy} disabled={saving} />
+            {errors.requester && <span className="req-error">{errors.requester}</span>}
+          </div>
 
           <h3 className="req-section-title">Ticket Series Items</h3>
 
@@ -97,11 +139,9 @@ const RequisitionFormModal = ({
                 )}
               </div>
 
-              <div className="req-field">
-                <label className="req-label">Ticket Form</label>
+              <Field id={`${i}-ticket_form`} label="Ticket Form" error={errors[`${i}-ticket_form`]}>
                 <select
                   className="req-input"
-                  required
                   value={item.ticket_form}
                   onChange={(e) =>
                     updateSeriesItem(i, "ticket_form", e.target.value)
@@ -114,11 +154,10 @@ const RequisitionFormModal = ({
                     </option>
                   ))}
                 </select>
-              </div>
+              </Field>
 
               <div className="req-grid-2">
-                <div className="req-field">
-                  <label className="req-label">Start No.</label>
+                <Field id={`${i}-start_no`} label="Start No." error={errors[`${i}-start_no`]}>
                   <input
                     className="req-input"
                     inputMode="numeric"
@@ -128,9 +167,8 @@ const RequisitionFormModal = ({
                     }
                     placeholder="e.g. 18981001"
                   />
-                </div>
-                <div className="req-field">
-                  <label className="req-label">End No.</label>
+                </Field>
+                <Field id={`${i}-end_no`} label="End No." error={errors[`${i}-end_no`]}>
                   <input
                     className="req-input"
                     inputMode="numeric"
@@ -140,7 +178,7 @@ const RequisitionFormModal = ({
                     }
                     placeholder="e.g. 18981999"
                   />
-                </div>
+                </Field>
               </div>
 
               <div className="req-grid-2">
@@ -196,8 +234,9 @@ const RequisitionFormModal = ({
           <button
             type="button"
             className="req-save-btn"
-            onClick={handleSave}
+            onClick={submit}
             disabled={saving}
+            aria-disabled={problems.length > 0 || undefined}
             aria-busy={saving || undefined}
           >
             <ButtonLabel busy={saving} busyLabel="Saving...">Save Requisition</ButtonLabel>
@@ -206,6 +245,6 @@ const RequisitionFormModal = ({
       </div>
     </div>
   );
-};
+}
 
 export default RequisitionFormModal;

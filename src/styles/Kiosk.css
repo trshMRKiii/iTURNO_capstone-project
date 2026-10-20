@@ -1,0 +1,90 @@
+/* Self-service kiosk — full-window, touch-sized targets. */
+.kiosk { position: fixed; inset: 0; padding: 0 0.75in 0.75in; box-sizing: border-box; background: #0b1b34;
+  display: flex; flex-direction: column; gap: 16px; color: #fff; user-select: none; }
+
+.kiosk-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; }
+.kiosk-brand { display: flex; align-items: center; gap: 14px; }
+.kiosk-brand img { height: 48px; width: 48px; border-radius: 50%; }
+.kiosk-brand span { font-size: 24px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.kiosk-clock { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.kiosk-stage { position: relative; flex: 1; min-height: 0; border-radius: 12px; overflow: hidden; background: #060f20; }
+
+/* One camera element for the whole session: full-bleed when idle, corner preview otherwise. */
+.kiosk-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: all 0.25s ease; }
+.kiosk--active .kiosk-video {
+  inset: auto 16px 16px auto; width: 220px; height: 165px; border-radius: 12px; z-index: 2;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+.kiosk-canvas { display: none; }
+.kiosk-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px;
+  font-size: 22px; font-weight: 600; text-align: center; pointer-events: none; z-index: 3; }
+
+.kiosk-frame { position: absolute; inset: 20% 30%; border: 3px solid rgba(255, 255, 255, 0.7); border-radius: 20px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.25); pointer-events: none; animation: kiosk-pulse 2.4s ease-in-out infinite; }
+.kiosk-prompt { position: absolute; inset: auto 0 0 0; padding: 3vh 24px; text-align: center;
+  background: linear-gradient(transparent, rgba(6, 15, 32, 0.92) 55%); }
+.kiosk-prompt-title { font-size: clamp(28px, 6vh, 56px); font-weight: 800; }
+.kiosk-steps { list-style: none; counter-reset: step; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px;
+  margin: 1.5vh 0 0; padding: 0; font-size: clamp(14px, 2.4vh, 22px); opacity: 0.9; }
+.kiosk-steps li { counter-increment: step; }
+.kiosk-steps li::before { content: counter(step); display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6em; height: 1.6em; margin-right: 0.5em; border-radius: 50%; background: #2563eb; font-weight: 800; }
+
+/* Step panels sit over a dimmed stage; the corner preview stays visible beside them. */
+.kiosk-panel { position: absolute; inset: 0 0 0 0; margin: auto; width: min(760px, calc(100% - 48px)); height: fit-content; max-height: calc(100% - 48px);
+  display: flex; flex-direction: column; align-items: center; gap: 2vh; padding: 3vh 32px; border-radius: 20px; text-align: center;
+  background: rgba(15, 33, 66, 0.97); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); z-index: 1; animation: kiosk-in 0.18s ease-out; }
+.kiosk-panel--wide { width: min(900px, calc(100% - 48px)); height: calc(100% - 48px); }
+.kiosk-busy { font-size: 32px; font-weight: 700; animation: kiosk-in 0.18s ease-out, kiosk-pulse 1.4s ease-in-out infinite; }
+
+.kiosk-vehicle { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.kiosk-plate { font-size: clamp(30px, 6vh, 56px); font-weight: 800; letter-spacing: 0.08em; }
+.kiosk-route { font-size: clamp(14px, 2.4vh, 22px); opacity: 0.8; }
+.kiosk-title { margin: 0; font-size: clamp(22px, 4vh, 38px); font-weight: 700; display: flex; align-items: center; gap: 12px; }
+.kiosk-tag { font-size: 0.45em; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px;
+  background: rgba(37, 99, 235, 0.35); border: 1px solid rgba(147, 197, 253, 0.6); }
+
+.kiosk-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+.kiosk-mode { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4vh 16px; border: 0; border-radius: 18px;
+  color: #fff; cursor: pointer; background: #1d4ed8; }
+.kiosk-mode--roam { background: #0f766e; }
+.kiosk-mode:active { transform: scale(0.98); }
+.kiosk-mode-title { font-size: clamp(26px, 5vh, 46px); font-weight: 800; }
+.kiosk-mode em { font-size: clamp(16px, 2.6vh, 24px); opacity: 0.9; }
+.kiosk-mode-note { font-size: clamp(13px, 2.2vh, 20px); opacity: 0.8; }
+
+.kiosk-search { width: 100%; box-sizing: border-box; padding: 14px 18px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 24px; user-select: text; }
+.kiosk-search::placeholder { color: rgba(255, 255, 255, 0.5); }
+.kiosk-letters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.kiosk-letter { min-width: 46px; padding: 10px 12px; border-radius: 10px; border: 0; background: rgba(255, 255, 255, 0.12); color: #fff;
+  font-size: 18px; font-weight: 700; cursor: pointer; }
+.kiosk-letter--on { background: #2563eb; }
+.kiosk-names { flex: 1; min-height: 0; width: 100%; overflow-y: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; }
+.kiosk-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 18px; border-radius: 12px; border: 0;
+  background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 22px; font-weight: 600; text-align: left; cursor: pointer; }
+.kiosk-name:active { background: #2563eb; }
+.kiosk-empty { grid-column: 1 / -1; padding: 24px; font-size: 20px; opacity: 0.8; }
+.kiosk-confirm-name { font-size: clamp(30px, 6vh, 56px); font-weight: 800; }
+
+.kiosk-actions { display: flex; gap: 16px; }
+.kiosk-btn { padding: 18px 32px; border-radius: 14px; border: 0; background: #16a34a; color: #fff; font-size: 24px; font-weight: 800; cursor: pointer; }
+.kiosk-btn--ghost { background: rgba(255, 255, 255, 0.14); }
+.kiosk-link { margin-top: auto; padding: 10px 24px; border: 0; background: none; color: rgba(255, 255, 255, 0.75); font-size: 20px; cursor: pointer; }
+
+.kiosk-result--ok { background: rgba(22, 101, 52, 0.97); }
+.kiosk-result--info { background: rgba(30, 58, 138, 0.97); }
+.kiosk-result--warn { background: rgba(146, 64, 14, 0.97); }
+.kiosk-result--error { background: rgba(153, 27, 27, 0.97); }
+.kiosk-big { font-size: min(18vh, 14vw); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.kiosk-line { margin: 0; font-size: clamp(18px, 3.2vh, 30px); opacity: 0.95; }
+
+@media (max-width: 700px) {
+  .kiosk { padding: 0 12px 12px; }
+  .kiosk-modes, .kiosk-names { grid-template-columns: 1fr; }
+  .kiosk--active .kiosk-video { width: 110px; height: 82px; }
+}
+
+@keyframes kiosk-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes kiosk-pulse { 50% { opacity: 0.6; } }

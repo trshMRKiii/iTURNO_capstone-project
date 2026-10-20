@@ -257,7 +257,7 @@ class TicketSerializer(serializers.ModelSerializer):
                 # collected with no queue/dispatch step.
                 validated_data['status'] = 'COLLECTED'
                 validated_data['is_verified'] = True
-                validated_data['dispatched_at'] = timezone.now()
+                validated_data['dispatched_at'] = validated_data['checked_in_at'] = timezone.now()
             elif not is_continuation:
                 # Queue check-ins get a route-acronym + daily bay number
                 # (e.g. "SJ-1"), counted per route and reset every midnight.

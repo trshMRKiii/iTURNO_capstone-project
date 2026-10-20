@@ -7,6 +7,9 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 // the top-left of the page; each table is described by its first row's top
 // edge and row pitch, taken from the template's ruling lines.
 
+// The accountable officer on the form is the supervisor who prepared the batch (older batches predate that, so fall back to who keyed them in).
+export const officerName = (batch) => batch.prepared_by_name || batch.issued_by_name || "";
+
 const PAGE_H = 792;
 const SIZE = 8;
 const PAD = 2.5;
@@ -83,7 +86,7 @@ function rowSpan(table, i) {
 
 function drawPage1(page, fonts, batch, collections, deposits) {
   const write = makeWriter(page, fonts);
-  const officer = batch.issued_by_name || "";
+  const officer = officerName(batch);
 
   write(formatDate(batch.issued_at), { x0: P1.date.x, x1: 567.6, ...P1.date, align: "left" });
   write(officer, { x0: P1.officer.x, x1: 428, ...P1.officer, align: "left" });
@@ -130,7 +133,7 @@ function drawPage1(page, fonts, batch, collections, deposits) {
 
 function drawPage2(page, fonts, batch, collections, cashierName) {
   const write = makeWriter(page, fonts);
-  const officer = batch.issued_by_name || "";
+  const officer = officerName(batch);
   const totalFrom = sum(collections, "from");
 
   let nextExtra = FIXED_TICKET_ROWS.length;
