@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQrScanner, SCANNER_STATUS_LABEL } from "../useQrScanner";
-import { useKiosk } from "./useKiosk";
-import { ModePanel, DriverPanel, ResultPanel } from "./KioskPanels";
+import { useKiosk, operatorsOf } from "./useKiosk";
+import { ModePanel, WhoPanel, SwapPanel, DriverPanel, ResultPanel } from "./KioskPanels";
 import sfcLogo from "../../../../pictures/sfc-nobg-logo.png";
 import "../../../../styles/Kiosk.css";
 
-const STEPS = ["Scan your QR", "Queue or Roaming", "Pick your name", "Pay at the cashier", "Scan again to leave"];
+const STEPS = ["Scan your QR", "Queue or Roaming", "Pick your name", "Pay the personnel", "Scan again to leave"];
 
 // Self-service terminal for the driver-facing screen. The camera runs the whole time
 // (a different QR always restarts the flow); idle shows it full screen, every other
@@ -59,13 +59,15 @@ function KioskScreen() {
         {screen.type === "mode" && (
           <ModePanel vehicle={screen.vehicle} onPick={kiosk.chooseMode} onCancel={kiosk.reset} />
         )}
+        {screen.type === "who" && <WhoPanel vehicle={screen.vehicle} onPick={kiosk.chooseWho} onBack={kiosk.backToMode} />}
+        {screen.type === "swap" && <SwapPanel vehicle={screen.vehicle} onBack={kiosk.backToWho} />}
         {screen.type === "driver" && (
           <DriverPanel
             vehicle={screen.vehicle}
             mode={screen.mode}
-            drivers={screen.drivers}
+            drivers={operatorsOf(screen.drivers)}
             onPick={kiosk.checkIn}
-            onBack={kiosk.backToMode}
+            onBack={kiosk.backToWho}
             onActivity={kiosk.touch}
           />
         )}

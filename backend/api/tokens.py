@@ -36,23 +36,3 @@ def verify_password_reset_token(token, user):
         raise jwt.InvalidTokenError('Token already used')
     return payload
 
-
-def sign_email_verification_token(user):
-    """Mirrors signEmailVerificationToken in api/_lib/auth.js. No extra
-    binding needed to self-invalidate (unlike the reset token above) —
-    verify_email/verifyEmail both reject outright once email_verified is
-    already True, before the token is even checked."""
-    return jwt.encode(
-        {
-            'sub': str(user.pk), 'type': 'email-verification',
-            'exp': datetime.now(timezone.utc) + timedelta(days=30),
-        },
-        _secret(), algorithm=ALGORITHM,
-    )
-
-
-def verify_email_verification_token(token, user):
-    payload = jwt.decode(token, _secret(), algorithms=[ALGORITHM])
-    if payload.get('type') != 'email-verification' or payload.get('sub') != str(user.pk):
-        raise jwt.InvalidTokenError('Token does not match user')
-    return payload

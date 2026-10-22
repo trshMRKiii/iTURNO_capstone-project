@@ -16,14 +16,13 @@ from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_MET
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import LOCAL_ADMIN_PK_BASE, KioskSession, PendingAccountEmail, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, WipMode
+from ..models import LOCAL_ADMIN_PK_BASE, DeskDuty, KioskSession, PendingAccountEmail, PendingFleetAccess, User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, RemittanceBatch, TicketForm, Requisition, TicketSeries, PaperIssuance, WipMode
 from ..serializers import UserSerializer, SelfProfileSerializer, DriverSerializer, VehicleSerializer, RouteSerializer, TicketSerializer, TicketPriceSerializer, PUVTypeSerializer, RemittanceBatchSerializer, TicketFormSerializer, RequisitionSerializer, TicketSeriesSerializer, PaperIssuanceSerializer
 from ..sync.account_emails import flush_account_emails, queue_account_email
 from ..sync.fleet_access import flush_fleet_access
 from ..sync.settings_outbox import flush_settings, next_offline_pk, park, park_delete
 from ..sms import send_sms_async, queue_next_message
-from ..tokens import sign_email_verification_token
-from .helpers import record_audit_log, expire_stale_queue_tickets, expire_stale_unverified_accounts, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
+from .helpers import record_audit_log, expire_stale_queue_tickets, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
 from .remittance_export import remittance_xlsx_response
 
 
@@ -73,6 +72,11 @@ class AuditLogMixin:
 
 # Supervisor and Manager are the same position under two titles.
 LEAD_ROLES = ('SUPERVISOR', 'MANAGER')
+
+# Columns the staff import reads, and the most accounts one request may create (each one
+# sends an email, so this also bounds a single flush).
+IMPORT_FIELDS = ('username', 'first_name', 'middle_name', 'last_name', 'role')
+IMPORT_MAX_ROWS = 500
 
 
 def is_fleet_tick(request, view):
@@ -156,7 +160,7 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         # The fleet tick (see _set_fleet_access) and registering an account (see
         # UserSerializer.create) are the writes that work offline.
         if (request.method not in SAFE_METHODS and not is_fleet_tick(request, self)
-                and getattr(self, 'action', None) != 'create' and not can_write_remote()):
+                and getattr(self, 'action', None) not in ('create', 'import_users') and not can_write_remote()):
             raise ServiceUnavailable('Staff accounts can only be changed while online. Reconnect to the internet and try again.')
 
     def get_queryset(self):
@@ -167,10 +171,6 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
     def _staff_queryset(self):
         if not can_write_remote():
             return User.objects.using('default').all()
-        # Lazy cleanup, same convention as expire_stale_queue_tickets — the
-        # first Staff Registry fetch after an invite's 30-day window closes
-        # self-heals it, no scheduler needed.
-        expire_stale_unverified_accounts()
         # Accounts created offline sit parked locally until a sync cycle uploads them, and
         # this list reads Supabase — push them now so they don't vanish from it on reconnect.
         flush_settings()
@@ -179,7 +179,7 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         # target Supabase directly rather than the local pulled cache — User is
         # Supabase-authoritative (see api/sync/registry.py), so a user created
         # here has to actually land there or the next pull cycle deletes the
-        # LAN-only row before anyone can click its verification link. Fetching
+        # LAN-only row before the temp-password email goes out. Fetching
         # via .using('supabase') also means perform_update/perform_destroy's
         # plain instance.save()/.delete() (AuditLogMixin) route to 'supabase'
         # automatically — Django's router falls back to the instance's own
@@ -198,14 +198,67 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
             if not other_admins.exists():
                 raise ValidationError('This is the last active Admin. Promote or create another Admin first.')
 
-    def perform_create(self, serializer):
+    def _register(self, serializer, changes=None):
         # The temp password only exists in the login email, so it is always parked first
-        # and flushed: sent at once when online, kept (surviving restarts) until then.
-        instance = super().perform_create(serializer)
+        # (callers flush): sent at once when online, kept (surviving restarts) until then.
+        instance = serializer.save()
+        self._audit('CREATE', instance, self._safe_changes() if changes is None else changes)
         queue_account_email(instance, instance.raw_password)
+        return instance
+
+    def perform_create(self, serializer):
+        instance = self._register(serializer)
         flush_account_emails()
         instance.email_queued = PendingAccountEmail.objects.filter(user_id=instance.pk).exists()
         return instance
+
+    @action(detail=False, methods=['post'], url_path='import')
+    def import_users(self, request):
+        """Bulk-register staff from parsed CSV rows. `commit` false only validates, so the
+        client can show a preview; true creates every valid row (re-validated here) and
+        skips the rest. Admin accounts are never bulk-created."""
+        rows = request.data.get('rows')
+        if not isinstance(rows, list) or not rows:
+            raise ValidationError('No rows to import.')
+        if len(rows) > IMPORT_MAX_ROWS:
+            raise ValidationError(f'Import at most {IMPORT_MAX_ROWS} accounts at a time.')
+
+        existing = {name.lower() for name in self._staff_queryset().values_list('username', flat=True)}
+        seen = set()
+        results = []
+        for line, raw in enumerate(rows, start=1):
+            raw = raw if isinstance(raw, dict) else {}
+            row = {k: str(raw.get(k) or '').strip() for k in IMPORT_FIELDS}
+            row['role'] = row['role'].upper() or 'PERSONNEL'
+            serializer = UserSerializer(data=row)
+            email = row['username'].lower()
+            if not (row['first_name'] and row['last_name']):
+                reason = 'First and last name are required.'
+            elif row['role'] in ('SUPERADMIN', 'ADMIN'):
+                reason = 'Admin accounts must be added one at a time.'
+            elif not serializer.is_valid():
+                reason = ' '.join(str(e) for errs in serializer.errors.values() for e in errs)
+            elif email in existing:
+                reason = 'A user with that email already exists.'
+            elif email in seen:
+                reason = 'Email appears more than once in this file.'
+            else:
+                reason = None
+                seen.add(email)
+            results.append({'line': line, 'outcome': 'error' if reason else 'ok', 'reason': reason, 'serializer': serializer, **row})
+
+        created = []
+        if request.data.get('commit'):
+            created = [
+                self._register(r['serializer'], {**{k: r[k] for k in IMPORT_FIELDS}, 'imported': True}).pk
+                for r in results if r['outcome'] == 'ok'
+            ]
+            flush_account_emails()
+        return Response({
+            'created': len(created),
+            'emails_queued': PendingAccountEmail.objects.filter(user_id__in=created).count(),
+            'rows': [{k: v for k, v in r.items() if k != 'serializer'} for r in results],
+        })
 
     def _set_fleet_access(self, target, allowed):
         """Save locally now, park for Supabase; flush at once if online, else the sync cycle does."""
@@ -234,53 +287,15 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         # Accounts are never deleted (it would orphan their history) — deactivate instead.
         raise ValidationError('Staff accounts cannot be deleted. Deactivate the account instead.')
 
-    @action(detail=True, methods=['post'])
-    def resend_verification(self, request, pk=None):
-        user = self.get_object()
-        if user.email_verified:
-            return Response({'detail': 'This account is already verified.'}, status=400)
-        send_verification_email(user)
-        return Response({'detail': 'Verification email resent.'})
-
-
-def send_verification_email(user):
-    user_name = user.first_name or user.username
-    # Raw pk, not base64 — matches the uid format api/remote/auth/[action].js's
-    # verifyEmail expects, since this link always opens on Vercel (see
-    # settings.PUBLIC_APP_URL) and that's what verifies it.
-    uid = str(user.pk)
-    token = sign_email_verification_token(user)
-    verify_link = f"{settings.PUBLIC_APP_URL}/verify-email?uid={uid}&token={token}"
-    text_body = (
-        f"Hi {user_name},\n\n"
-        "An account was created for you on the North Central Terminal management system. "
-        "Verify your email to activate it:\n\n"
-        f"{verify_link}\n\n"
-        "This link is only good for this one account and expires if left unverified for 30 days."
-    )
-    html_body = render_to_string('emails/verify_account.html', {
-        'user_name': user_name,
-        'username': user.username,
-        'verify_link': verify_link,
-    })
-    email = EmailMultiAlternatives(
-        subject='Verify your North Central Terminal account',
-        body=text_body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[user.username],
-    )
-    email.attach_alternative(html_body, 'text/html')
-    email.send(fail_silently=False)
-
 
 def send_new_account_email(user, raw_password):
-    """Sent right after verify_email() confirms the address is real —
-    hands over the temp password so the account can actually sign in."""
+    """Hands over the temp password so a new account can sign in."""
     user_name = user.first_name or user.username
     login_link = settings.PUBLIC_APP_URL
     text_body = (
         f"Hi {user_name},\n\n"
-        "Your email has been verified. Use the temporary credentials below to sign in — "
+        "An account was created for you on the North Central Terminal management system. "
+        "Use the temporary credentials below to sign in — "
         "you'll be asked to choose your own password right after logging in.\n\n"
         f"Email: {user.username}\n"
         f"Temporary password: {raw_password}\n\n"
@@ -522,6 +537,14 @@ def _check_terminal_price(vehicle, price, quantity):
         })
 
 
+def _checkout_personnel():
+    """Name of the check-out Personnel on the Dispatch desk; no vehicle leaves without one."""
+    name = DeskDuty.get_solo().checkout_name
+    if not name:
+        raise ValidationError({"detail": "Pick the check-out personnel on the Dispatch board first."})
+    return name
+
+
 def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, series_id=None):
     """Shared core of dispatch_ticket and convert_to_roam: draws `quantity` physical
     ticket numbers FIFO, closes out the vehicle's open QUEUED placeholder, and
@@ -531,6 +554,7 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
 
     Returns the list of newly-created (already COLLECTED) Ticket rows.
     """
+    checked_out_by_name = _checkout_personnel()
     try:
         ticket_form = TicketForm.objects.get(id=ticket_form_id)
     except TicketForm.DoesNotExist:
@@ -554,6 +578,7 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
         route = placeholder.route
         loading_started_at = placeholder.loading_started_at
         checked_in_at = placeholder.issued_at
+        checked_in_by_name = placeholder.checked_in_by_name
         active_user = request.user if request.user.is_authenticated else None
 
         placeholder.delete()
@@ -574,6 +599,8 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
                 dispatched_at=dispatched_at,
                 loading_started_at=loading_started_at,
                 checked_in_at=checked_in_at,
+                checked_in_by_name=checked_in_by_name,
+                checked_out_by_name=checked_out_by_name,
                 issuance_group=issuance_group,
             )
             for series, ticket_id in units
@@ -614,6 +641,7 @@ def _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request, series_
     """Roam core: the toll is paid on the spot, so tickets are born COLLECTED. Draws
     numbers through the same FIFO allocator dispatch uses, so the two paths can't
     hand out the same number."""
+    checked_out_by_name = _checkout_personnel()
     _check_can_issue(vehicle, driver)
     price = ticket_form.price or 0
     _check_terminal_price(vehicle, price, quantity)
@@ -626,7 +654,9 @@ def _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request, series_
         visit = KioskSession.objects.filter(
             vehicle=vehicle, mode='ROAM', status__in=KioskSession.OPEN_STATUSES,
         ).first()
+        desk = DeskDuty.get_solo()
         checked_in_at = visit.created_at if visit else dispatched_at
+        checked_in_by_name = visit.checked_in_by_name if visit else desk.checkin_name
         issuance_group = uuid.uuid4().hex
         active_user = request.user if request.user.is_authenticated else None
 
@@ -644,6 +674,8 @@ def _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request, series_
                 collection_amount=price,
                 dispatched_at=dispatched_at,
                 checked_in_at=checked_in_at,
+                checked_in_by_name=checked_in_by_name,
+                checked_out_by_name=checked_out_by_name,
                 issuance_group=issuance_group,
             )
             for series, ticket_id in units

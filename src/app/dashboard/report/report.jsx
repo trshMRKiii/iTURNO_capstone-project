@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { DataTable } from "../../../components/ui/dataTable";
 import {
-  STATUS_COLORS,
   getToday,
   PERIODS,
   getPeriodRange,
@@ -13,7 +12,6 @@ import {
   matchesAuditRow,
   formatAuditItem,
   formatAuditAction,
-  formatAuditDetails,
 } from "./reportHook";
 import { exportTablePDF } from "./exportPDF";
 import { useFeedback } from "../../../components/ui/kit";
@@ -41,7 +39,8 @@ const mapTicketToLogRow = (t) => ({
   vehicle: t.vehicle?.plate_number || "",
   route: t.route_name || "",
   amount: t.collection_amount,
-  user: t.active_user_name || "System",
+  issued_by: t.checked_in_by_name || "—",
+  dispatched_by: t.checked_out_by_name || "—",
 });
 
 export default function Report() {
@@ -76,38 +75,38 @@ export default function Report() {
   // Raw page fetchers — return data instead of touching state, so the "View All"
   // modal in each table can browse further pages without disturbing the
   // top-30 preview shown on the main card.
-  const fetchQueueRaw = useCallback(async (page = 1) => {
+  const fetchQueueRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
     const qs = buildParams();
     const res = await authFetch(
-      `/tickets/?mode=QUEUE&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `/tickets/?mode=QUEUE&page=${page}&page_size=${size}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
       results: (data.results || []).map(mapTicketToLogRow),
       count: data.count || 0,
-      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / size), 1),
       page: data.page || page,
     };
   }, [buildParams]);
 
-  const fetchRoamingRaw = useCallback(async (page = 1) => {
+  const fetchRoamingRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
     const qs = buildParams();
     const res = await authFetch(
-      `/tickets/?mode=UNLOAD&page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `/tickets/?mode=UNLOAD&page=${page}&page_size=${size}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
       results: data.results || [],
       count: data.count || 0,
-      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / size), 1),
       page: data.page || page,
     };
   }, [buildParams]);
 
-  const fetchAuditRaw = useCallback(async (page = 1) => {
+  const fetchAuditRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
     const qs = buildParams();
     const res = await authFetch(
-      `/audit-logs/?page=${page}&page_size=${PAGE_SIZE}${qs ? `&${qs}` : ""}`,
+      `/audit-logs/?page=${page}&page_size=${size}${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     // Remote /resource/audit-logs returns {results,count} (shared shape
@@ -117,7 +116,7 @@ export default function Report() {
     return {
       results,
       count,
-      totalPages: data.total_pages || Math.max(Math.ceil(count / PAGE_SIZE), 1),
+      totalPages: data.total_pages || Math.max(Math.ceil(count / size), 1),
       page: data.page || page,
     };
   }, [buildParams]);
@@ -155,30 +154,30 @@ export default function Report() {
     }
   }, [fetchAuditRaw]);
 
-  const fetchRequisitionRaw = useCallback(async (page = 1) => {
+  const fetchRequisitionRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
     const qs = buildParams();
     const res = await authFetch(
-      `/requisitions/?page=${page}&page_size=${PAGE_SIZE}&is_archived=false${qs ? `&${qs}` : ""}`,
+      `/requisitions/?page=${page}&page_size=${size}&is_archived=false${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
       results: data.results || [],
       count: data.count || 0,
-      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / size), 1),
       page: data.page || page,
     };
   }, [buildParams]);
 
-  const fetchRemittanceRaw = useCallback(async (page = 1) => {
+  const fetchRemittanceRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
     const qs = buildParams();
     const res = await authFetch(
-      `/report/remittance/?page=${page}&page_size=${PAGE_SIZE}&is_archived=false${qs ? `&${qs}` : ""}`,
+      `/report/remittance/?page=${page}&page_size=${size}&is_archived=false${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
     return {
       results: data.results || [],
       count: data.count || 0,
-      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / PAGE_SIZE), 1),
+      totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / size), 1),
       page: data.page || page,
     };
   }, [buildParams]);
@@ -328,7 +327,8 @@ export default function Report() {
     Vehicle: l.vehicle,
     Route: l.route,
     "Amount (PHP)": l.amount,
-    User: l.user,
+    "Issued By": l.issued_by,
+    "Dispatched By": l.dispatched_by,
   });
 
   const handleExportQueuePDF = async (search = "") => {
@@ -341,7 +341,8 @@ export default function Report() {
     Timestamp: t.issued_at ? new Date(t.issued_at).toLocaleString() : "—",
     Vehicle: t.vehicle?.plate_number || "",
     Driver: t.driver?.name || "",
-    "Issued By": t.active_user_name || "",
+    "Issued By": t.checked_in_by_name || "",
+    "Dispatched By": t.checked_out_by_name || "",
     Verified: t.status === "CANCELLED" ? "Cancelled" : t.is_verified ? "Verified" : "Pending",
   });
 
@@ -352,11 +353,19 @@ export default function Report() {
 
   const handleExportRouteAnalyticsPDF = (rows) => exportTable(rows, "Route Analytics");
 
+  // Tallied server-side: the summary, one route's drivers (paged) or the export rows,
+  // depending on `extra`, so the browser never downloads every ticket.
+  const fetchRouteAnalytics = useCallback(async (extra = {}) => {
+    const p = new URLSearchParams(buildParams());
+    Object.entries(extra).forEach(([k, v]) => v && p.set(k, v));
+    const res = await authFetch(`/report/route-analytics/?${p}`);
+    return res.json();
+  }, [buildParams]);
+
   const buildAuditExportRow = (l) => ({
     Timestamp: l.created_at ? new Date(l.created_at).toLocaleString() : "—",
     Action: formatAuditAction(l),
     Item: formatAuditItem(l),
-    Details: formatAuditDetails(l),
     User: l.user_name || "System",
   });
 
@@ -450,7 +459,6 @@ export default function Report() {
         onRemittanceFetchPage={fetchRemittanceRaw}
         onRemittanceFetchAll={fetchRemittanceExportRows}
         onExportRemittancePDF={handleExportRemittancePDF}
-        pageSize={PAGE_SIZE}
       />
 
       <QueueLog
@@ -464,13 +472,11 @@ export default function Report() {
         onExportRoamingPDF={handleExportRoamingPDF}
         onQueueFetchAll={fetchQueueExportRows}
         onRoamingFetchAll={fetchRoamingExportRows}
-        STATUS_COLORS={STATUS_COLORS}
         pageSize={PAGE_SIZE}
       />
 
       <RouteAnalytics
-        onFetchQueue={fetchQueueExportRows}
-        onFetchRoaming={fetchRoamingExportRows}
+        onFetch={fetchRouteAnalytics}
         onExportPDF={handleExportRouteAnalyticsPDF}
       />
 
@@ -480,7 +486,6 @@ export default function Report() {
         onAuditFetchPage={fetchAuditRaw}
         onAuditFetchAll={fetchAuditExportRows}
         onExportPDF={handleExportAuditPDF}
-        pageSize={PAGE_SIZE}
       />
     </div>
   );

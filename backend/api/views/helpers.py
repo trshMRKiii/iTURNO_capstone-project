@@ -80,18 +80,6 @@ def parse_iso_datetime(value):
     return dt.astimezone(dt_timezone.utc)
 
 
-def expire_stale_unverified_accounts():
-    """Drops admin-added staff accounts that never verified their email within
-    30 days — the point of verification is to keep a bad/fake email from
-    sitting around as a permanent unusable account, so it's dropped instead
-    of nagging forever. Called lazily from UserViewSet.get_queryset (same
-    no-scheduler-needed convention as expire_stale_queue_tickets above).
-    Targets 'supabase' directly — User is Supabase-authoritative (see
-    api/sync/registry.py), so that's the copy that actually needs cleaning."""
-    cutoff = timezone.now() - timedelta(days=30)
-    User.objects.using(remote_db()).filter(email_verified=False, created_at__lt=cutoff).delete()
-
-
 def filter_collected(start_date=None, end_date=None):
     qs = Ticket.objects.filter(status='COLLECTED')
     if start_date:
@@ -193,8 +181,10 @@ def promote_queue_front(route):
 
 
 def record_audit_log(user, action, model_name, object_id='', object_repr='', changes=None):
+    # A restore can remove the acting user's row; don't let that fail the log write.
+    known = user and getattr(user, 'is_authenticated', False) and User.objects.filter(pk=user.pk).exists()
     AuditLog.objects.create(
-        user=user if user and getattr(user, 'is_authenticated', False) else None,
+        user=user if known else None,
         action=action,
         model_name=model_name,
         object_id=str(object_id),

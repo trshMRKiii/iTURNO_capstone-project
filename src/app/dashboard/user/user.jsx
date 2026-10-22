@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { apiService } from "../../../lib/api-service";
+import { apiService, IS_REMOTE } from "../../../lib/api-service";
 import { focusFirstError } from "../../../lib/focusFirstError";
 import { useFeedback, SkeletonRows } from "../../../components/ui/kit";
+import ImportUsersModal from "./ImportUsersModal";
 import "../../../styles/User.css";
 import "../../../styles/FormModal.css";
 
@@ -177,6 +178,7 @@ function User({ userRole }) {
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const initialFormRef = useRef(EMPTY_FORM);
 
@@ -392,6 +394,16 @@ function User({ userRole }) {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {canManageStaff && !IS_REMOTE && (
+            <button className="usr-import-btn" onClick={() => setImportOpen(true)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M12 15V3" />
+              </svg>
+              Import
+            </button>
+          )}
           {canManageStaff && (
             <button className="usr-add-btn" onClick={handleAdd}>
               <svg
@@ -543,6 +555,8 @@ function User({ userRole }) {
           </table>
         </div>
       </div>
+
+      {importOpen && <ImportUsersModal onClose={() => setImportOpen(false)} onImported={fetchUsers} />}
 
       {/* Modal */}
       {isModalOpen && (

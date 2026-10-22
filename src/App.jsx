@@ -5,7 +5,6 @@ import PublicView from "./pages/PublicView";
 import Kiosk from "./app/dashboard/queue/kiosk/Kiosk";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
-import VerifyEmail from "./pages/VerifyEmail";
 
 function App() {
   return (
@@ -16,7 +15,6 @@ function App() {
         <Route path="/public-view" element={<PublicView />} />
         <Route path="/kiosk" element={<Kiosk />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/dashboard/*" element={<MainIndex />} />
       </Routes>
     </Router>

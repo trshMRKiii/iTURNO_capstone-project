@@ -118,6 +118,8 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
           "Ticket ID": t.id,
           "Check-in": formatDate(inAt),
           "Check-out": open ? "In queue" : formatDate(outAt),
+          "Checked in by": t.checked_in_by_name || "—",
+          "Checked out by": (!open && t.checked_out_by_name) || "—",
           Stayed: stay,
           [isDriver ? "Vehicle" : "Driver"]: (isDriver ? t.vehicle?.plate_number : t.driver?.name) || "—",
           Type: badgeOf(t).label,
@@ -220,8 +222,14 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
                         <td>
                           <span className="veh-code">{t.id}</span>
                         </td>
-                        <td className="veh-td-route">{formatDate(inAt)}</td>
-                        <td className="veh-td-route">{open ? "In queue" : formatDate(outAt)}</td>
+                        <td className="veh-td-route">
+                          {formatDate(inAt)}
+                          {t.checked_in_by_name && <small style={{ display: "block", opacity: 0.7 }}>by {t.checked_in_by_name}</small>}
+                        </td>
+                        <td className="veh-td-route">
+                          {open ? "In queue" : formatDate(outAt)}
+                          {!open && t.checked_out_by_name && <small style={{ display: "block", opacity: 0.7 }}>by {t.checked_out_by_name}</small>}
+                        </td>
                         <td style={{ fontWeight: 600 }}>{stay}</td>
                         <td>
                           {(isDriver ? t.vehicle?.plate_number : t.driver?.name) || <span className="veh-na">—</span>}

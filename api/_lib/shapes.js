@@ -205,7 +205,6 @@ export function shapeAuditLog(a) {
     model_name: a.model_name,
     object_id: a.object_id,
     object_repr: a.object_repr,
-    changes: a.changes,
     created_at: a.created_at,
   };
 }

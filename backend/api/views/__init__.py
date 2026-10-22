@@ -24,7 +24,6 @@ from .reports import (
 
 from .records import (
     audit_logs,
-    dashboard_stats,
     public_queue,
     server_time,
     supervisors,
@@ -32,7 +31,10 @@ from .records import (
     amend_remittance_batch,
 )
 
-from .kiosk import kiosk_scan, kiosk_check_in, kiosk_sessions, kiosk_mark_paid, kiosk_cancel
+from .dashboard import dashboard_stats, dashboard_busiest
+from .route_analytics import route_analytics
+
+from .kiosk import kiosk_scan, kiosk_check_in, kiosk_sessions, kiosk_cancel, desk_duty
 
 from .external_remittance import external_remittance, external_remittance_records, undo_external_remittance
 
@@ -48,7 +50,6 @@ from .system import (
 from .auth import (
     forgot_password,
     reset_password,
-    verify_email,
     change_password,
 )
 

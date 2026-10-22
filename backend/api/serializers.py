@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, PaperIssuance, AuditLog, BackupRecord, BackupSettings, BackfillRecord, WipMode
+from .models import User, Driver, Vehicle, Route, Ticket, TicketPrice, PUVType, Route, RemittanceBatch, Deposit, Collection, TicketForm, Requisition, TicketSeries, PaperIssuance, AuditLog, BackupRecord, BackupSettings, BackfillRecord, WipMode, DeskDuty
 from .sms import send_sms_async, queue_position_message
 from .sync.settings_outbox import next_offline_pk, park
 
@@ -192,9 +192,12 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = '__all__'
         extra_kwargs = {
-            'collection_amount': {'required': False}
+            'collection_amount': {'required': False},
+            # Always the Dispatch desk's Personnel (see DeskDuty), never client-supplied.
+            'checked_in_by_name': {'read_only': True},
+            'checked_out_by_name': {'read_only': True},
         }
-    
+
     def create(self, validated_data):
         vehicle_id = validated_data.pop('vehicle_id')
         driver_id = validated_data.pop('driver_id')
@@ -258,7 +261,20 @@ class TicketSerializer(serializers.ModelSerializer):
                 validated_data['status'] = 'COLLECTED'
                 validated_data['is_verified'] = True
                 validated_data['dispatched_at'] = validated_data['checked_in_at'] = timezone.now()
+                desk = DeskDuty.get_solo()
+                if not desk.checkin_name or not desk.checkout_name:
+                    raise serializers.ValidationError(
+                        {"detail": "Pick the check-in and check-out personnel on the Dispatch board first."}
+                    )
+                validated_data['checked_in_by_name'] = desk.checkin_name
+                validated_data['checked_out_by_name'] = desk.checkout_name
             elif not is_continuation:
+                checkin_name = DeskDuty.get_solo().checkin_name
+                if not checkin_name:
+                    raise serializers.ValidationError(
+                        {"detail": "Pick the check-in personnel on the Dispatch board first."}
+                    )
+                validated_data['checked_in_by_name'] = checkin_name
                 # Queue check-ins get a route-acronym + daily bay number
                 # (e.g. "SJ-1"), counted per route and reset every midnight.
                 route = vehicle.route
@@ -595,7 +611,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
         model = AuditLog
         fields = [
             'id', 'user', 'user_name', 'action', 'action_display',
-            'model_name', 'object_id', 'object_repr', 'changes', 'created_at', 'backfill_id',
+            'model_name', 'object_id', 'object_repr', 'created_at', 'backfill_id',
         ]
 
     def get_backfill_id(self, obj):

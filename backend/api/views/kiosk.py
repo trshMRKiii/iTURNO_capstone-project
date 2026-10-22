@@ -2,19 +2,19 @@ import uuid
 
 from django.db import transaction
 from django.db.models import Q
-from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from ..models import Driver, KioskSession, Ticket, TicketSeries, Vehicle, WipMode
+from ..models import DeskDuty, Driver, KioskSession, Ticket, TicketSeries, User, Vehicle, WipMode
 from ..serializers import TicketSerializer
-from .helpers import expire_stale_queue_tickets, record_audit_log
+from .helpers import expire_stale_queue_tickets
 from .viewsets import _check_can_issue, _check_terminal_price, _finalize_queued_vehicle, _issue_roam_tickets
 
-# Self-service QR kiosk. The driver checks in (scan -> mode -> own name), a cashier marks
-# the visit paid from Dispatch, and the next scan checks the vehicle out. Every outcome
-# the kiosk screen reacts to comes back as a `state` string instead of an HTTP error.
+# Self-service QR kiosk. The driver checks in (scan -> mode -> own name) and pays the
+# check-in Personnel on duty (see DeskDuty) on the spot; the next scan checks the vehicle
+# out under the check-out Personnel. Every outcome the kiosk screen reacts to comes back
+# as a `state` string instead of an HTTP error.
 
 OPEN = KioskSession.OPEN_STATUSES
 PAUSED_MESSAGE = "Ticketing is paused for now — please see the dispatcher."
@@ -49,6 +49,18 @@ def _find_vehicle(text):
     if vehicle is None and text.isdigit():
         vehicle = vehicles.filter(id=int(text)).first()
     return vehicle
+
+
+def _find_driver(data):
+    """The picked driver (operator list) or the one whose own QR was scanned (swap driver)."""
+    drivers = Driver.objects.filter(is_archived=False)
+    qr = (data.get('driver_qr') or '').strip()
+    if not qr:
+        return drivers.get(id=data.get('driver_id'))
+    driver = drivers.filter(Q(qr_code=qr) | Q(iwp_number=qr)).first()
+    if driver is None:
+        raise ValidationError({"driver_qr": "Driver QR not recognized — try again or see the dispatcher."})
+    return driver
 
 
 def _queue_ticket(vehicle):
@@ -86,13 +98,7 @@ def _live_sessions():
 
 
 def _open_session(vehicle):
-    """The vehicle's live visit. One queued at the front desk has none yet, so it gets one
-    created from its queue ticket — that lets the cashier mark any queued vehicle paid."""
-    session = next((s for s in _live_sessions() if s.vehicle_id == vehicle.id), None)
-    if session:
-        return session
-    ticket = _queue_ticket(vehicle)
-    return KioskSession.objects.create(vehicle=vehicle, driver=ticket.driver, mode='QUEUE') if ticket else None
+    return next((s for s in _live_sessions() if s.vehicle_id == vehicle.id), None)
 
 
 def _vehicle_info(vehicle):
@@ -108,7 +114,7 @@ def _vehicle_info(vehicle):
 def _reply(state, vehicle, session=None, **extra):
     data = {'state': state, 'vehicle': _vehicle_info(vehicle), **extra}
     if session:
-        data.update(mode=session.mode, driver=_driver_name(session.driver))
+        data.update(mode=session.mode, driver=_driver_name(session.driver), checked_in_by=session.checked_in_by_name)
         if session.mode == 'QUEUE':
             data['position'] = _queue_position(vehicle)
     return Response(data)
@@ -120,6 +126,15 @@ def _busy_driver_ids():
     )
 
 
+def _quantity_for(vehicle, series):
+    """Tickets of this series that add up to the vehicle type's terminal price (1 when there
+    is no price, or it isn't a whole multiple) — mirrors ticketsNeeded() on the Dispatch board."""
+    price = series.ticket_form.price or 0
+    puv = vehicle.transportation_id
+    terminal = puv.terminal_price if puv else 0
+    return int(terminal / price) if terminal and price and terminal % price == 0 else 1
+
+
 def _driver_choices(vehicle):
     busy = _busy_driver_ids()
     mine = {vehicle.active_driver_id, vehicle.owner_driver_id}
@@ -129,13 +144,15 @@ def _driver_choices(vehicle):
 
 
 def _check_out(session, request):
+    if not DeskDuty.get_solo().checkout_user_id:
+        raise ValidationError({"detail": "No check-out personnel is on duty — please see the dispatcher."})
     with transaction.atomic():
         # Re-read under lock so a double scan can't issue a roam ticket twice.
         if not KioskSession.objects.select_for_update().filter(pk=session.pk, status='PAID').exists():
             raise ValidationError({"detail": "This visit was already checked out."})
         series = session.series
         if series is None or series.ticket_form_id is None:
-            raise ValidationError({"series": "The ticket series for this visit is gone — please see the cashier."})
+            raise ValidationError({"series": "The ticket series for this visit is gone — please see the dispatcher."})
         if session.mode == 'QUEUE':
             return _finalize_queued_vehicle(
                 session.vehicle, series.ticket_form_id, session.quantity, 'QUEUE', request, series.id,
@@ -164,10 +181,7 @@ def kiosk_scan(request):
             return _reply('BLOCKED', vehicle, message=PAUSED_MESSAGE)
         return _reply('CHECK_IN', vehicle, drivers=_driver_choices(vehicle))
 
-    if session.status == 'AWAITING_PAYMENT':
-        return _reply('AWAITING_PAYMENT', vehicle, session)
-
-    # PAID: a queue vehicle leaves only when it reaches the front of its line.
+    # A queue vehicle leaves only when it reaches the front of its line.
     if session.mode == 'QUEUE' and _queue_position(vehicle) > 1:
         return _reply('WAIT_TURN', vehicle, session)
     if _paused():
@@ -181,24 +195,30 @@ def kiosk_scan(request):
 
 @api_view(['POST'])
 def kiosk_check_in(request):
-    """Driver picked a mode and their own name. Queue joins the line right away (payment is
-    taken before they leave); roam only opens a pending visit. Both then wait for the cashier."""
+    """Driver picked a mode and their own name. Queue joins the line right away; roam only
+    opens a pending visit. They pay the check-in Personnel now, which fixes the ticket series
+    (the desk's) and quantity that checkout draws."""
     mode = request.data.get('mode')
     if mode not in ('QUEUE', 'ROAM'):
         raise ValidationError({"mode": "Pick Queue or Roam."})
     try:
         if _paused():
             raise ValidationError({"detail": PAUSED_MESSAGE})
+        desk = DeskDuty.get_solo()
+        if not desk.checkin_user_id or desk.series is None:
+            raise ValidationError({"detail": "The dispatcher hasn't set a check-in personnel and ticket series yet."})
         with transaction.atomic():
             vehicle = Vehicle.objects.select_for_update().select_related('route', 'transportation_id').get(
                 id=request.data.get('vehicle_id'), is_archived=False,
             )
-            driver = Driver.objects.get(id=request.data.get('driver_id'), is_archived=False)
+            driver = _find_driver(request.data)
             if _open_session(vehicle):
                 raise ValidationError({"vehicle_id": "This vehicle is already checked in."})
             if driver.id in _busy_driver_ids():
                 raise ValidationError({"driver_id": "This driver is already checked in on another vehicle."})
             _check_can_issue(vehicle, driver)
+            quantity = _quantity_for(vehicle, desk.series)
+            _check_terminal_price(vehicle, desk.series.ticket_form.price or 0, quantity)
 
             queue_code = ''
             if mode == 'QUEUE':
@@ -208,7 +228,10 @@ def kiosk_check_in(request):
                 }, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 queue_code = serializer.save(active_user=_staff(request)).queue_code
-            session = KioskSession.objects.create(vehicle=vehicle, driver=driver, mode=mode)
+            session = KioskSession.objects.create(
+                vehicle=vehicle, driver=driver, mode=mode, series=desk.series, quantity=quantity,
+                checked_in_by_name=desk.checkin_name,
+            )
     except (Vehicle.DoesNotExist, Driver.DoesNotExist):
         return Response({'state': 'ERROR', 'message': "That vehicle or driver wasn't found."})
     except ValidationError as exc:
@@ -218,8 +241,8 @@ def kiosk_check_in(request):
 
 @api_view(['GET'])
 def kiosk_sessions(request):
-    """Live kiosk visits for the Dispatch board: which queued vehicles are paid, and the
-    roam visits waiting on the cashier."""
+    """Roam visits checked in on the kiosk that haven't checked out yet, for the Dispatch board
+    (queue visits already show there as queued vehicles)."""
     return Response([
         {
             'vehicle_id': s.vehicle_id,
@@ -227,51 +250,48 @@ def kiosk_sessions(request):
             'route': s.vehicle.route.origin if s.vehicle.route else None,
             'driver': _driver_name(s.driver),
             'mode': s.mode,
-            'status': s.status,
             'amount': _vehicle_info(s.vehicle)['amount'],
+            'checked_in_by': s.checked_in_by_name,
+            'checked_in_at': s.created_at,
         }
-        for s in _live_sessions()
+        for s in _live_sessions() if s.mode == 'ROAM'
     ])
 
 
-@api_view(['POST'])
-def kiosk_mark_paid(request):
-    """Cashier confirms (or, with paid=false, takes back) payment for a vehicle's visit,
-    fixing the ticket series and quantity the kiosk checkout will draw."""
-    try:
-        vehicle = Vehicle.objects.select_related('route', 'transportation_id').get(id=request.data.get('vehicle_id'))
-    except Vehicle.DoesNotExist:
-        raise ValidationError({"vehicle_id": "Vehicle not found."})
-    session = _open_session(vehicle)
-    if session is None:
-        raise ValidationError({"vehicle_id": f"{vehicle.plate_number} has no pending kiosk visit."})
+def _desk_payload(desk):
+    personnel = User.objects.filter(role='PERSONNEL', is_active=True).order_by('first_name', 'last_name')
+    return {
+        'checkin_user': desk.checkin_user_id,
+        'checkout_user': desk.checkout_user_id,
+        'series': desk.series_id,
+        'personnel': [{'id': u.id, 'name': u.display_name} for u in personnel],
+    }
 
-    if request.data.get('paid', True) is False:
-        session.status, session.series, session.quantity = 'AWAITING_PAYMENT', None, 1
-        session.paid_at, session.paid_by_name = None, ''
-        session.save()
-        return Response({'status': session.status})
 
-    try:
-        series = TicketSeries.objects.select_related('ticket_form').get(id=request.data.get('series_id'))
-        quantity = max(1, int(request.data.get('quantity')))
-    except (TicketSeries.DoesNotExist, TypeError, ValueError):
-        raise ValidationError({"series_id": "Pick a ticket series and a whole-number quantity."})
-    if series.ticket_form is None:
-        raise ValidationError({"series_id": "That ticket series has no ticket form."})
-    _check_terminal_price(vehicle, series.ticket_form.price or 0, quantity)
+def _pick(request, field, queryset):
+    value = request.data[field]
+    if value in (None, ''):
+        return None
+    obj = queryset.filter(pk=value).first() if str(value).isdigit() else None
+    if obj is None:
+        raise ValidationError({field: "Not found."})
+    return obj
 
-    user = _staff(request)
-    session.status, session.series, session.quantity = 'PAID', series, quantity
-    session.paid_at = timezone.now()
-    session.paid_by_name = (f"{user.first_name} {user.last_name}".strip() or user.username) if user else ''
-    session.save()
-    record_audit_log(
-        user=user, action='UPDATE', model_name='KioskSession', object_id=session.id,
-        object_repr=f"Marked {vehicle.plate_number} paid ({session.mode.lower()})",
-        changes={'series': series.series_no, 'quantity': quantity},
-    )
-    return Response({'status': session.status})
+
+@api_view(['GET', 'PATCH'])
+def desk_duty(request):
+    """Who is on the Dispatch desk (check-in / check-out Personnel) and which ticket series the
+    kiosk draws from. Set from the Dispatch board; stamped onto every vehicle as it goes through."""
+    desk = DeskDuty.get_solo()
+    if request.method == 'PATCH':
+        personnel = User.objects.filter(role='PERSONNEL', is_active=True)
+        for field in ('checkin_user', 'checkout_user'):
+            if field in request.data:
+                setattr(desk, field, _pick(request, field, personnel))
+        if 'series' in request.data:
+            desk.series = _pick(request, 'series', TicketSeries.objects.filter(ticket_form__isnull=False))
+        desk.save()
+    return Response(_desk_payload(desk))
 
 
 @api_view(['POST'])

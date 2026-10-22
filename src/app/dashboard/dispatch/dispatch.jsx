@@ -4,8 +4,8 @@ import { useQueueSocket } from "../../../lib/useQueueSocket";
 import { getDriverPhotoUrl } from "../driver/driver-utils";
 import { ticketsNeeded } from "../queue/useQueue";
 import SeriesPicker from "../queue/SeriesPicker";
-import { MarkPaidButton, RoamPaymentStrip } from "./KioskPayments";
-import { useFeedback, SkeletonList } from "../../../components/ui/kit";
+import KioskRoamStrip from "./KioskRoamStrip";
+import { useFeedback, SkeletonList, SupervisorPicker } from "../../../components/ui/kit";
 import "../../../styles/Dispatch.css";
 
 // Mirrors DEFAULT_ESTIMATED_LOADING_MINUTES in backend/api/views/records.py —
@@ -13,16 +13,21 @@ import "../../../styles/Dispatch.css";
 const DEFAULT_ESTIMATED_LOADING_MINUTES = 5;
 const EXTEND_OPTIONS_MINUTES = [5, 10, 15];
 
+// Who took this vehicle in — the Personnel accountable for its payment.
+const CheckedInBy = ({ name }) =>
+  name ? <span className="dispatch-accountable" title="Check-in personnel">In: {name}</span> : null;
+
 // The ticket series picker is shared with the Queue page (roaming
 // check-ins use the same selection), so its state lives in useQueue.
-function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () => {}, selectedSeriesId, setSelectedSeriesId, onStockChange }) {
+// `desk` (useDeskDuty) is owned by the Queue page, whose check-in form needs it too.
+function Dispatch({ desk, availableSeries, allSeries = [], setSeriesOverrideId = () => {}, selectedSeriesId, setSelectedSeriesId, onStockChange }) {
   const selected = allSeries.find((s) => String(s.id) === String(selectedSeriesId));
   const [vehicles, setVehicles] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [routes, setRoutes] = useState([]);
-  const [kioskSessions, setKioskSessions] = useState([]);
-  const [payingVehicleId, setPayingVehicleId] = useState(null);
+  const [roamSessions, setRoamSessions] = useState([]);
+  const [cancellingVehicleId, setCancellingVehicleId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -80,7 +85,7 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
       if (seq !== fetchSeq.current) return;
       setVehicles(vehicleData);
       setTickets(ticketData);
-      setKioskSessions(sessionData);
+      setRoamSessions(sessionData);
       if (driverData) setDrivers(driverData);
       if (routeData) setRoutes(routeData);
     } catch (err) {
@@ -228,48 +233,15 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
 
   const quantityFor = (vehicle) => ticketsNeeded(vehicle, Number(selected?.ticket_form_price || 0));
 
-  // Kiosk visits: queued vehicles show Paid/Mark paid on their card; roam visits have
-  // no card, so they get their own strip.
-  const queueSessionByVehicleId = useMemo(
-    () => new Map(kioskSessions.filter((s) => s.mode === "QUEUE").map((s) => [s.vehicle_id, s])),
-    [kioskSessions],
-  );
-  const roamSessions = useMemo(() => kioskSessions.filter((s) => s.mode === "ROAM"), [kioskSessions]);
-
-  // `target` is a queue vehicle or a roam session row; amount is the vehicle's terminal price.
-  const setPaid = async ({ id, plate, amount }, paid) => {
-    if (paid && !selectedSeriesId) {
-      setDispatchError("Please select a ticket series before marking paid.");
-      return;
-    }
-    setPayingVehicleId(id);
-    setDispatchError("");
-    try {
-      await apiService.markKioskPaid(id, {
-        seriesId: selectedSeriesId,
-        quantity: quantityFor({ terminal_price: amount }),
-        paid,
-      });
-      notify.success({ title: paid ? `${plate} marked paid` : `${plate} payment undone` });
-      fetchData(true);
-    } catch (err) {
-      setDispatchError(err.message || "Failed to update payment.");
-    } finally {
-      setPayingVehicleId(null);
-    }
-  };
-  const vehicleTarget = (v) => ({ id: v.id, plate: v.plate_number, amount: v.terminal_price });
-  const sessionTarget = (s) => ({ id: s.vehicle_id, plate: s.plate, amount: s.amount });
-
   const handleCancelRoam = async (s) => {
-    setPayingVehicleId(s.vehicle_id);
+    setCancellingVehicleId(s.vehicle_id);
     try {
       await apiService.cancelKioskVisit(s.vehicle_id);
       fetchData(true);
     } catch (err) {
       setDispatchError(err.message || "Failed to cancel roam visit.");
     } finally {
-      setPayingVehicleId(null);
+      setCancellingVehicleId(null);
     }
   };
 
@@ -298,6 +270,10 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
   const handleDispatch = (vehicle) => {
     if (!selectedSeriesId) {
       setDispatchError("Please select a ticket series before dispatching.");
+      return;
+    }
+    if (!desk.checkoutId) {
+      setDispatchError("Please pick the check-out personnel before dispatching.");
       return;
     }
     return finalizeVehicle(vehicle, {
@@ -330,6 +306,10 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
   const handleRoam = (vehicle) => {
     if (!selectedSeriesId) {
       setDispatchError("Please select a ticket series before converting to roam.");
+      return;
+    }
+    if (!desk.checkoutId) {
+      setDispatchError("Please pick the check-out personnel before converting to roam.");
       return;
     }
     return finalizeVehicle(vehicle, {
@@ -480,13 +460,30 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
           <span className="dispatch-modal-field-error dispatch-settings-error">{dispatchError}</span>
         )}
 
-        <RoamPaymentStrip
-          sessions={roamSessions}
-          busyId={payingVehicleId}
-          onMark={(s) => setPaid(sessionTarget(s), true)}
-          onUndo={(s) => setPaid(sessionTarget(s), false)}
-          onCancel={handleCancelRoam}
-        />
+        <div className="dispatch-desk">
+          <label className="dispatch-desk-field">
+            <span className="dispatch-eyebrow">Check-in personnel</span>
+            <SupervisorPicker
+              className="dispatch-desk-input"
+              label="Check-in personnel"
+              supervisors={desk.personnel}
+              value={desk.checkinId}
+              onChange={desk.setCheckin}
+            />
+          </label>
+          <label className="dispatch-desk-field">
+            <span className="dispatch-eyebrow">Check-out personnel</span>
+            <SupervisorPicker
+              className="dispatch-desk-input"
+              label="Check-out personnel"
+              supervisors={desk.personnel}
+              value={desk.checkoutId}
+              onChange={desk.setCheckout}
+            />
+          </label>
+        </div>
+
+        <KioskRoamStrip sessions={roamSessions} now={now} busyId={cancellingVehicleId} onCancel={handleCancelRoam} />
 
         <div className="dispatch-chips">
           <div className="dispatch-chips-list">
@@ -649,19 +646,15 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
                           type="button"
                           className="dispatch-btn dispatch-btn--dispatch"
                           onClick={() => handleDispatch(head)}
-                          disabled={dispatchingVehicleId === head.id}
+                          disabled={dispatchingVehicleId === head.id || !desk.checkoutId}
+                          title={desk.checkoutId ? undefined : "Pick the check-out personnel first"}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                             <path d="M5 12h14M12 5l7 7-7 7" />
                           </svg>
                           {dispatchingVehicleId === head.id ? "Dispatching…" : "Dispatch"}
                         </button>
-                        <MarkPaidButton
-                          session={queueSessionByVehicleId.get(head.id)}
-                          busy={payingVehicleId === head.id}
-                          onMark={() => setPaid(vehicleTarget(head), true)}
-                          onUndo={() => setPaid(vehicleTarget(head), false)}
-                        />
+                        <CheckedInBy name={ticket?.checked_in_by_name} />
                         <button type="button" className="dispatch-btn dispatch-btn--swap" onClick={() => openSwapModal(head)}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                             <path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3" />
@@ -713,19 +706,13 @@ function Dispatch({ availableSeries, allSeries = [], setSeriesOverrideId = () =>
                             <span className="dispatch-order-index">#{pos + 1}</span>
                             <span className="dispatch-plate dispatch-plate--sm">{vehicle.plate_number}</span>
                             <span className="dispatch-upnext-actions">
-                              <MarkPaidButton
-                                small
-                                session={queueSessionByVehicleId.get(vehicle.id)}
-                                busy={payingVehicleId === vehicle.id}
-                                onMark={() => setPaid(vehicleTarget(vehicle), true)}
-                                onUndo={() => setPaid(vehicleTarget(vehicle), false)}
-                              />
+                              <CheckedInBy name={openTicketByVehicleId.get(vehicle.id)?.checked_in_by_name} />
                               <button
                                 type="button"
                                 className="dispatch-btn dispatch-btn--roam dispatch-btn--sm"
                                 onClick={() => handleRoam(vehicle)}
-                                disabled={roamingVehicleId === vehicle.id}
-                                title="Pay the terminal fee now and leave without waiting in line"
+                                disabled={roamingVehicleId === vehicle.id || !desk.checkoutId}
+                                title={desk.checkoutId ? "Pay the terminal fee now and leave without waiting in line" : "Pick the check-out personnel first"}
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                   <path d="M3 12h13M11 6l6 6-6 6M21 5v14" />

@@ -4,7 +4,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-from django.utils.crypto import get_random_string
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -14,10 +13,7 @@ from rest_framework.response import Response
 from ..models import User
 from ..sync.settings_outbox import park
 from .helpers import can_write_remote, remote_db, save_user
-from ..tokens import (
-    sign_password_reset_token, verify_password_reset_token,
-    verify_email_verification_token,
-)
+from ..tokens import sign_password_reset_token, verify_password_reset_token
 
 
 @api_view(['POST'])
@@ -90,37 +86,6 @@ def reset_password(request):
     user.set_password(new_password)
     save_user(user)
     return Response({'detail': 'Password has been reset successfully.'})
-
-
-@api_view(['POST'])
-def verify_email(request):
-    uid = request.data.get('uid')
-    token = request.data.get('token')
-
-    if not uid or not token:
-        return Response({'detail': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        user = User.objects.using(remote_db()).get(pk=uid)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return Response({'detail': 'Invalid or expired verification link.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if user.email_verified:
-        return Response({'detail': 'This account is already verified.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        verify_email_verification_token(token, user)
-    except jwt.PyJWTError:
-        return Response({'detail': 'Invalid or expired verification link.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    from .viewsets import send_new_account_email
-
-    raw_password = get_random_string(12)
-    user.email_verified = True
-    user.set_password(raw_password)
-    save_user(user)
-    send_new_account_email(user, raw_password)
-    return Response({'detail': 'Email verified. Check your inbox for your temporary password.'})
 
 
 @api_view(['POST'])

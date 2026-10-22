@@ -1,16 +1,16 @@
 from datetime import datetime, timedelta
 
 from django.db import transaction
-from django.db.models import Sum, Count, Min, Q, F
+from django.db.models import Min, Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from ..models import User, Ticket, TicketPrice, Vehicle, Route, RemittanceBatch, Collection, Deposit, AuditLog, TicketSeries
+from ..models import User, Ticket, Vehicle, Route, RemittanceBatch, Collection, Deposit, AuditLog
 from ..serializers import TicketSerializer, RemittanceBatchSerializer, AuditLogSerializer
-from .helpers import summarize, parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_queue_tickets, paginate_request, paper_numbers_by_series
+from .helpers import parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_queue_tickets, paginate_request
 
 
 @api_view(['GET'])
@@ -47,128 +47,6 @@ def audit_logs(request):
     total = logs.count()
     data = AuditLogSerializer(logs if show_all else logs[:10], many=True).data
     return Response({'logs': data, 'total': total})
-
-
-@api_view(['GET'])
-def dashboard_stats(request):
-    now_ph = timezone.now() + timedelta(hours=8)
-    today_str = now_ph.strftime('%Y-%m-%d')
-
-    start_date = request.query_params.get('start_date') or today_str
-    end_date = request.query_params.get('end_date') or today_str
-    # A future "to" date can't tell us anything — clamp it to today.
-    if end_date > today_str:
-        end_date = today_str
-    if start_date > end_date:
-        start_date = end_date
-
-    range_start = parse_date_start(start_date)
-    range_end = parse_date_end(end_date)
-
-    range_dispatched = Ticket.objects.filter(
-        dispatched_at__isnull=False,
-        dispatched_at__gte=range_start,
-        dispatched_at__lte=range_end,
-    )
-    range_issued = Ticket.objects.filter(issued_at__gte=range_start, issued_at__lte=range_end)
-
-    latest_price = TicketPrice.objects.order_by('-effective_date').first()
-    fallback_amount = float(latest_price.amount) if latest_price else 0.0
-
-    # A single day of bars is a poor trend view — when the filter is on today only
-    # (the default), the chart alone looks back 7 days instead. Every other stat
-    # on the page still reflects today only; this widening is chart-specific.
-    if start_date == end_date == today_str:
-        chart_range_start = parse_date_start((now_ph - timedelta(days=6)).strftime('%Y-%m-%d'))
-        chart_ticket_qs = Ticket.objects.filter(
-            dispatched_at__isnull=False,
-            dispatched_at__gte=chart_range_start,
-            dispatched_at__lte=range_end,
-        )
-    else:
-        chart_ticket_qs = range_dispatched
-
-    # Per-day breakdown, on the same "dispatched_at" basis as today_total/total_revenue
-    # above — keeps the dashboard chart and its stat cards in agreement instead of
-    # quietly using two different definitions.
-    daily = {}
-    for t in chart_ticket_qs:
-        local_dt = t.dispatched_at + timedelta(hours=8)
-        day_key = local_dt.strftime('%Y-%m-%d')
-        amount = float(t.collection_amount) if (t.collection_amount and float(t.collection_amount) > 0) else fallback_amount
-        if day_key not in daily:
-            daily[day_key] = {'date': day_key, 'count': 0, 'total': 0.0}
-        daily[day_key]['count'] += 1
-        daily[day_key]['total'] = round(daily[day_key]['total'] + amount, 2)
-    chart_data = sorted(daily.values(), key=lambda x: x['date'])
-
-    # Ticket status breakdown for tickets issued within the range, split by
-    # mode (QUEUE/UNLOAD) to mirror the Collection Log / Roaming Vehicle Log
-    # tabs on the Transaction page instead of the QUEUED/COLLECTED statuses.
-    ticket_status_breakdown = {'QUEUE': 0, 'UNLOAD': 0}
-    for row in range_issued.exclude(status='CANCELLED').values('mode').annotate(n=Count('id')):
-        ticket_status_breakdown[row['mode']] += row['n']
-
-    # Live fleet snapshot — current state, not tied to the date filter.
-    fleet_status = {choice: 0 for choice, _ in Vehicle.STATUS_CHOICES}
-    for row in Vehicle.objects.filter(is_archived=False).values('status').annotate(n=Count('id')):
-        fleet_status[row['status']] = row['n']
-
-    # Vehicles waiting per route (top 3) + longest wait, from still-queued tickets.
-    queued_qs = Ticket.objects.filter(status='QUEUED', vehicle__is_archived=False)
-    queue_by_route = list(
-        queued_qs.values(name=F('route__origin'))
-        .annotate(count=Count('vehicle', distinct=True))
-        .order_by('-count', 'name')[:3]
-    )
-    for row in queue_by_route:
-        row['name'] = row['name'] or 'No Route'
-
-    # Total physical ticket stock left across active (non-archived) requisitions —
-    # same "remaining" math as TicketSeriesSerializer.get_remaining, aggregated.
-    # Per denomination: pcs and cash left, plus the original size of the series
-    # still in stock — the Requisition page's "x of y" bar, summed per denomination.
-    ticket_stock_remaining = 0
-    stock_by_form = {}
-    paper = paper_numbers_by_series()
-    for series in TicketSeries.objects.filter(requisition__is_archived=False).select_related('ticket_form').annotate(issued_count=Count('tickets')):
-        original = max(int(series.end_no or 0) - int(series.start_no or 0) + 1, 0)
-        remaining = max(original - series.issued_count - len(paper.get(series.id, ())), 0)
-        ticket_stock_remaining += remaining
-        form_name = series.ticket_form.name if series.ticket_form else 'Unspecified'
-        price = float(series.ticket_form.price or 0) if series.ticket_form else 0
-        row = stock_by_form.setdefault(form_name, {'name': form_name, 'remaining': 0, 'original': 0, 'amount': 0.0})
-        row['remaining'] += remaining
-        row['amount'] = round(row['amount'] + remaining * price, 2)
-        if remaining > 0:
-            row['original'] += original
-
-    # Per-denomination split of the collections card, on the same dispatched_at basis.
-    collections_by_form = {}
-    for t in range_dispatched.select_related('series__ticket_form'):
-        form_name = t.series.ticket_form.name if (t.series and t.series.ticket_form) else 'Unspecified'
-        amount = float(t.collection_amount) if (t.collection_amount and float(t.collection_amount) > 0) else fallback_amount
-        row = collections_by_form.setdefault(form_name, {'name': form_name, 'count': 0, 'total': 0.0})
-        row['count'] += 1
-        row['total'] = round(row['total'] + amount, 2)
-
-    return Response({
-        'queue_by_route': queue_by_route,
-        'collections_by_form': list(collections_by_form.values()),
-        'stock_by_form': list(stock_by_form.values()),
-        'today_total': summarize(range_dispatched, fallback_amount),
-        'total_tickets': Ticket.objects.count(),
-        'total_dispatched': Ticket.objects.filter(dispatched_at__isnull=False).count(),
-        'total_revenue': round(float(range_dispatched.aggregate(s=Sum('collection_amount'))['s'] or 0), 2),
-        'active_vehicles': range_issued.values('vehicle_id').distinct().count(),
-        'active_drivers': range_issued.values('driver_id').distinct().count(),
-        'start_date': start_date,
-        'end_date': end_date,
-        'chart_data': chart_data,
-        'ticket_status_breakdown': ticket_status_breakdown,
-        'fleet_status': fleet_status,
-        'ticket_stock_remaining': ticket_stock_remaining,
-    })
 
 
 # Used when a route has no manually configured estimated_loading_minutes.

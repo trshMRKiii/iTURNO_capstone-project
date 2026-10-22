@@ -35,6 +35,41 @@ export function ModePanel({ vehicle, onPick, onCancel }) {
   );
 }
 
+const WHO = [
+  { type: "operator", title: "Operator", sub: "Registered driver", note: "Check in as this vehicle's driver" },
+  { type: "swap", title: "Scan driver QR", sub: "Swap driver", note: "A different driver? Show your own QR code" },
+];
+
+export function WhoPanel({ vehicle, onPick, onBack }) {
+  return (
+    <div className="kiosk-panel">
+      <VehicleHead vehicle={vehicle} />
+      <h2 className="kiosk-title">Who is driving today?</h2>
+      <div className="kiosk-modes">
+        {WHO.map((w) => (
+          <button key={w.type} type="button" className={`kiosk-mode kiosk-mode--${w.type === "swap" ? "roam" : "queue"}`} onClick={() => onPick(w.type)}>
+            <span className="kiosk-mode-title">{w.title}</span>
+            <em>{w.sub}</em>
+            <span className="kiosk-mode-note">{w.note}</span>
+          </button>
+        ))}
+      </div>
+      <button type="button" className="kiosk-link" onClick={onBack}>← Back</button>
+    </div>
+  );
+}
+
+export function SwapPanel({ vehicle, onBack }) {
+  return (
+    <div className="kiosk-panel">
+      <VehicleHead vehicle={vehicle} />
+      <h2 className="kiosk-title">Show your driver QR</h2>
+      <p className="kiosk-line">Hold your own QR code up to the camera to take over this vehicle.</p>
+      <button type="button" className="kiosk-link" onClick={onBack}>← Back</button>
+    </div>
+  );
+}
+
 export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity }) {
   const [query, setQuery] = useState("");
   const [letter, setLetter] = useState("");
@@ -105,17 +140,11 @@ const RESULTS = {
     tone: "ok",
     title: r.mode === "QUEUE" ? "You're in the queue" : "You're checked in to roam",
     big: r.mode === "QUEUE" ? r.queue_code : null,
-    lines: [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} at the cashier, then scan your QR again to leave.`],
-  }),
-  AWAITING_PAYMENT: (r) => ({
-    tone: "warn",
-    title: "Please pay at the cashier first",
-    big: peso(r.vehicle.amount),
-    lines: [r.mode === "QUEUE" && r.position ? `You are #${r.position} in line.` : null, "Then scan your QR again to leave."],
+    lines: [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} to ${r.checked_in_by}, then scan your QR again to leave.`],
   }),
   WAIT_TURN: (r) => ({
     tone: "info",
-    title: "Paid — wait for your turn",
+    title: "Wait for your turn",
     big: `#${r.position}`,
     lines: ["Scan your QR again when you reach the front of the line."],
   }),

@@ -1,3 +1,5 @@
+import "../../../../styles/Pager.css";
+
 export default function Pager({ page, totalPages, count, pageSize, onPageChange }) {
   if (count === 0) return null;
 
@@ -10,25 +12,25 @@ export default function Pager({ page, totalPages, count, pageSize, onPageChange 
         {start}–{end} of {count}
       </span>
       <div className="rpt-pager-controls">
-        <button
-          type="button"
-          className="rpt-btn rpt-btn--secondary"
-          onClick={() => onPageChange(page - 1)}
-          disabled={page <= 1}
-        >
-          Prev
-        </button>
+        {[
+          { label: "First page", glyph: "«", to: 1, off: page <= 1 },
+          { label: "Previous page", glyph: "‹", to: page - 1, off: page <= 1 },
+        ].map((b) => (
+          <button key={b.label} type="button" className="rpt-pager-btn" aria-label={b.label} onClick={() => onPageChange(b.to)} disabled={b.off}>
+            {b.glyph}
+          </button>
+        ))}
         <span className="rpt-pager-page">
           Page {page} of {totalPages}
         </span>
-        <button
-          type="button"
-          className="rpt-btn rpt-btn--secondary"
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages}
-        >
-          Next
-        </button>
+        {[
+          { label: "Next page", glyph: "›", to: page + 1, off: page >= totalPages },
+          { label: "Last page", glyph: "»", to: totalPages, off: page >= totalPages },
+        ].map((b) => (
+          <button key={b.label} type="button" className="rpt-pager-btn" aria-label={b.label} onClick={() => onPageChange(b.to)} disabled={b.off}>
+            {b.glyph}
+          </button>
+        ))}
       </div>
     </div>
   );

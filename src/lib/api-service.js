@@ -44,7 +44,9 @@ const REMOTE_GET_MAP = {
   "/report/collections/": "/reports/collections",
   "/report/chart/": "/reports/chart",
   "/report/eod-reconciliation/": "/reports/eod-reconciliation",
+  "/report/route-analytics/": "/reports/route-analytics",
   "/dashboard/stats/": "/reports/dashboard-stats",
+  "/dashboard/busiest/": "/reports/dashboard-busiest",
   "/current-user/": "/auth/current-user",
   "/settings/wip-mode/": "/settings/wip-mode",
 };
@@ -59,7 +61,6 @@ const REMOTE_WRITABLE = [
   // Public (no login yet) — handled by api/remote/auth/[action].js alongside token/refresh.
   { prefix: "/auth/forgot-password/", remote: "/auth/forgot-password", methods: ["POST"] },
   { prefix: "/auth/reset-password/", remote: "/auth/reset-password", methods: ["POST"] },
-  { prefix: "/auth/verify-email/", remote: "/auth/verify-email", methods: ["POST"] },
   { prefix: "/auth/change-password/", remote: "/auth/change-password", methods: ["POST"] },
   { prefix: "/routes/", remote: "/settings/routes", methods: ["POST", "PATCH", "PUT", "DELETE"] },
   { prefix: "/users/", remote: "/settings/users", methods: ["POST", "PATCH", "PUT", "DELETE"] },
@@ -401,20 +402,20 @@ export const apiService = {
     });
   },
 
-  // Kiosk visits (self-service QR check-in): the cashier marks them paid, then the
-  // driver's next scan on the kiosk checks them out. The kiosk screen itself calls
-  // /kiosk/scan/ and /kiosk/check-in/ directly.
+  // Kiosk visits (self-service QR check-in): the driver pays the check-in Personnel at
+  // check-in, then their next scan on the kiosk checks them out. The kiosk screen itself
+  // calls /kiosk/scan/ and /kiosk/check-in/ directly.
   getKioskSessions() {
     return this.get("/kiosk/sessions/");
   },
 
-  markKioskPaid(vehicleId, { seriesId, quantity, paid = true }) {
-    return this.post("/kiosk/mark-paid/", {
-      vehicle_id: vehicleId,
-      series_id: seriesId,
-      quantity,
-      paid,
-    });
+  // The Dispatch desk: check-in / check-out Personnel and the series the kiosk draws from.
+  getDeskDuty() {
+    return this.get("/desk-duty/");
+  },
+
+  setDeskDuty(fields) {
+    return this.patch("/desk-duty/", fields);
   },
 
   cancelKioskVisit(vehicleId) {
@@ -499,17 +500,14 @@ export const apiService = {
     return this.put(`/users/${id}/`, data);
   },
 
+  // LAN only (hidden when IS_REMOTE). `commit` false validates for the preview; true creates.
+  importUsers(rows, commit) {
+    return this.post("/users/import/", { rows, commit });
+  },
+
   // Supervisor/Manager-friendly: sends only the fleet tick, which is all they may change.
   setFleetAccess(id, allowed) {
     return this.patch(`/users/${id}/`, { can_manage_fleet: allowed });
-  },
-
-  resendVerification(id) {
-    return this.post(`/users/${id}/resend_verification/`);
-  },
-
-  verifyEmail({ uid, token }) {
-    return this.post("/auth/verify-email/", { uid, token });
   },
 
   getCurrentUser() {
@@ -524,6 +522,10 @@ export const apiService = {
   getDashboardStats(params = {}) {
     const qs = new URLSearchParams(params).toString();
     return this.get(`/dashboard/stats/${qs ? `?${qs}` : ""}`);
+  },
+
+  getDashboardBusiest() {
+    return this.get("/dashboard/busiest/");
   },
 
   getReportChart() {
@@ -758,7 +760,16 @@ export const handleLogin = async (
 
     if (!response.ok) {
       const errData = await response.json().catch(() => null);
-      throw new Error(errData?.detail || "Invalid credentials");
+      // Both backends send SimpleJWT's stock "No active account found with the
+      // given credentials" for a bad email/password (or a deactivated account).
+      // Keep their other messages (e.g. unverified email) as-is.
+      const detail = errData?.detail;
+      const badLogin = errData?.code === "no_active_account" || /^no active account/i.test(detail || "");
+      throw new Error(
+        badLogin || (response.status === 401 && !detail)
+          ? "Wrong email or password."
+          : detail || "Unable to sign in. Please try again.",
+      );
     }
 
     const data = await response.json();

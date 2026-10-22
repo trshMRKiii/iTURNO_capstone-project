@@ -74,10 +74,8 @@ class User(AbstractUser):
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
     must_reset_password = models.BooleanField(default=False)
-    # default=True so existing/self-created accounts are unaffected — only
-    # UserSerializer.create() (admin-added staff accounts) sets this False,
-    # gating login until the verification email link is clicked. See
-    # views/viewsets.py's _send_verification_email / views/auth.py's verify_email.
+    # Legacy: the email-verification gate was removed, every account is created True.
+    # Column kept to avoid a migration + Supabase schema change.
     email_verified = models.BooleanField(default=True)
 
     class Meta:
@@ -263,6 +261,10 @@ class Ticket(models.Model):
     # and dispatched_at - checked_in_at (the stay, queue or roam) can't be recovered.
     # Null on older rows, where readers fall back to issued_at.
     checked_in_at = models.DateTimeField(null=True, blank=True)
+    # The Personnel on the Dispatch desk (see DeskDuty) who took the vehicle in and let it
+    # out — name snapshots, like active_user_name, so they outlive the account.
+    checked_in_by_name = models.CharField(max_length=150, blank=True, default="")
+    checked_out_by_name = models.CharField(max_length=150, blank=True, default="")
 
     issuance_group = models.CharField(max_length=40, blank=True, db_index=True)
     queue_code = models.CharField(max_length=20, blank=True, db_index=True)
@@ -302,28 +304,51 @@ class Ticket(models.Model):
         plate = self.vehicle.plate_number if self.vehicle_id else "?"
         return f"Roaming ticket ({plate})"
 
+class DeskDuty(models.Model):
+    """Singleton: who is on the Dispatch desk right now, set from the Dispatch board. The
+    check-in Personnel is stamped on every vehicle taken in, the check-out Personnel on every
+    one let out; `series` is the ticket series the kiosk draws from, since the driver pays
+    at check-in. Local-only (not in PUSH_MODELS) — the tickets carry the names."""
+    checkin_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    checkout_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    series = models.ForeignKey('TicketSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.select_related('checkin_user', 'checkout_user').get_or_create(pk=1)
+        return obj
+
+    @property
+    def checkin_name(self):
+        return self.checkin_user.display_name if self.checkin_user else ''
+
+    @property
+    def checkout_name(self):
+        return self.checkout_user.display_name if self.checkout_user else ''
+
+    def __str__(self):
+        return f"Desk: in {self.checkin_name or '-'}, out {self.checkout_name or '-'}"
+
+
 class KioskSession(models.Model):
-    """One self-service QR visit: the driver checks in on the kiosk, a cashier marks it
-    paid (and picks the ticket series), and the next QR scan checks the vehicle out.
-    A QUEUE session rides on the vehicle's normal QUEUED ticket; a ROAM session has no
-    ticket until checkout, so this row is the only record of the pending roam.
+    """One self-service QR visit: the driver checks in on the kiosk and pays the check-in
+    Personnel on the spot (which fixes the ticket series), and the next QR scan checks the
+    vehicle out. A QUEUE session rides on the vehicle's normal QUEUED ticket; a ROAM session
+    has no ticket until checkout, so this row is the only record of the pending roam.
     Local-only (not in PUSH_MODELS) — the tickets it produces are what get synced."""
     MODE_CHOICES = [('QUEUE', 'Queue'), ('ROAM', 'Roam')]
-    STATUS_CHOICES = [
-        ('AWAITING_PAYMENT', 'Awaiting payment'), ('PAID', 'Paid'),
-        ('DONE', 'Done'), ('CANCELLED', 'Cancelled'),
-    ]
-    OPEN_STATUSES = ('AWAITING_PAYMENT', 'PAID')
+    STATUS_CHOICES = [('PAID', 'Paid'), ('DONE', 'Done'), ('CANCELLED', 'Cancelled')]
+    OPEN_STATUSES = ('PAID',)
 
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='kiosk_sessions')
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='kiosk_sessions')
     mode = models.CharField(max_length=10, choices=MODE_CHOICES)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='AWAITING_PAYMENT', db_index=True)
-    # Chosen by the cashier when marking paid; drawn from at checkout.
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PAID', db_index=True)
+    # Fixed at check-in from the desk's series; drawn from at checkout.
     series = models.ForeignKey('TicketSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     quantity = models.PositiveIntegerField(default=1)
-    paid_at = models.DateTimeField(null=True, blank=True)
-    paid_by_name = models.CharField(max_length=150, blank=True, default="")
+    checked_in_by_name = models.CharField(max_length=150, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -238,9 +238,13 @@ class Command(BaseCommand):
             "remittance_batches": RemittanceBatch.objects.count(),
         }
 
-        ticket_forms = list(TicketForm.objects.all())
         puv_types = list(PUVType.objects.all())
         jeepney = next((p for p in puv_types if p.name == "Jeepney"), puv_types[0] if puv_types else None)
+        # Only forms whose price divides the Jeepney terminal price can make up a COLLECTED
+        # transaction (e.g. a P11 form never can against P10) -- the rest would also share a
+        # series-number prefix with a same-leading-digit form.
+        terminal_price = jeepney.terminal_price if jeepney else 0
+        ticket_forms = [f for f in TicketForm.objects.all() if f.price and terminal_price % f.price == 0]
         routes = list(Route.objects.filter(is_active=True, is_archived=False))
         admin_user = User.objects.filter(role="SUPERADMIN").first() or User.objects.first()
         staff_users = list(User.objects.filter(role__in=["PERSONNEL", "SUPERVISOR", "MANAGER"])) or [admin_user]

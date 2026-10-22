@@ -456,12 +456,44 @@
 .dispatch-btn--swap { padding: 0 16px; }
 .dispatch-btn--sm { padding: 5px 10px; font-size: 11px; }
 
-/* Kiosk payment: cashier confirms the driver paid, so their QR scan can check them out */
-.dispatch-btn--paid { padding: 0 14px; border-color: #15803d; color: #15803d; }
-.dispatch-btn--sm.dispatch-btn--paid { padding: 5px 10px; }
-.dispatch-btn--paid:hover:not(:disabled) { background: rgba(21, 128, 61, 0.08); }
-.dispatch-btn--paid-on { background: #15803d; color: #fff; }
-.dispatch-btn--paid-on:hover:not(:disabled) { background: #166534; }
+/* Who is accountable for a vehicle (the check-in Personnel), shown where Mark paid used to be */
+.dispatch-accountable {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The two desk dropdowns: who checks vehicles in, who checks them out */
+.dispatch-desk {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 24px 16px;
+}
+.dispatch-desk-field { display: flex; flex-direction: column; gap: 5px; }
+.dispatch-desk-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+.dispatch-desk-input:focus { border-color: #b7791f; box-shadow: 0 0 0 3px rgba(183,121,31,0.1); }
+@media (max-width: 560px) {
+  .dispatch-desk { grid-template-columns: 1fr; margin: 0 12px 14px; }
+}
 .dispatch-roam-strip {
   display: flex;
   flex-direction: column;
@@ -473,6 +505,19 @@
   background: var(--bg-surface);
 }
 .dispatch-roam-row { display: flex; align-items: center; gap: 10px; }
+.dispatch-roam-row--over { margin: 0 -8px; padding: 4px 8px; border-radius: 8px; background: rgba(220,38,38,0.08); }
+.dispatch-roam-timer {
+  padding: 5px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dispatch-roam-timer--over { border-color: #dc2626; background: #dc2626; color: #fff; animation: dispatch-roam-blink 1.4s ease-in-out infinite; }
+@keyframes dispatch-roam-blink { 50% { opacity: 0.65; } }
 .dispatch-roam-info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-secondary); }
 
 /* ── Loading dots ── */

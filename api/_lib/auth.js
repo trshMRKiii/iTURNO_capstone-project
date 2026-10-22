@@ -53,7 +53,7 @@ function getSecret() {
 }
 
 // Separate from REMOTE_JWT_SECRET (login/session tokens, Node-only) because
-// password-reset and email-verification links can be issued by EITHER this
+// password-reset links can be issued by EITHER this
 // file or backend/api/tokens.py (same shared secret, same JWT shape on both
 // sides) — whichever side sent the email, the link always opens the Vercel
 // deployment (see settings.PUBLIC_APP_URL), so this side has to be able to
@@ -120,27 +120,6 @@ export function verifyPasswordResetToken(token, user) {
   if (payload.type !== "password-reset") throw new Error("Not a password-reset token");
   if (payload.sub !== String(user.id)) throw new Error("Token does not match user");
   if (payload.pwd !== String(user.password).slice(-12)) throw new Error("Token already used");
-  return payload;
-}
-
-// Email-verification token: same shared-secret scheme as above, mirrored by
-// Django's sign_email_verification_token/verify_email_verification_token.
-// No extra binding needed to self-invalidate — verifyEmail (api/remote/auth/
-// [action].js) and Django's verify_email both reject outright once
-// email_verified is already true, before the token is even checked. 30-day
-// expiry matches the invite email's copy and expire_stale_unverified_accounts.
-export function signEmailVerificationToken(user) {
-  return jwt.sign(
-    { sub: String(user.id), type: "email-verification" },
-    getEmailLinkSecret(),
-    { expiresIn: "30d" },
-  );
-}
-
-export function verifyEmailVerificationToken(token, user) {
-  const payload = verifyEmailLinkToken(token);
-  if (payload.type !== "email-verification") throw new Error("Not an email-verification token");
-  if (payload.sub !== String(user.id)) throw new Error("Token does not match user");
   return payload;
 }
 

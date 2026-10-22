@@ -210,6 +210,57 @@ class OfflineStaffRegistrationTests(TestCase):
         self.assertTrue(PendingAccountEmail.objects.exists())
 
 
+class StaffImportTests(TestCase):
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        self.client = APIClient()
+        self.client.force_authenticate(User.objects.create_user(username='adm', password='x', role='SUPERADMIN'))
+        User.objects.create_user(username='taken@staff.ph', password='x', role='PERSONNEL')
+        self.rows = [
+            {'username': 'ok@staff.ph', 'first_name': 'Ok', 'last_name': 'One', 'role': 'supervisor'},
+            {'username': 'taken@staff.ph', 'first_name': 'Dup', 'last_name': 'Existing'},
+            {'username': 'OK@staff.ph', 'first_name': 'Dup', 'last_name': 'InFile'},
+            {'username': 'boss@staff.ph', 'first_name': 'Bo', 'last_name': 'Ss', 'role': 'Admin'},
+            {'username': 'nolast@staff.ph', 'first_name': 'No', 'last_name': ''},
+            {'username': 'not-an-email', 'first_name': 'Bad', 'last_name': 'Email'},
+            {'username': 'plain@staff.ph', 'first_name': 'Plain', 'last_name': 'Two'},
+        ]
+
+    def test_preview_flags_problems_and_creates_nothing(self):
+        from unittest import mock
+        from .models import PendingAccountEmail, User
+        with mock.patch('api.views.viewsets.send_new_account_email') as send:
+            res = self.client.post('/api/users/import/', {'rows': self.rows}, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual([r['outcome'] for r in res.data['rows']], ['ok', 'error', 'error', 'error', 'error', 'error', 'ok'])
+        self.assertIn('already exists', res.data['rows'][1]['reason'])
+        self.assertIn('more than once', res.data['rows'][2]['reason'])
+        self.assertIn('Admin', res.data['rows'][3]['reason'])
+        self.assertEqual(res.data['created'], 0)
+        self.assertFalse(User.objects.filter(username='ok@staff.ph').exists())
+        self.assertFalse(PendingAccountEmail.objects.exists())
+        send.assert_not_called()
+
+    def test_commit_creates_only_valid_rows_and_emails_each(self):
+        from unittest import mock
+        from django.test import override_settings
+        from .models import User
+        with override_settings(DEBUG=True), mock.patch('api.views.viewsets.send_new_account_email') as send:
+            res = self.client.post('/api/users/import/', {'rows': self.rows, 'commit': True}, format='json')
+        self.assertEqual(res.data['created'], 2)
+        self.assertEqual(send.call_count, 2)
+        ok = User.objects.get(username='ok@staff.ph')
+        self.assertEqual(ok.role, 'SUPERVISOR')
+        self.assertTrue(ok.must_reset_password)
+        self.assertEqual(User.objects.filter(username__in=['boss@staff.ph', 'nolast@staff.ph']).count(), 0)
+
+    def test_only_admins_may_import(self):
+        from .models import User
+        self.client.force_authenticate(User.objects.create_user(username='lead', password='x', role='SUPERVISOR'))
+        self.assertEqual(self.client.post('/api/users/import/', {'rows': self.rows}, format='json').status_code, 403)
+
+
 class OfflineSettingDeleteTests(TestCase):
     def test_delete_offline_is_parked_and_not_resurrected_by_pull_then_pushed(self):
         from unittest import mock
@@ -507,6 +558,25 @@ class AutoBackupSettingsTests(TestCase):
         from .views.system import _backup_models
         self.assertNotIn(BackupSettings, _backup_models())
 
+    def test_restore_keeps_audit_trail_and_logs_itself(self):
+        import json, tempfile
+        from unittest import mock
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import FileSystemStorage
+        from .models import AuditLog
+        from .views.helpers import record_audit_log
+        record_audit_log(self.user, 'CREATE', 'Route', 1, 'Existing entry')
+        stale = json.dumps([{'model': 'api.auditlog', 'pk': 999, 'fields': {
+            'action': 'CREATE', 'model_name': 'Old', 'object_id': '', 'object_repr': '', 'changes': {},
+            'created_at': '2020-01-01T00:00:00Z', 'user': None}}])
+        with tempfile.TemporaryDirectory() as tmp, mock.patch('api.views.system.backup_storage', FileSystemStorage(tmp)):
+            res = self.client.post('/api/system/backups/restore-upload/', {'file': ContentFile(stale.encode(), 'old.json')})
+        self.assertEqual(res.status_code, 200, res.data)
+        names = set(AuditLog.objects.values_list('object_repr', flat=True))
+        self.assertIn('Existing entry', names)
+        self.assertIn('Restored from uploaded file old.json', names)
+        self.assertFalse(AuditLog.objects.filter(pk=999).exists())
+
     def test_expiry_drops_old_automatic_but_never_manual(self):
         from unittest import mock
         from .auto_backup import _run_once
@@ -662,7 +732,16 @@ class KioskTests(TestCase):
             start_no='1', end_no='100', unit_value=0, requisition=Requisition.objects.create(),
         )
         self.client = APIClient()
-        self.client.force_authenticate(User.objects.create_user(username='cashier', password='x', role='SUPERADMIN'))
+        self.admin = User.objects.create_user(username='cashier', password='x', role='SUPERADMIN')
+        self.client.force_authenticate(self.admin)
+        self.in_desk = User.objects.create_user(username='in', password='x', role='PERSONNEL', first_name='Ira', last_name='In')
+        self.out_desk = User.objects.create_user(username='out', password='x', role='PERSONNEL', first_name='Olga', last_name='Out')
+
+    def _duty(self, **fields):
+        return self.client.patch('/api/desk-duty/', fields, format='json')
+
+    def _on_duty(self):
+        self._duty(checkin_user=self.in_desk.id, checkout_user=self.out_desk.id, series=self.series.id)
 
     def _scan(self, text):
         return self.client.post('/api/kiosk/scan/', {'text': text}, format='json').data
@@ -672,81 +751,244 @@ class KioskTests(TestCase):
             'vehicle_id': vehicle.id, 'driver_id': driver.id, 'mode': mode,
         }, format='json').data
 
-    def _pay(self, vehicle, quantity=1):
-        return self.client.post('/api/kiosk/mark-paid/', {
-            'vehicle_id': vehicle.id, 'series_id': self.series.id, 'quantity': quantity,
-        }, format='json')
-
     def test_unknown_qr(self):
         self.assertEqual(self._scan('nope')['state'], 'UNKNOWN')
 
-    def test_queue_visit_must_be_paid_before_checkout(self):
+    def test_queue_visit_is_stamped_with_check_in_and_check_out_personnel(self):
+        self._on_duty()
         scan = self._scan('QR-A')
         self.assertEqual(scan['state'], 'CHECK_IN')
         self.assertEqual({d['name'] for d in scan['drivers']}, {'Cruz, Ana', 'Diaz, Ben'})
 
-        self.assertEqual(self._check_in(self.a, self.d1, 'QUEUE')['state'], 'CHECKED_IN')
+        checked_in = self._check_in(self.a, self.d1, 'QUEUE')
+        self.assertEqual((checked_in['state'], checked_in['checked_in_by']), ('CHECKED_IN', 'Ira In'))
         self.a.refresh_from_db()
         self.assertEqual(self.a.status, 'QUEUED')
-
-        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')  # unpaid: no checkout
         placeholder = Ticket.objects.get(vehicle=self.a, status='QUEUED')
-        checked_in = placeholder.issued_at
+        self.assertEqual(placeholder.checked_in_by_name, 'Ira In')
 
-        self.assertEqual(self._pay(self.a).status_code, 200)
-        out = self._scan('QR-A')
+        out = self._scan('QR-A')  # paid at check-in: the next scan is the checkout
         self.assertEqual(out['state'], 'DEPARTED')
         self.a.refresh_from_db()
         self.assertEqual(self.a.status, 'AVAILABLE')
         ticket = Ticket.objects.get(id=out['tickets'][0])
         self.assertEqual((ticket.status, ticket.mode, ticket.collection_amount), ('COLLECTED', 'QUEUE', 10))
+        self.assertEqual((ticket.checked_in_by_name, ticket.checked_out_by_name), ('Ira In', 'Olga Out'))
         # The dispatched ticket is brand new, but keeps the real arrival time for the stay.
-        self.assertEqual(ticket.checked_in_at, checked_in)
+        self.assertEqual(ticket.checked_in_at, placeholder.issued_at)
         self.assertGreaterEqual(ticket.dispatched_at, ticket.checked_in_at)
         self.assertEqual(self._scan('QR-A')['state'], 'CHECK_IN')  # visit is over
 
-    def test_paid_vehicle_waits_for_its_turn(self):
+    def test_swap_driver_checks_in_by_scanning_their_own_qr(self):
+        self._on_duty()
+        self.d2.qr_code = self.d2.iwp_number = 'IWP-D2'
+        self.d2.save()
+
+        def by_qr(qr):
+            return self.client.post('/api/kiosk/check-in/', {
+                'vehicle_id': self.a.id, 'driver_qr': qr, 'mode': 'ROAM',
+            }, format='json').data
+
+        self.assertEqual(by_qr('IWP-NOPE')['state'], 'ERROR')
+        done = by_qr('IWP-D2')
+        self.assertEqual((done['state'], done['driver']), ('CHECKED_IN', 'Diaz, Ben'))
+
+    def test_kiosk_check_in_needs_personnel_and_series_on_duty(self):
+        self.assertEqual(self._check_in(self.a, self.d1, 'QUEUE')['state'], 'ERROR')
+        self._duty(checkin_user=self.in_desk.id)
+        self.assertEqual(self._check_in(self.a, self.d1, 'QUEUE')['state'], 'ERROR')  # still no series
+        self._duty(series=self.series.id)
+        self.assertEqual(self._check_in(self.a, self.d1, 'QUEUE')['state'], 'CHECKED_IN')
+
+    def test_checkout_needs_a_check_out_personnel(self):
+        self._duty(checkin_user=self.in_desk.id, series=self.series.id)
+        self._check_in(self.a, self.d1, 'QUEUE')
+        self.assertEqual(self._scan('QR-A')['state'], 'ERROR')
+        self.assertTrue(Ticket.objects.filter(vehicle=self.a, status='QUEUED').exists())
+        self._duty(checkout_user=self.out_desk.id)
+        self.assertEqual(self._scan('QR-A')['state'], 'DEPARTED')
+
+    def test_vehicle_waits_for_its_turn(self):
+        self._on_duty()
         self._check_in(self.a, self.d1, 'QUEUE')
         self._check_in(self.b, self.d2, 'QUEUE')
-        self._pay(self.b)
         waiting = self._scan('QR-B')
         self.assertEqual((waiting['state'], waiting['position']), ('WAIT_TURN', 2))
         self.assertTrue(Ticket.objects.filter(vehicle=self.b, status='QUEUED').exists())
 
-    def test_roam_visit_pays_then_checks_out(self):
+    def test_roam_visit_checks_out_with_both_personnel(self):
+        self._on_duty()
         self.assertEqual(self._check_in(self.a, self.d1, 'ROAM')['state'], 'CHECKED_IN')
-        self.assertFalse(Ticket.objects.exists())  # nothing issued before payment
-        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')
+        self.assertFalse(Ticket.objects.exists())  # nothing issued before checkout
         pending = self.client.get('/api/kiosk/sessions/').data
-        self.assertEqual([(s['plate'], s['mode'], s['status']) for s in pending], [('AAA111', 'ROAM', 'AWAITING_PAYMENT')])
+        self.assertEqual([(s['plate'], s['mode'], s['checked_in_by']) for s in pending], [('AAA111', 'ROAM', 'Ira In')])
+        self.assertIsNotNone(pending[0]['checked_in_at'])  # the Dispatch roam timer counts from here
 
-        self._pay(self.a)
+        self._duty(checkin_user=self.out_desk.id)  # desk changes hands before the driver leaves
         out = self._scan('QR-A')
         self.assertEqual(out['state'], 'DEPARTED')
         ticket = Ticket.objects.get(id=out['tickets'][0])
         self.assertEqual((ticket.status, ticket.mode), ('COLLECTED', 'UNLOAD'))
+        self.assertEqual((ticket.checked_in_by_name, ticket.checked_out_by_name), ('Ira In', 'Olga Out'))
         # A kiosk roam's stay runs from its check-in scan to checkout.
         self.assertLess(ticket.checked_in_at, ticket.dispatched_at)
         self.assertEqual(self.client.get('/api/kiosk/sessions/').data, [])
 
-    def test_front_desk_queued_vehicle_can_be_marked_paid(self):
+    def test_front_desk_check_in_and_dispatch_are_stamped_too(self):
+        self._on_duty()
         self.client.post('/api/tickets/', {
             'id': 'Q-x', 'vehicle_id': self.a.id, 'driver_id': self.d1.id, 'route': self.a.route_id,
             'status': 'QUEUED', 'mode': 'QUEUE', 'is_verified': False,
+            'checked_in_by_name': 'Spoofed',  # read-only: only the desk's personnel is ever stamped
         }, format='json')
-        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')
-        self._pay(self.a)
-        self.assertEqual(self._scan('QR-A')['state'], 'DEPARTED')
+        self.assertEqual(Ticket.objects.get(vehicle=self.a, status='QUEUED').checked_in_by_name, 'Ira In')
+        self.assertEqual(self._scan('QR-A')['state'], 'BLOCKED')  # no kiosk visit: the dispatcher handles it
 
-    def test_mark_paid_total_must_match_terminal_price_and_can_be_undone(self):
-        self._check_in(self.a, self.d1, 'ROAM')
-        self.assertEqual(self._pay(self.a, quantity=2).status_code, 400)
-        self._pay(self.a)
-        self.client.post('/api/kiosk/mark-paid/', {'vehicle_id': self.a.id, 'paid': False}, format='json')
-        self.assertEqual(self._scan('QR-A')['state'], 'AWAITING_PAYMENT')
+        res = self.client.post('/api/tickets/dispatch/', {'vehicle_id': self.a.id, 'series_id': self.series.id, 'quantity': 1}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        ticket = Ticket.objects.get(vehicle=self.a, status='COLLECTED')
+        self.assertEqual((ticket.checked_in_by_name, ticket.checked_out_by_name), ('Ira In', 'Olga Out'))
+
+    def test_front_desk_cannot_check_in_or_dispatch_without_personnel(self):
+        body = {
+            'id': 'Q-y', 'vehicle_id': self.a.id, 'driver_id': self.d1.id, 'route': self.a.route_id,
+            'status': 'QUEUED', 'mode': 'QUEUE', 'is_verified': False,
+        }
+        self.assertEqual(self.client.post('/api/tickets/', body, format='json').status_code, 400)
+        self.assertFalse(Ticket.objects.exists())
+
+        self._duty(checkin_user=self.in_desk.id)  # check-in alone is enough to queue...
+        self.assertEqual(self.client.post('/api/tickets/', body, format='json').status_code, 201)
+        dispatch = {'vehicle_id': self.a.id, 'series_id': self.series.id, 'quantity': 1}
+        self.assertEqual(self.client.post('/api/tickets/dispatch/', dispatch, format='json').status_code, 400)  # ...but not to leave
+        self._duty(checkout_user=self.out_desk.id)
+        self.assertEqual(self.client.post('/api/tickets/dispatch/', dispatch, format='json').status_code, 200)
+
+    def test_series_that_does_not_fit_the_terminal_price_is_refused_at_check_in(self):
+        self.series.ticket_form.price = 4  # 10 isn't a whole number of ₱4 tickets
+        self.series.ticket_form.save()
+        self._on_duty()
+        self.assertEqual(self._check_in(self.a, self.d1, 'ROAM')['state'], 'ERROR')
+
+    def test_desk_duty_only_accepts_active_personnel(self):
+        self.assertEqual(self._duty(checkin_user=self.admin.id).status_code, 400)  # an admin, not Personnel
+        self.assertEqual(self._duty(checkout_user='nope').status_code, 400)
+        res = self._duty(checkin_user=self.in_desk.id)
+        self.assertEqual((res.status_code, res.data['checkin_user']), (200, self.in_desk.id))
+        self.assertEqual({p['name'] for p in res.data['personnel']}, {'Ira In', 'Olga Out'})
+        self.assertIsNone(self._duty(checkin_user=None).data['checkin_user'])
 
     def test_driver_cannot_check_in_twice_and_cancelled_roam_frees_the_vehicle(self):
+        self._on_duty()
         self._check_in(self.a, self.d1, 'ROAM')
         self.assertEqual(self._check_in(self.b, self.d1, 'QUEUE')['state'], 'ERROR')
         self.client.post('/api/kiosk/cancel/', {'vehicle_id': self.a.id}, format='json')
         self.assertEqual(self._scan('QR-A')['state'], 'CHECK_IN')
+
+
+class DashboardTests(TestCase):
+    def setUp(self):
+        from datetime import datetime, timezone as tz
+        from rest_framework.test import APIClient
+        from .models import Route, User
+        self.NOW = datetime(2026, 3, 10, 6, 30, tzinfo=tz.utc)  # 14:30 in Manila, a Tuesday
+        self.client = APIClient()
+        self.client.force_authenticate(User.objects.create_user(username='dash', password='x', role='SUPERADMIN'))
+        self.bacnotan = Route.objects.create(origin='Bacnotan')
+        self.bauang = Route.objects.create(origin='Bauang')
+        self.driver = Driver.objects.create(first_name='Juan', last_name='Cruz', contact='09170000000')
+        self.n = 0
+
+    def _ticket(self, dispatched, mode='QUEUE', amount=10, route=None):
+        self.n += 1
+        vehicle = Vehicle.objects.create(plate_number=f'V{self.n}')
+        return Ticket.objects.create(
+            id=f'T{self.n}', vehicle=vehicle, driver=self.driver, route=route or self.bacnotan, mode=mode,
+            status='COLLECTED', collection_amount=amount, dispatched_at=dispatched,
+        )
+
+    def _get(self, path):
+        from unittest import mock
+        with mock.patch('django.utils.timezone.now', return_value=self.NOW):
+            return self.client.get(path).data
+
+    def _at(self, days_ago, hour_utc, minute=0):
+        from datetime import timedelta
+        return (self.NOW - timedelta(days=days_ago)).replace(hour=hour_utc, minute=minute)
+
+    def test_stats_split_hours_routes_and_the_same_time_yesterday(self):
+        self._ticket(self._at(0, 1, 10))                                         # today 9:10  queued
+        self._ticket(self._at(0, 1, 40), mode='UNLOAD')                          # today 9:40  roamed
+        self._ticket(self._at(0, 4), mode='UNLOAD', amount=20, route=self.bauang)  # today 12:00 roamed
+        self._ticket(self._at(1, 2))                                             # yesterday 10:00
+        self._ticket(self._at(1, 8))                                             # yesterday 16:00 — after the 14:30 cutoff
+
+        data = self._get('/api/dashboard/stats/')
+
+        self.assertEqual(data['summary'], {'queued': {'count': 1, 'total': 10.0}, 'roamed': {'count': 2, 'total': 30.0}})
+        self.assertEqual(data['compared']['previous']['queued']['count'], 1)
+        self.assertEqual(data['compared']['previous']['roamed']['count'], 0)
+        self.assertEqual((data['compared']['days'], data['compared']['trimmed']), (1, False))
+        self.assertEqual(data['as_of'], {'hour': 14, 'label': '2:30 PM'})
+        self.assertEqual((data['hourly'][9]['queued'], data['hourly'][9]['roamed']), (1, 1))
+        self.assertEqual((data['hourly'][12]['roamed'], data['hourly'][12]['roamed_total']), (1, 20.0))
+        routes = {r['name']: r for r in data['route_performance']}
+        self.assertEqual((routes['Bacnotan']['queued'], routes['Bacnotan']['roamed'], routes['Bacnotan']['roamed_total']), (1, 1, 10.0))
+        self.assertEqual((routes['Bauang']['queued'], routes['Bauang']['roamed'], routes['Bauang']['roamed_total']), (0, 1, 20.0))
+        # Each route carries its own hours (only those with tickets) and its earlier-period counts.
+        self.assertEqual([(h['hour'], h['queued'], h['roamed']) for h in routes['Bacnotan']['hourly']], [(9, 1, 1)])
+        self.assertEqual([h['hour'] for h in routes['Bauang']['hourly']], [12])
+        self.assertEqual(data['compared']['previous_routes']['Bacnotan']['queued'], 1)
+        self.assertNotIn('Bauang', data['compared']['previous_routes'])
+
+    def test_past_range_has_no_cutoff_and_compares_the_period_before(self):
+        self._ticket(self._at(1, 8))   # yesterday 16:00
+        self._ticket(self._at(2, 8))   # the day before
+        data = self._get('/api/dashboard/stats/?start_date=2026-03-09&end_date=2026-03-09')
+        self.assertIsNone(data['as_of'])
+        self.assertEqual((data['summary']['queued']['count'], data['compared']['previous']['queued']['count']), (1, 1))
+
+    def test_a_range_that_includes_today_is_compared_on_whole_days_only(self):
+        self._ticket(self._at(0, 1))   # today — not finished, left out of the comparison
+        self._ticket(self._at(1, 2))   # yesterday
+        self._ticket(self._at(1, 3))   # yesterday
+        self._ticket(self._at(2, 8))   # two days ago — the whole day before yesterday counts, even after 14:30
+
+        data = self._get('/api/dashboard/stats/?start_date=2026-03-09&end_date=2026-03-10')
+        compared = data['compared']
+
+        self.assertEqual((compared['days'], compared['trimmed']), (1, True))
+        self.assertEqual(data['summary']['queued']['count'], 3)        # the totals on the page still include today
+        self.assertEqual(compared['current']['queued']['count'], 2)    # the comparison does not
+        self.assertEqual(compared['previous']['queued']['count'], 1)
+        self.assertEqual(compared['current_routes']['Bacnotan']['queued'], 2)
+
+    def test_queue_routes_lead_with_the_front_vehicle_and_list_idle_routes(self):
+        from datetime import timedelta
+        for minutes, plate in ((9, 'BBB'), (18, 'AAA')):
+            v = Vehicle.objects.create(plate_number=plate)
+            t = Ticket.objects.create(id=plate, vehicle=v, driver=self.driver, route=self.bacnotan, status='QUEUED')
+            Ticket.objects.filter(pk=t.pk).update(issued_at=self.NOW - timedelta(minutes=minutes))
+
+        lines = {l['name']: l for l in self._get('/api/dashboard/stats/')['queue_routes']}
+
+        self.assertEqual(lines['Bacnotan'], {'name': 'Bacnotan', 'count': 2, 'next_plate': 'AAA', 'waiting_minutes': 18})
+        self.assertEqual(lines['Bauang']['count'], 0)
+
+    def test_busiest_counts_check_ins_over_four_full_weeks_and_skips_today(self):
+        def check_in(days_ago, **when):
+            ticket = self._ticket(None)   # never dispatched — still a vehicle that came in
+            Ticket.objects.filter(pk=ticket.pk).update(**{k: self._at(days_ago, 1, 30) for k in when})
+
+        for weeks_ago in (1, 2, 3, 4):
+            check_in(7 * weeks_ago, checked_in_at=True)   # a Tuesday, 9:30 Manila
+        check_in(14, issued_at=True)                      # older row with no checked_in_at: falls back to issued_at
+        check_in(0, checked_in_at=True)                   # today — excluded
+        check_in(29, checked_in_at=True)                  # before the window — excluded
+
+        data = self._get('/api/dashboard/busiest/')
+
+        self.assertEqual(data['grid'][1][9], 1.25)
+        self.assertEqual(sum(map(sum, data['grid'])), 1.25)
+        self.assertEqual(len(data['dates'][1]), 4)          # four Tuesdays behind that average
+        self.assertEqual(sum(map(len, data['dates'])), 28)

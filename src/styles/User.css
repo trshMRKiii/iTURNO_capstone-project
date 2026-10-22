@@ -78,6 +78,61 @@
 
 .usr-add-btn:active { transform: translateY(0); }
 
+.usr-import-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.usr-import-btn:hover { background: var(--bg-hover); }
+
+/* ── Staff import modal ── */
+.usr-import-modal { max-width: 760px; }
+.usr-import-modal .usr-alert { margin-bottom: 0; }
+.usr-import-modal .rpt-pager { padding-left: 0; padding-right: 0; }
+.usr-import-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 16px;
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.usr-import-drop strong { font-size: 14px; color: var(--text-primary); }
+.usr-import-drop:hover { background: var(--bg-hover); border-color: var(--text-secondary); }
+.usr-import-drop.is-busy { cursor: wait; opacity: 0.7; }
+.usr-import-note { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-secondary); }
+.usr-import-note b { color: var(--text-primary); }
+.usr-import-filter {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d4ed8;
+  cursor: pointer;
+}
+.usr-import-filter:hover { text-decoration: underline; }
+.usr-import-role { text-transform: capitalize; }
+.usr-import-row--error td { color: #b91c1c; }
+
 /* ── Alert ── */
 .usr-alert {
   display: flex;
@@ -419,7 +474,7 @@
     align-items: flex-start;
   }
 
-  .usr-add-btn { width: 100%; justify-content: center; }
+  .usr-add-btn, .usr-import-btn { width: 100%; justify-content: center; }
 
   .usr-table th,
   .usr-table td { padding: 10px 12px; }
@@ -491,7 +546,7 @@
 @media (max-width: 560px) {
   .usr-header-right { flex-wrap: wrap; width: 100%; }
   .usr-search-wrap { width: 100%; }
-  .usr-add-btn { width: 100%; justify-content: center; }
+  .usr-add-btn, .usr-import-btn { width: 100%; justify-content: center; }
 }
 /* Fleet & Driver access tick (Personnel rows) */
 .usr-fleet-tick { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }

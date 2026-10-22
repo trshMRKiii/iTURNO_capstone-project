@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../../../styles/SupervisorPicker.css";
 
-// Pick one supervisor by name. Typing only filters the list; what is chosen is always an
-// entry from it (its id goes up), so free text can never become the value.
-export default function SupervisorPicker({ supervisors, value, onChange, disabled, className = "" }) {
+// Pick one supervisor (or any named person, via `label`) by name. Typing only filters the
+// list; what is chosen is always an entry from it (its id goes up), so free text can never
+// become the value.
+export default function SupervisorPicker({ supervisors, value, onChange, disabled, className = "", label = "Supervisor" }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -35,8 +36,8 @@ export default function SupervisorPicker({ supervisors, value, onChange, disable
         onFocus={() => setOpen(true)}
         onClick={() => setOpen(true)}
         onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); setQuery(""); } }}
-        placeholder="Search supervisor…"
-        aria-label="Supervisor"
+        placeholder={`Search ${label.toLowerCase()}…`}
+        aria-label={label}
         spellCheck={false}
       />
       {open && (

@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
-import ReportTableModal from "./ReportTableModal";
-import { matchesQueueRow, matchesRoamingRow, useDebouncedSearchAll } from "../reportHook";
-const QUEUE_COLUMNS = ["Timestamp", "Ticket ID", "Action", "Driver", "Vehicle", "Route", "User"];
-const ROAMING_COLUMNS = ["Ticket ID", "Timestamp", "Vehicle", "Driver", "Issued By"];
-const ALL_COLUMNS = ["Timestamp", "Ticket ID", "Type", "Driver", "Vehicle", "Route", "User"];
+import { matchesQueueRow, matchesRoamingRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
+const QUEUE_COLUMNS = ["Timestamp", "Ticket ID", "Issued By", "Driver", "Vehicle", "Route", "Dispatched By"];
+const ROAMING_COLUMNS = ["Ticket ID", "Timestamp", "Vehicle", "Driver", "Issued By", "Dispatched By"];
+const ALL_COLUMNS = ["Timestamp", "Ticket ID", "Type", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
 
 const withQueueType = (l) => ({ ...l, type: "Queue" });
 const roamingToLogRow = (t) => ({
@@ -15,12 +14,24 @@ const roamingToLogRow = (t) => ({
   driver: t.driver?.name || "",
   vehicle: t.vehicle?.plate_number || "",
   route: t.route_name || "",
-  user: t.active_user_name || "—",
+  issued_by: t.checked_in_by_name || "—",
+  dispatched_by: t.checked_out_by_name || "—",
   type: "Roaming",
 });
-const TYPE_COLORS = { Queue: "#2563eb", Roaming: "#7c3aed" };
-// Main card shows a short preview like the other report cards (FleetRecords) —
-// "View All" opens the modal for the full paginated list.
+const sortNewest = (rows) => rows.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+const TOP_BLOCKS = 3; // blocks served by the fast newest-rows fetch before falling back to the full merge
+const MAX_PAGE_SIZE = 200; // the server caps page_size here
+
+// Newest `n` rows of one source, in as few requests of <= MAX_PAGE_SIZE rows as it takes.
+const fetchNewest = async (fetchPage, n) => {
+  const parts = Math.ceil(n / MAX_PAGE_SIZE);
+  const size = Math.ceil(n / parts);
+  const pages = await Promise.all(Array.from({ length: parts }, (_, i) => fetchPage(i + 1, size)));
+  return { results: pages.flatMap((p) => p.results), count: pages[0].count };
+};
+const MERGED_TTL_MS = 60_000;
+const TYPE_COLORS ={ Queue: "#2563eb", Roaming: "#7c3aed" };
+// Rows per page on the card.
 const PREVIEW_SIZE = 5;
 
 export default function QueueLog({
@@ -34,18 +45,11 @@ export default function QueueLog({
   onRoamingFetchPage,
   onRoamingFetchAll,
   onExportRoamingPDF,
-  STATUS_COLORS,
   pageSize,
 }) {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
 
-  const [showModal, setShowModal] = useState(false);
-  const [modalSearch, setModalSearch] = useState("");
-  const [modalPage, setModalPage] = useState(1);
-  const [modalData, setModalData] = useState([]);
-  const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
-  const modalBodyRef = useRef(null);
 
   const isAll = activeTab === "all";
   const isQueue = activeTab === "queue";
@@ -55,25 +59,47 @@ export default function QueueLog({
   // paged client-side.
   const fetchAllMerged = useCallback(async (q = "") => {
     const [queue, roaming] = await Promise.all([onQueueFetchAll(q), onRoamingFetchAll(q)]);
-    return [...queue.map(withQueueType), ...roaming.map(roamingToLogRow)].sort(
-      (a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0),
-    );
+    return sortNewest([...queue.map(withQueueType), ...roaming.map(roamingToLogRow)]);
   }, [onQueueFetchAll, onRoamingFetchAll]);
 
-  const fetchAllPage = useCallback(async (page) => {
-    const rows = await fetchAllMerged();
+  // The full merge is the slow part (every ticket in range), so it's downloaded once
+  // per date range and shared by the card pager.
+  const mergedCache = useRef(null);
+  const loadMerged = useCallback(() => {
+    const hit = mergedCache.current;
+    if (hit && hit.src === fetchAllMerged && Date.now() - hit.at < MERGED_TTL_MS) return hit.promise;
+    const promise = fetchAllMerged();
+    mergedCache.current = { src: fetchAllMerged, at: Date.now(), promise };
+    promise.catch(() => { mergedCache.current = null; });
+    return promise;
+  }, [fetchAllMerged]);
+
+  // Both sources are newest-first, so while the full merge isn't loaded, block N only
+  // needs the newest N*size rows of each.
+  const fetchAllPage = useCallback(async (page, size = pageSize) => {
+    const need = page * size;
+    const hit = mergedCache.current;
+    const cached = hit && hit.src === fetchAllMerged && Date.now() - hit.at < MERGED_TTL_MS;
+    let rows;
+    let count;
+    if (!cached && page <= TOP_BLOCKS) {
+      const [queue, roaming] = await Promise.all([fetchNewest(onQueueFetchPage, need), fetchNewest(onRoamingFetchPage, need)]);
+      rows = sortNewest([...queue.results.map(withQueueType), ...roaming.results.map(roamingToLogRow)]);
+      count = queue.count + roaming.count;
+    } else {
+      rows = await loadMerged();
+      count = rows.length;
+    }
     return {
-      results: rows.slice((page - 1) * pageSize, page * pageSize),
-      count: rows.length,
-      totalPages: Math.max(Math.ceil(rows.length / pageSize), 1),
+      results: rows.slice((page - 1) * size, need),
+      count,
+      totalPages: Math.max(Math.ceil(count / size), 1),
       page,
     };
-  }, [fetchAllMerged, pageSize]);
+  }, [fetchAllMerged, loadMerged, onQueueFetchPage, onRoamingFetchPage, pageSize]);
 
   const data = isAll
-    ? [...queueData.map(withQueueType), ...roamingData.map(roamingToLogRow)].sort(
-        (a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0),
-      )
+    ? sortNewest([...queueData.map(withQueueType), ...roamingData.map(roamingToLogRow)])
     : isQueue ? queueData : roamingData;
   const meta = isAll
     ? { count: queueMeta.count + roamingMeta.count }
@@ -83,86 +109,40 @@ export default function QueueLog({
 
   const matches = isAll || isQueue ? matchesQueueRow : matchesRoamingRow;
 
-  // data/modalData only ever hold one loaded page — once there's an actual
+  // data only ever hold one loaded page — once there's an actual
   // query, search the complete date-ranged result set instead of just that page.
   const searchAll = useDebouncedSearchAll(fetchAll, search);
-  const modalSearchAll = useDebouncedSearchAll(fetchAll, modalSearch);
-  const isModalSearching = modalSearch.trim() && modalSearchAll;
 
   const searched = searchAll
     ? searchAll.filter((row) => matches(row, search))
     : data.filter((row) => matches(row, search));
-  const preview = searched.slice(0, PREVIEW_SIZE);
-  const total = searchAll ? searched.length : meta.count;
-
-  const modalFilteredAll = isModalSearching
-    ? modalSearchAll.filter((row) => matches(row, modalSearch))
-    : [];
-  const modalSearched = isModalSearching
-    ? modalFilteredAll.slice((modalPage - 1) * pageSize, modalPage * pageSize)
-    : modalData;
-  const modalTotal = isModalSearching ? modalFilteredAll.length : modalMeta.count;
-  const modalTotalPages = isModalSearching
-    ? Math.max(Math.ceil(modalFilteredAll.length / pageSize), 1)
-    : modalMeta.totalPages;
-
-  // A fresh modal search should start back at page 1, not wherever the
-  // server-paginated browsing left off.
-  useEffect(() => {
-    setModalPage(1);
-  }, [modalSearch]);
+  const filtering = Boolean(search.trim());
+  const total = filtering ? searched.length : meta.count;
+  // Only the newest `pageSize` merged rows are guaranteed in order (each source
+  // preloaded `pageSize`); anything deeper comes from the block fetch.
+  const { rows: preview, loading, page, totalPages, setPage } = usePagedPreview({
+    rows: filtering ? searched : searched.slice(0, pageSize),
+    total,
+    fetchPage: fetchPage,
+    local: filtering,
+    resetKey: [fetchPage, search],
+    size: PREVIEW_SIZE,
+  });
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearch("");
-    setShowModal(false);
-  };
-
-  const openModal = async () => {
-    setShowModal(true);
-    setModalSearch("");
-    const page = await fetchPage(1);
-    setModalPage(page.page);
-    setModalData(page.results);
-    setModalMeta({ count: page.count, totalPages: page.totalPages });
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setModalSearch("");
-  };
-
-  const changeModalPage = async (page) => {
-    modalBodyRef.current?.scrollTo({ top: 0 });
-    if (isModalSearching) {
-      setModalPage(page);
-      return;
-    }
-    const result = await fetchPage(page);
-    setModalPage(result.page);
-    setModalData(result.results);
-    setModalMeta({ count: result.count, totalPages: result.totalPages });
   };
 
   const renderQueueRow = (l, idx, { rowClass, cellClass }) => (
     <tr key={l.id + idx} className={rowClass}>
       <td className={`${cellClass} rpt-mono rpt-muted`}>{l.timestamp ? new Date(l.timestamp).toLocaleString() : "—"}</td>
       <td className={`${cellClass} rpt-mono`}>{l.ticket_id}</td>
-      <td className={cellClass}>
-        <span
-          className="rpt-action-pill"
-          style={{
-            background: `${STATUS_COLORS[l.action] || "#64748b"}22`,
-            color: STATUS_COLORS[l.action] || "#64748b",
-          }}
-        >
-          {l.action}
-        </span>
-      </td>
+      <td className={cellClass}>{l.issued_by}</td>
       <td className={cellClass}>{l.driver}</td>
       <td className={cellClass}><span className="rpt-plate">{l.vehicle}</span></td>
       <td className={cellClass}>{l.route}</td>
-      <td className={`${cellClass} rpt-muted`}>{l.user}</td>
+      <td className={cellClass}>{l.dispatched_by}</td>
     </tr>
   );
 
@@ -181,7 +161,8 @@ export default function QueueLog({
       <td className={cellClass}>{l.driver}</td>
       <td className={cellClass}>{l.vehicle ? <span className="rpt-plate">{l.vehicle}</span> : <span className="rpt-na">—</span>}</td>
       <td className={cellClass}>{l.route}</td>
-      <td className={`${cellClass} rpt-muted`}>{l.user}</td>
+      <td className={cellClass}>{l.issued_by}</td>
+      <td className={cellClass}>{l.dispatched_by}</td>
     </tr>
   );
 
@@ -197,13 +178,13 @@ export default function QueueLog({
         )}
       </td>
       <td className={cellClass}>{t.driver?.name || <span className="rpt-na">—</span>}</td>
-      <td className={cellClass}>{t.active_user_name || <span className="rpt-na">—</span>}</td>
+      <td className={cellClass}>{t.checked_in_by_name || <span className="rpt-na">—</span>}</td>
+      <td className={cellClass}>{t.checked_out_by_name || <span className="rpt-na">—</span>}</td>
     </tr>
   );
 
   const columns = isAll ? ALL_COLUMNS : isQueue ? QUEUE_COLUMNS : ROAMING_COLUMNS;
   const rowRenderer = isAll ? renderAllRow : isQueue ? renderQueueRow : renderRoamingRow;
-  const tabTitle = isAll ? "All Logs" : isQueue ? "Terminal Queue Log" : "Roaming Logs";
 
   const handleExport = async () => {
     if (isAll || isQueue) await onExportQueuePDF(search);
@@ -213,31 +194,7 @@ export default function QueueLog({
   return (
     <div className="rpt-card rpt-section">
       <div className="rpt-card-header">
-        <div className="rpt-card-header-left">
-          <div className="rpt-tab-group">
-            <button
-              className={`rpt-tab ${isAll ? "rpt-tab--active" : ""}`}
-              onClick={() => handleTabChange("all")}
-            >
-              All
-            </button>
-            <button
-              className={`rpt-tab ${isQueue ? "rpt-tab--active" : ""}`}
-              onClick={() => handleTabChange("queue")}
-            >
-              Terminal Queue Log
-            </button>
-            <button
-              className={`rpt-tab ${activeTab === "roaming" ? "rpt-tab--active" : ""}`}
-              onClick={() => handleTabChange("roaming")}
-            >
-              Roaming Logs
-            </button>
-          </div>
-          <span className="rpt-record-count">
-            {preview.length} of {total} records
-          </span>
-        </div>
+        <h2 className="rpt-card-title">Queue and Roaming Logs</h2>
         <div className="rpt-card-header-actions">
           <input
             type="text"
@@ -246,11 +203,6 @@ export default function QueueLog({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {total > PREVIEW_SIZE && (
-            <button className="rpt-btn rpt-btn--secondary" onClick={openModal}>
-              View All
-            </button>
-          )}
           <button
             className="rpt-btn-export rpt-btn-export--navy"
             title={search ? "Export only rows matching your search" : "Export all records in range"}
@@ -265,31 +217,34 @@ export default function QueueLog({
         </div>
       </div>
 
-      <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} />
+      <div className="rpt-card-tabs">
+        <div className="rpt-tab-group">
+          <button
+            className={`rpt-tab ${isAll ? "rpt-tab--active" : ""}`}
+            onClick={() => handleTabChange("all")}
+          >
+            All
+          </button>
+          <button
+            className={`rpt-tab ${isQueue ? "rpt-tab--active" : ""}`}
+            onClick={() => handleTabChange("queue")}
+          >
+            Terminal Queue Log
+          </button>
+          <button
+            className={`rpt-tab ${activeTab === "roaming" ? "rpt-tab--active" : ""}`}
+            onClick={() => handleTabChange("roaming")}
+          >
+            Roaming Logs
+          </button>
+        </div>
+        <span className="rpt-record-count">
+          {preview.length} of {total} records
+        </span>
+      </div>
 
-      {showModal && (
-        <ReportTableModal
-          title={tabTitle}
-          subtitle={isAll ? "Queue and roaming activity combined" : isQueue ? "Full ticket activity history" : "Full roaming vehicle activity history"}
-          count={modalTotal}
-          onClose={closeModal}
-          searchValue={modalSearch}
-          onSearchChange={setModalSearch}
-          searchPlaceholder={isAll ? "Search all…" : isQueue ? "Search logs…" : "Search roaming…"}
-          bodyRef={modalBodyRef}
-          footer={
-            <Pager
-              page={modalPage}
-              totalPages={modalTotalPages}
-              count={modalTotal}
-              pageSize={pageSize}
-              onPageChange={changeModalPage}
-            />
-          }
-        >
-          <DataTable columns={columns} data={modalSearched} rowRenderer={rowRenderer} />
-        </ReportTableModal>
-      )}
+      <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} emptyText={loading ? "Loading…" : undefined} />
+      <Pager page={page} totalPages={totalPages} count={total} pageSize={PREVIEW_SIZE} onPageChange={setPage} />
     </div>
   );
 }

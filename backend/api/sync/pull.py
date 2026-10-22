@@ -1,5 +1,7 @@
 import logging
 
+from django.conf import settings
+
 from api.models import LOCAL_ADMIN_PK_BASE, User
 from api.sync.account_emails import flush_account_emails
 from api.sync.fleet_access import flush_fleet_access, pending_fleet_access
@@ -38,6 +40,9 @@ def pull_all():
     flush_settings()
     flush_account_emails()  # after flush_settings: offline-created accounts must reach Supabase first
     pending = pending_settings()  # settings rows still parked: local copy wins, never deleted as stale
+    # DEBUG staff edits are written locally only (see remote_db) and never pushed, so a pull
+    # that overwrote existing local users would silently revert them every cycle.
+    keep_local_users = set(User.objects.using('default').values_list('pk', flat=True)) if settings.DEBUG else set()
     for model in PULL_MODELS:
         try:
             objects = list(model.objects.using('supabase').all())
@@ -49,7 +54,7 @@ def pull_all():
         remote_ids = set()
         for instance in objects:
             remote_ids.add(instance.pk)
-            if instance.pk in pending[model._meta.label]:
+            if instance.pk in pending[model._meta.label] or (model is User and instance.pk in keep_local_users):
                 continue
             if model is User and instance.pk in pending_fleet:
                 instance.can_manage_fleet = pending_fleet[instance.pk]

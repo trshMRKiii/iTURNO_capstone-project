@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import { peso } from "../reportHook";
 import Pager from "./Pager";
-import ReportTableModal from "./ReportTableModal";
 import ViewRemittance from "../../remittance/viewRemittance";
 import { downloadRemittancePDF } from "../../remittance/exportRemittancePDF";
 import { getBatchCashierName } from "../../remittance/useCashierName";
 import { useFeedback } from "../../../../components/ui/kit";
-import { matchesRequisitionRow, matchesRemittanceRow, useDebouncedSearchAll } from "../reportHook";
+import { matchesRequisitionRow, matchesRemittanceRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
 
 const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Issued By", "Ticket Series", "Total Value"];
 const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Prepared By", "Issued By", "Total Amount", "Actions"];
-// Main card shows a short preview like the other report cards (FleetRecords) —
-// "View All" opens the modal for the full paginated list.
+// Rows per page on the card.
 const PREVIEW_SIZE = 5;
 
 export default function RequisitionRemittance({
@@ -26,7 +24,6 @@ export default function RequisitionRemittance({
   onRemittanceFetchPage,
   onRemittanceFetchAll,
   onExportRemittancePDF,
-  pageSize,
 }) {
   const { notify } = useFeedback();
   const [downloadingId, setDownloadingId] = useState(null);
@@ -35,12 +32,6 @@ export default function RequisitionRemittance({
   const [viewBatch, setViewBatch] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
-  const [showModal, setShowModal] = useState(false);
-  const [modalSearch, setModalSearch] = useState("");
-  const [modalPage, setModalPage] = useState(1);
-  const [modalData, setModalData] = useState([]);
-  const [modalMeta, setModalMeta] = useState({ count: 0, totalPages: 1 });
-  const modalBodyRef = useRef(null);
 
   const isRequisition = activeTab === "requisition";
   const data = isRequisition ? requisitionData : remittanceData;
@@ -53,65 +44,27 @@ export default function RequisitionRemittance({
 
   const matches = isRequisition ? matchesRequisitionRow : matchesRemittanceRow;
 
-  // data/modalData only ever hold one loaded page — once there's an actual
+  // data only ever hold one loaded page — once there's an actual
   // query, search the complete date-ranged result set instead of just that page.
   const searchAll = useDebouncedSearchAll(fetchAll, search);
-  const modalSearchAll = useDebouncedSearchAll(fetchAll, modalSearch);
-  const isModalSearching = modalSearch.trim() && modalSearchAll;
 
   const searched = searchAll
     ? searchAll.filter((row) => matches(row, search))
     : data.filter((row) => matches(row, search));
-  const preview = searched.slice(0, PREVIEW_SIZE);
-  const total = searchAll ? searched.length : meta.count;
-
-  const modalFilteredAll = isModalSearching
-    ? modalSearchAll.filter((row) => matches(row, modalSearch))
-    : [];
-  const modalSearched = isModalSearching
-    ? modalFilteredAll.slice((modalPage - 1) * pageSize, modalPage * pageSize)
-    : modalData;
-  const modalTotal = isModalSearching ? modalFilteredAll.length : modalMeta.count;
-  const modalTotalPages = isModalSearching
-    ? Math.max(Math.ceil(modalFilteredAll.length / pageSize), 1)
-    : modalMeta.totalPages;
-
-  // A fresh modal search should start back at page 1, not wherever the
-  // server-paginated browsing left off.
-  useEffect(() => {
-    setModalPage(1);
-  }, [modalSearch]);
+  const filtering = Boolean(search.trim());
+  const total = filtering ? searched.length : meta.count;
+  const { rows: preview, loading, page, totalPages, setPage } = usePagedPreview({
+    rows: searched,
+    total,
+    fetchPage: fetchPage,
+    local: filtering,
+    resetKey: [fetchPage, search],
+    size: PREVIEW_SIZE,
+  });
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearch("");
-    setShowModal(false);
-  };
-
-  const openModal = async () => {
-    setShowModal(true);
-    setModalSearch("");
-    const page = await fetchPage(1);
-    setModalPage(page.page);
-    setModalData(page.results);
-    setModalMeta({ count: page.count, totalPages: page.totalPages });
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setModalSearch("");
-  };
-
-  const changeModalPage = async (page) => {
-    modalBodyRef.current?.scrollTo({ top: 0 });
-    if (isModalSearching) {
-      setModalPage(page);
-      return;
-    }
-    const result = await fetchPage(page);
-    setModalPage(result.page);
-    setModalData(result.results);
-    setModalMeta({ count: result.count, totalPages: result.totalPages });
   };
 
   const renderRequisitionRow = (r, idx, { rowClass, cellClass }) => {
@@ -221,25 +174,7 @@ export default function RequisitionRemittance({
   return (
     <div className="rpt-card rpt-section">
       <div className="rpt-card-header">
-        <div className="rpt-card-header-left">
-          <div className="rpt-tab-group">
-            <button
-              className={`rpt-tab ${!isRequisition ? "rpt-tab--active" : ""}`}
-              onClick={() => handleTabChange("remittance")}
-            >
-              Remittance
-            </button>
-            <button
-              className={`rpt-tab ${isRequisition ? "rpt-tab--active" : ""}`}
-              onClick={() => handleTabChange("requisition")}
-            >
-              Requisition
-            </button>
-          </div>
-          <span className="rpt-record-count">
-            {preview.length} of {total} records
-          </span>
-        </div>
+        <h2 className="rpt-card-title">Remittance and Requisition</h2>
         <div className="rpt-card-header-actions">
           <input
             type="text"
@@ -248,11 +183,6 @@ export default function RequisitionRemittance({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {total > PREVIEW_SIZE && (
-            <button className="rpt-btn rpt-btn--secondary" onClick={openModal}>
-              View All
-            </button>
-          )}
           <button
             className="rpt-btn-export rpt-btn-export--navy"
             title={search ? "Export only rows matching your search" : "Export all records in range"}
@@ -267,31 +197,28 @@ export default function RequisitionRemittance({
         </div>
       </div>
 
-      <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} centeredColumns={["Actions"]} />
+      <div className="rpt-card-tabs">
+        <div className="rpt-tab-group">
+          <button
+            className={`rpt-tab ${!isRequisition ? "rpt-tab--active" : ""}`}
+            onClick={() => handleTabChange("remittance")}
+          >
+            Remittance
+          </button>
+          <button
+            className={`rpt-tab ${isRequisition ? "rpt-tab--active" : ""}`}
+            onClick={() => handleTabChange("requisition")}
+          >
+            Requisition
+          </button>
+        </div>
+        <span className="rpt-record-count">
+          {preview.length} of {total} records
+        </span>
+      </div>
 
-      {showModal && (
-        <ReportTableModal
-          title={isRequisition ? "Requisition" : "Remittance"}
-          subtitle={isRequisition ? "Complete history of ticket series requisitions" : "Complete history of remittance batches"}
-          count={modalTotal}
-          onClose={closeModal}
-          searchValue={modalSearch}
-          onSearchChange={setModalSearch}
-          searchPlaceholder={isRequisition ? "Search requisitions…" : "Search remittance…"}
-          bodyRef={modalBodyRef}
-          footer={
-            <Pager
-              page={modalPage}
-              totalPages={modalTotalPages}
-              count={modalTotal}
-              pageSize={pageSize}
-              onPageChange={changeModalPage}
-            />
-          }
-        >
-          <DataTable columns={columns} data={modalSearched} rowRenderer={rowRenderer} centeredColumns={["Actions"]} />
-        </ReportTableModal>
-      )}
+      <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} emptyText={loading ? "Loading…" : undefined} centeredColumns={["Actions"]} />
+      <Pager page={page} totalPages={totalPages} count={total} pageSize={PREVIEW_SIZE} onPageChange={setPage} />
 
       {viewBatch && (
         <ViewRemittance batch={viewBatch} onClose={() => setViewBatch(null)} />

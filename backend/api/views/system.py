@@ -1,4 +1,5 @@
 import io
+import json
 import os
 from datetime import datetime
 
@@ -11,7 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from ..models import BackupRecord, BackupSettings, SyncQueue
+from ..models import AuditLog, BackupRecord, BackupSettings, SyncQueue, User
 from ..serializers import BackupRecordSerializer, BackupSettingsSerializer
 from ..sync.pause import paused
 from ..sync.registry import PUSH_MODELS
@@ -30,7 +31,9 @@ class IsSuperAdmin(BasePermission):
         return bool(request.user and request.user.is_authenticated and request.user.role == "SUPERADMIN")
 
 
-NOT_BACKED_UP = (BackupRecord, BackupSettings)
+# The audit trail is history of what happened *to* the system (including backups and
+# restores), so a rollback must never rewind or erase it.
+NOT_BACKED_UP = (BackupRecord, BackupSettings, AuditLog)
 
 
 def _backup_models():
@@ -158,8 +161,11 @@ def _requeue_for_sync():
 
 def _restore_from_content(content_bytes):
     """Wipe all backed-up api-app data and reload it from a dumpdata JSON payload."""
+    # Older backups still carry audit rows; loading them would overwrite the live trail.
+    skipped = {m._meta.label_lower for m in NOT_BACKED_UP}
+    rows = [r for r in json.loads(content_bytes) if r.get("model") not in skipped]
     tmp_path = f"_restore_tmp_{datetime.now().strftime('%Y%m%d_%H%M%S%f')}.json"
-    saved_name = backup_storage.save(tmp_path, io.BytesIO(content_bytes))
+    saved_name = backup_storage.save(tmp_path, io.BytesIO(json.dumps(rows).encode("utf-8")))
     full_path = backup_storage.path(saved_name)
 
     with paused():
@@ -169,8 +175,13 @@ def _restore_from_content(content_bytes):
             with transaction.atomic():
                 with bulk_load():
                     for model in _backup_models():
-                        model.objects.all().delete()
+                        # Raw delete: the normal collector would null AuditLog.user on every
+                        # surviving audit row when users are wiped.
+                        model.objects.all()._raw_delete(using=connection.alias)
                     management.call_command("loaddata", full_path)
+                    # Rows that outlive the wipe must drop links to users the backup didn't have.
+                    AuditLog.objects.exclude(user__in=User.objects.all()).update(user=None)
+                    BackupRecord.objects.exclude(created_by__in=User.objects.all()).update(created_by=None)
                     _requeue_for_sync()
                 transaction.on_commit(broadcast_queue_updated)
         finally:
@@ -226,7 +237,6 @@ def system_backup_restore_upload(request):
 
     content = file_obj.read()
     try:
-        import json
         json.loads(content)
     except Exception:
         return Response({"error": "Uploaded file is not valid JSON"}, status=400)

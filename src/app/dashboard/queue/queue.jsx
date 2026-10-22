@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQueue } from "./useQueue";
 import Dispatch from "../dispatch/dispatch";
+import { useDeskDuty } from "../dispatch/useDeskDuty";
 import SeriesPicker from "./SeriesPicker";
 import { getIwpStatus, getExpiryStatus } from "../driver/driver-utils";
 import "../../../styles/Queue.css";
@@ -35,6 +36,14 @@ function Queue({ userRole }) {
     driverHasActiveTicket,
     refreshQueueState,
   } = useQueue(userRole);
+
+  const desk = useDeskDuty(selectedSeriesId);
+  // Whoever takes a vehicle in is accountable for it; a roam is in and out at once, so it needs both.
+  const missingPersonnel = !desk.checkinId
+    ? "Pick the check-in personnel on the Queued vehicles board below first."
+    : issuanceType === "ROAM" && !desk.checkoutId
+      ? "Pick the check-out personnel on the Queued vehicles board below first."
+      : "";
 
   const [vehicleSearch, setVehicleSearch] = useState("");
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
@@ -266,6 +275,9 @@ function Queue({ userRole }) {
                 {issueError}
               </div>
             )}
+            {missingPersonnel && selectedVehicle && (
+              <div className="queue-alert queue-alert--error">{missingPersonnel}</div>
+            )}
 
             <button
               type="button"
@@ -276,6 +288,7 @@ function Queue({ userRole }) {
                 !selectedVehicle ||
                 !selectedDriver ||
                 driverBusy ||
+                !!missingPersonnel ||
                 (issuanceType === "ROAM" && !selectedSeriesId)
               }
             >
@@ -358,6 +371,7 @@ function Queue({ userRole }) {
 
         {/* ── Dispatch board (queued vehicles) ── */}
         <Dispatch
+          desk={desk}
           availableSeries={availableSeries}
           allSeries={allSeries}
           setSeriesOverrideId={setSeriesOverrideId}
