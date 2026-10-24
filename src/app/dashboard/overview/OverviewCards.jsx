@@ -5,10 +5,12 @@ import { formatWait, peso, plural } from "./format";
 const COLLAPSED_ROWS = 2;
 // A vehicle waiting this long is flagged.
 const LONG_WAIT_MIN = 15;
-// A denomination is "low" once its cash value on hand drops under this (₱).
-const STOCK_LOW_AMOUNT = 30000;
-// A swing in the queued/roamed mix of this many points gets highlighted.
-const NOTABLE_SHIFT = 10;
+// A denomination is "low" once under this share of its batch is left, but never
+// needing more than STOCK_LOW_MAX_PCS tickets left, so huge batches don't flag early.
+const STOCK_LOW_PCT = 20;
+const STOCK_LOW_MAX_PCS = 1000;
+// The whole stock is "low" once its combined cash value on hand drops under this (₱).
+const STOCK_LOW_TOTAL = 30000;
 
 const FORM_COLORS = ["var(--series-queued)","#e8b94a", "#3b82f6", "#22c55e", "#ef4444"];
 const QUEUE_VIEWS = [
@@ -137,7 +139,7 @@ export function QueueCard({ routes }) {
       </div>
       <QuickList
         key={view}
-        title={view === "queue" ? "Longest waits" : "Idle routes"}
+        title={view === "queue" ? "In queue" : "Idle routes"}
         items={list}
         listClass="ov-queue"
         emptyText={
@@ -152,7 +154,7 @@ export function QueueCard({ routes }) {
               <span className="ov-queue-sub">
                 {r.count > 0 ? (
                   <>
-                    Next: <strong>{r.next_plate}</strong> · waiting{" "}
+                    <strong>{r.next_plate}</strong> · waiting{" "}
                     <span className={r.waiting_minutes >= LONG_WAIT_MIN ? "is-long" : ""}>{formatWait(r.waiting_minutes)}</span>
                   </>
                 ) : (
@@ -171,21 +173,26 @@ export function QueueCard({ routes }) {
 export function StockCard({ stats }) {
   const used = Object.fromEntries(stats.collections_by_form.map((f) => [f.name, f.count]));
   // Anything low or out comes first so it is never tucked behind "+N more"; the rest by use.
+  // A denomination with nothing left is dropped; when none are left the pill says "Out of stock".
   const forms = stats.stock_by_form
-    .map((f) => ({
-      ...f,
-      tone: f.remaining === 0 ? "bad" : f.amount < STOCK_LOW_AMOUNT ? "warn" : "good",
-      pct: f.original > 0 ? (f.remaining / f.original) * 100 : 0,
-      used: used[f.name] || 0,
-    }))
+    .filter((f) => f.remaining > 0)
+    .map((f) => {
+      const pct = (f.remaining / f.original) * 100;
+      const lowAt = Math.min((f.original * STOCK_LOW_PCT) / 100, STOCK_LOW_MAX_PCS);
+      return { ...f, pct, tone: f.remaining < lowAt ? "warn" : "good", used: used[f.name] || 0 };
+    })
     .sort((a, b) => (a.tone === "good") - (b.tone === "good") || b.used - a.used || a.name.localeCompare(b.name));
   const flagged = forms.filter((f) => f.tone !== "good").length;
+  const total = forms.reduce((sum, f) => sum + f.amount, 0);
+  const totalLow = total < STOCK_LOW_TOTAL;
   const status =
-    forms.length === 0 || forms.every((f) => f.remaining === 0)
+    forms.length === 0
       ? { label: "Out of stock", tone: "bad" }
       : flagged > 0
         ? { label: `${flagged} low`, tone: "warn" }
-        : { label: "Healthy", tone: "good" };
+        : totalLow
+          ? { label: "Low overall", tone: "warn" }
+          : { label: "Healthy", tone: "good" };
 
   return (
     <OverviewCard
@@ -197,26 +204,32 @@ export function StockCard({ stats }) {
         </span>
       }
     >
-      <div className="ov-value ov-value--hero">
-        {peso(forms.reduce((sum, f) => sum + f.amount, 0))}
-        <span className="ov-unit">on hand</span>
+      <div className={`ov-value ov-value--hero${totalLow && total > 0 ? " ov-value--warn" : ""}`}>
+        {peso(total)}
+        <span className="ov-unit"> Worth</span>
       </div>
+      {totalLow && total > 0 && <div className="ov-total-note">Below {peso(STOCK_LOW_TOTAL)} overall.</div>}
       <QuickList
         title={flagged > 0 ? "Needs attention" : "Most used"}
         items={forms}
         listClass="ov-stock"
-        emptyText="No ticket series in stock."
+        emptyText="No ticket seriess in stock."
         renderRow={(f) => (
           <li key={f.name}>
             <div className={`ov-stock-row ov-stock-row--${f.tone}`}>
               <span>
                 {f.name}
-                {f.tone !== "good" && <em className="ov-stock-flag">{f.remaining === 0 ? "Out" : "Low"}</em>}
+                <small className="ov-stock-left"> · {f.remaining.toLocaleString()} left</small>
+                {f.tone !== "good" && <em className="ov-stock-flag">Low</em>}
               </span>
               <strong>{peso(f.amount)}</strong>
             </div>
-            <div className={`ov-bar ov-bar--${f.tone}`}>
-              <span style={{ width: `${Math.max(f.pct, f.remaining > 0 ? 1.5 : 0)}%` }} />
+            <div
+              className={`ov-bar ov-bar--${f.tone}`}
+              title={`${f.remaining} of ${f.original} tickets left`}
+            >
+              <span className="ov-bar-left" style={{ flexBasis: `${f.pct}%` }} />
+              <span className="ov-bar-used" style={{ flexBasis: `${100 - f.pct}%` }} />
             </div>
           </li>
         )}
@@ -246,7 +259,7 @@ function splitNote(now, before, comparedTo, basis) {
 
   const delta = mine[lead] - prior[lead];
   const move = delta === 0 ? `the same as ${comparedTo}` : `${delta > 0 ? "up" : "down"} ${plural(Math.abs(delta), "point")} from ${prior[lead]}% ${comparedTo}`;
-  return { text: `${text}, ${move}${basis ? `, ${basis}` : ""}.`, notable: Math.abs(delta) >= NOTABLE_SHIFT };
+  return { text: `${text}, ${move}${basis ? `, ${basis}` : ""}.` };
 }
 
 // A full-width strip under the cards, or (`card`) one of the cards in the top row.
@@ -268,7 +281,7 @@ export function SplitStrip({ stats, rangeLabel, comparedTo, card }) {
         <div className="split-bar">
           {mix && SPLIT.map(({ key }) => <span key={key} className={`split-seg split-seg--${key}`} style={{ flexBasis: `${mix[key]}%` }} />)}
         </div>
-        <p className={`split-note${note.notable ? " split-note--shift" : ""}`}>{note.text}</p>
+        <p className="split-note">{note.text}</p>
       </div>
       {SPLIT.map(({ key, label }) => {
         const { count, total } = stats.summary[key];

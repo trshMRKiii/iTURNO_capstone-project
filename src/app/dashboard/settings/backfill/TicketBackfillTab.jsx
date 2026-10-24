@@ -1,14 +1,8 @@
-import { useState } from "react";
 import { useFeedback, SkeletonList } from "../../../../components/ui/kit";
 import { IS_REMOTE } from "../../../../lib/api-service";
 import { useTicketBackfill } from "./useTicketBackfill";
 import BackfillBuilder from "./BackfillBuilder";
 import { F_PLATE, F_TICKET_TYPE, F_QUANTITY } from "./fields";
-
-const MODES = [
-  { value: "Queue", label: "Queue" },
-  { value: "Roaming", label: "Roaming" },
-];
 
 export default function TicketBackfillTab() {
   const { report, confirmAction } = useFeedback();
@@ -18,7 +12,6 @@ export default function TicketBackfillTab() {
     remoteRequests, remoteRequestsLoading,
   } = useTicketBackfill();
 
-  const [mode, setMode] = useState("Queue");
   const isPaused = !!wipMode?.is_active;
 
   const applyWipMode = async (turningOn) => {
@@ -82,30 +75,7 @@ export default function TicketBackfillTab() {
             Ticket numbers are assigned automatically from the selected Ticket Series — they're never typed in.
           </p>
 
-          <div className="tbf-mode-switch">
-            {MODES.map((m) => (
-              <button
-                key={m.value}
-                className={`tbf-mode-btn ${mode === m.value ? "tbf-mode-btn--active" : ""}`}
-                onClick={() => setMode(m.value)}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Both stay mounted so switching tabs doesn't lose what's been entered. */}
-          {MODES.map((m) => (
-            <div key={m.value} hidden={mode !== m.value}>
-              <BackfillBuilder
-                mode={m.value}
-                vehicles={vehicles}
-                ticketSeries={ticketSeries}
-                busy={submitBusy}
-                submitRows={submitRows}
-              />
-            </div>
-          ))}
+          <BackfillBuilder vehicles={vehicles} ticketSeries={ticketSeries} busy={submitBusy} submitRows={submitRows} />
         </>
       )}
 

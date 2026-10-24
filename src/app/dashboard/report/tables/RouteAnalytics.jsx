@@ -141,9 +141,17 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
   const shown = single ? routes.filter((r) => r.route === selected) : routes;
 
   const handleExport = async () => {
-    const { results = [] } = await onFetch({ export: 1, search: term });
+    // Same view as on screen: the picked route, the search, routes in the table's order,
+    // and drivers within a route by the sorted count (name sorts fall back to busiest-first).
+    const { results = [] } = await onFetch({ export: 1, search: term, ...(single && { route: selected }) });
+    const rank = new Map(routes.map((r, i) => [r.route, i]));
+    const field = ["queue", "roaming", "total"].includes(ROUTE_SORT[sort.column]) ? ROUTE_SORT[sort.column] : "total";
+    const sign = sort.dir === "asc" && field === ROUTE_SORT[sort.column] ? 1 : -1;
+    const ordered = [...results].sort(
+      (a, b) => rank.get(a.route) - rank.get(b.route) || sign * (a[field] - b[field]) || a.driver.localeCompare(b.driver),
+    );
     onExportPDF(
-      results.map((r) => ({
+      ordered.map((r) => ({
         Route: r.route,
         Driver: r.driver,
         Vehicle: r.plates.join(", "),
@@ -153,6 +161,13 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
       })),
     );
   };
+
+  // Compiled version: one line per route (all of them, in the table's order), no drivers.
+  const handleExportSummary = () =>
+    onExportPDF(
+      routes.map((r) => ({ Route: r.route, Queue: r.queue, Roaming: r.roaming, Total: r.total, Drivers: r.drivers })),
+      "Route Analytics Summary",
+    );
 
   const renderRow = (r, idx, { rowClass, cellClass }) => {
     const expanded = single || openRoute === r.route;
@@ -212,6 +227,11 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {!single && (
+            <button className="rpt-btn-export rpt-btn-export--navy" disabled={!routes.length} onClick={handleExportSummary}>
+              Summary PDF
+            </button>
+          )}
           <button
             className="rpt-btn-export rpt-btn-export--navy"
             disabled={!routes.length}
@@ -221,7 +241,7 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            Export PDF
+            {single ? "Export PDF" : "Detailed PDF"}
           </button>
         </div>
       </div>

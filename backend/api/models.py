@@ -255,6 +255,8 @@ class Ticket(models.Model):
     # issued_at (plain FIFO) — see promote_queue_front() and the Ticket
     # reorder-queue action.
     queue_rank = models.IntegerField(null=True, blank=True, db_index=True)
+    # Why this vehicle was swapped out of the loading bay (#1); set by reorder-queue.
+    bay_swap_reason = models.CharField(max_length=255, blank=True, default='')
     dispatched_at = models.DateTimeField(null=True, blank=True)
     # When the vehicle actually checked in. Dispatch and roam checkout create a fresh
     # COLLECTED ticket (issued_at = now), so without this the real arrival time is lost
@@ -265,6 +267,9 @@ class Ticket(models.Model):
     # out — name snapshots, like active_user_name, so they outlive the account.
     checked_in_by_name = models.CharField(max_length=150, blank=True, default="")
     checked_out_by_name = models.CharField(max_length=150, blank=True, default="")
+    # When the vehicle actually left. A kiosk roam is paid and numbered at check-in
+    # (dispatched_at) and leaves later on its own scan; null until then, and on older rows.
+    checked_out_at = models.DateTimeField(null=True, blank=True)
 
     issuance_group = models.CharField(max_length=40, blank=True, db_index=True)
     queue_code = models.CharField(max_length=20, blank=True, db_index=True)
@@ -312,6 +317,9 @@ class DeskDuty(models.Model):
     checkin_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     checkout_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     series = models.ForeignKey('TicketSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    # Mixed-denomination fares: {"40": [{"form": <TicketForm id>, "qty": 3}, ...]}, keyed by
+    # terminal price. A price with no recipe (or one out of stock) falls back to `series`.
+    recipes = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod
@@ -332,10 +340,11 @@ class DeskDuty(models.Model):
 
 
 class KioskSession(models.Model):
-    """One self-service QR visit: the driver checks in on the kiosk and pays the check-in
-    Personnel on the spot (which fixes the ticket series), and the next QR scan checks the
-    vehicle out. A QUEUE session rides on the vehicle's normal QUEUED ticket; a ROAM session
-    has no ticket until checkout, so this row is the only record of the pending roam.
+    """One self-service QR visit, two steps: the driver checks in on the kiosk (which fixes the
+    ticket series), and the next QR scan checks the vehicle out. A ROAM pays the check-in
+    Personnel and is numbered at check-in, so its scan only records the departure; a QUEUE
+    session rides on the vehicle's normal QUEUED ticket and pays the check-out Personnel as it
+    is numbered at the scan.
     Local-only (not in PUSH_MODELS) — the tickets it produces are what get synced."""
     MODE_CHOICES = [('QUEUE', 'Queue'), ('ROAM', 'Roam')]
     STATUS_CHOICES = [('PAID', 'Paid'), ('DONE', 'Done'), ('CANCELLED', 'Cancelled')]
@@ -345,9 +354,9 @@ class KioskSession(models.Model):
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='kiosk_sessions')
     mode = models.CharField(max_length=10, choices=MODE_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PAID', db_index=True)
-    # Fixed at check-in from the desk's series; drawn from at checkout.
-    series = models.ForeignKey('TicketSeries', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    quantity = models.PositiveIntegerField(default=1)
+    # Fixed at check-in from the desk (see kiosk._plan_for) and drawn from at checkout:
+    # [{"form": <TicketForm id>, "qty": n, "series": <TicketSeries id> or null}, ...].
+    plan = models.JSONField(default=list)
     checked_in_by_name = models.CharField(max_length=150, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -357,6 +366,7 @@ class KioskSession(models.Model):
 
 
 class Requisition(models.Model):
+    # Stored codes are kept for compatibility; APPROVED means "validated" by a supervisor.
     STATUS_CHOICES = [('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('ISSUED', 'Issued')]
 
     date_requested = models.DateTimeField(auto_now_add=True)
@@ -364,6 +374,8 @@ class Requisition(models.Model):
     requested_by_name = models.CharField(max_length=150, blank=True, default="")
     # Whoever keyed the requisition into the system (requested_by is the supervisor who asked for it).
     issued_by_name = models.CharField(max_length=150, blank=True, default="")
+    # Role held when it was keyed in; roles can change later (promotions).
+    issued_by_role = models.CharField(max_length=20, blank=True, default="")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     total_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_archived = models.BooleanField(default=False, db_index=True)
@@ -519,6 +531,8 @@ class RemittanceBatch(models.Model):
     issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     # The supervisor accountable for the batch; issued_by is whoever keyed it in.
     prepared_by_name = models.CharField(max_length=150, blank=True, default="")
+    # issued_by's role when the batch was recorded (their current role may differ later).
+    issued_by_role = models.CharField(max_length=20, blank=True, default="")
     issued_at = models.DateTimeField(auto_now_add=True)
     covers_date = models.DateField(null=True, blank=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)

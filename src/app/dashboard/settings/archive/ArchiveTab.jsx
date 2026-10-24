@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { apiService } from "../../../../lib/api-service";
 import {
-  DataTable, Toolbar, SearchInput, IconButton, Pagination, SectionHeader, TabBar, RestoreIcon, useFeedback,
+  DataTable, Toolbar, SearchInput, IconButton, Pagination, SectionHeader, TabBar, SortSelect, RestoreIcon, useFeedback,
 } from "../../../../components/ui/kit";
 
 const PAGE_SIZE = 10;
@@ -14,7 +14,17 @@ const RESTORED_AS = {
   puvtypes: { singular: "PUV type", home: "PUV types" },
 };
 
-const peso = (n) => `₱${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "name", label: "Record A–Z" },
+];
+const DENOM_SORT_OPTIONS = [
+  { value: "denom-asc", label: "Denomination: low to high" },
+  { value: "denom-desc", label: "Denomination: high to low" },
+];
+
+const peso =(n) => `₱${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const fmtDate = (d) => (d ? new Date(d).toLocaleString() : "—");
 
 // One entry per archivable record type: where to list it and how to render a row.
@@ -84,6 +94,7 @@ export default function ArchiveTab({ onRestored }) {
   const loadRef = useRef(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState("newest");
   const [rowStates, setRowStates] = useState({}); // "<section>-<id>" -> { kind, label }
 
   const load = useCallback(async () => {
@@ -147,11 +158,29 @@ export default function ArchiveTab({ onRestored }) {
     const t = Date.parse(item.archived_at || item.issued_at || item.created_at || item.updated_at);
     return Number.isNaN(t) ? 0 : t;
   };
+  // Denomination only exists on ticket series, so offer it in All and the Ticket Series tab.
+  const showDenom = isAll || section.key === "series";
+  const sortKey = !showDenom && sort.startsWith("denom") ? "newest" : sort;
+  const newest = (a, b) => stamp(b.item) - stamp(a.item) || Number(b.item.id) - Number(a.item.id);
+  // Records without a denomination (anything but ticket series) always sink to the bottom.
+  const byDenomination = (dir) => (a, b) => {
+    const [x, y] = [a, b].map((e) => (e.item.ticket_form_price == null ? null : Number(e.item.ticket_form_price)));
+    if (x === null || y === null) return (x === null) - (y === null) || newest(a, b);
+    return (x - y) * dir || newest(a, b);
+  };
+  const SORTERS = {
+    newest,
+    oldest: (a, b) => newest(b, a),
+    name: (a, b) => String(a.cells[0]).localeCompare(String(b.cells[0]), undefined, { numeric: true }),
+    "denom-asc": byDenomination(1),
+    "denom-desc": byDenomination(-1),
+  };
   const entries = (isAll ? SECTIONS : [section])
     .flatMap((sec) =>
       (rows[sec.key] || []).map((item) => ({ id: `${sec.key}-${item.id}`, sec, item, cells: sec.cells(item) })),
     )
-    .sort((a, b) => stamp(b.item) - stamp(a.item) || Number(b.item.id) - Number(a.item.id));
+    .sort(SORTERS[sortKey]);
+  const hasActions = entries.some((e) => e.sec.restore);
   const q = search.trim().toLowerCase();
   const matches = entries.filter((e) => !q || `${e.sec.label} ${e.cells.join(" ")}`.toLowerCase().includes(q));
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
@@ -174,7 +203,7 @@ export default function ArchiveTab({ onRestored }) {
         header: "Details",
         render: (e) => e.cells.slice(1).map((c, i) => `${e.sec.columns[i + 1]}: ${c}`).join("  ·  "),
       },
-      { key: "actions", header: "Actions", align: "right", render: restoreCell },
+      ...(hasActions ? [{ key: "actions", header: "Actions", align: "right", render: restoreCell }] : []),
     ]
     : [
       ...section.columns.map((header, i) => ({
@@ -182,7 +211,7 @@ export default function ArchiveTab({ onRestored }) {
         header,
         render: (e) => (i === 0 ? <span className="ui-cell-strong">{e.cells[i]}</span> : e.cells[i]),
       })),
-      ...(section.restore ? [{ key: "actions", header: "Actions", align: "right", render: restoreCell }] : []),
+      ...(hasActions ? [{ key: "actions", header: "Actions", align: "right", render: restoreCell }] : []),
     ];
 
   const switchSection = (key) => { setActive(key); setSearch(""); setPage(1); };
@@ -208,6 +237,12 @@ export default function ArchiveTab({ onRestored }) {
               value={search}
               onChange={(v) => { setSearch(v); setPage(1); }}
               placeholder={isAll ? "Search the archive" : `Search archived ${noun}`}
+            />
+            <SortSelect
+              value={sortKey}
+              onChange={(v) => { setSort(v); setPage(1); }}
+              options={showDenom ? [...SORT_OPTIONS, ...DENOM_SORT_OPTIONS] : SORT_OPTIONS}
+              label="Sort archive"
             />
           </Toolbar>
         }

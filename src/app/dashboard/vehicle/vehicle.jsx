@@ -22,7 +22,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import "../../../styles/Vehicle.css";
 import "../../../styles/FormModal.css";
 import { useCanModifyFleet } from "../../../lib/useCanModifyFleet";
-import { SkeletonRows, HistoryIcon, ArchiveIcon } from "../../../components/ui/kit";
+import { SkeletonRows, HistoryIcon, ArchiveIcon, EditIcon } from "../../../components/ui/kit";
 
 function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd, exposeExportQR, exposeExportPDF }) {
   const {
@@ -121,7 +121,7 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
 <title>Vehicle QR Codes</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 24px; background: #fff; }
+  body { font-family: Helvetica, Arial, sans-serif; margin: 24px; background: #fff; }
   h2 { font-size: 16px; margin-bottom: 4px; }
   .meta { font-size: 11px; color: #666; margin-bottom: 16px; }
   .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
@@ -344,27 +344,9 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                     </td>
                     <td>
                       <div className="veh-actions">
-                        {canModify && (
-<button
-                          className="veh-btn veh-btn--edit"
-                          onClick={() => handleEdit(vehicle)}
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.2"
-                          >
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                          Edit
-                        </button>
-)}
                         <RowMenu
                           items={[
+                            { label: "Edit", icon: <EditIcon size={14} />, onClick: () => handleEdit(vehicle), hidden: !canModify },
                             { label: "History", icon: <HistoryIcon size={14} />, onClick: () => setLedgerVehicle(vehicle) },
                             { label: "Archive", icon: <ArchiveIcon size={14} />, onClick: () => handleArchive(vehicle.id), danger: true, hidden: !canModify },
                           ]}

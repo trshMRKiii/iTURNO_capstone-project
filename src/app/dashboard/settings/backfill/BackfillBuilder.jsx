@@ -47,7 +47,8 @@ function VehiclePicker({ vehicles, series, onAdd, invalid }) {
   return (
     <div className="tbf-searchable">
       <input
-        className={`set-input${invalid ? " set-input--error" : ""}`}
+        className="usr-input"
+        aria-invalid={invalid || undefined}
         value={search}
         onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
@@ -75,9 +76,12 @@ function VehiclePicker({ vehicles, series, onAdd, invalid }) {
   );
 }
 
-export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, submitRows }) {
+const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export default function BackfillBuilder({ vehicles, ticketSeries, busy, submitRows }) {
   const { notify, report, confirmAction } = useFeedback();
 
+  const [mode, setMode] = useState("Queue");
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
   const [seriesId, setSeriesId] = useState("");
   const [notes, setNotes] = useState("");
@@ -85,6 +89,8 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
   // Results shown in the confirm modal (LAN only): the dry-run before saving, or
   // what failed after a save. Null = modal closed.
   const [review, setReview] = useState(null);
+  // Which save button opened the review: true = cash was already remitted outside the system.
+  const [remitted, setRemitted] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   // Date of the last saved backfill when it was for a past day — that day's cash still needs a remittance.
   const [lateDate, setLateDate] = useState(null);
@@ -127,7 +133,7 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
     !notes.trim() && "Notes",
     slots.some((s) => s.plates.length === 0) && "at least one vehicle in every time",
   ].filter(Boolean);
-  const invalid = (isBad) => (showErrors && isBad ? " set-input--error" : "");
+  const openSeries = ticketSeries.filter((t) => t.remaining > 0);
   const incomplete = () => {
     if (missing.length === 0) return false;
     setShowErrors(true);
@@ -144,21 +150,22 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
   };
 
   const commit = async () => {
-    const results = await submitRows(rows, true);
+    const results = await submitRows(rows, true, remitted);
     if (results.every((r) => r.outcome === "ok")) {
-      setLateDate(date < getPhDateString(0) ? date : null);
+      setLateDate(!remitted && date < getPhDateString(0) ? date : null);
       reset();
       return IS_REMOTE
         ? { success: { title: "Backfill queued", message: `${totalTickets} ticket(s) will be created on the LAN terminal's next sync.` } }
-        : { success: { title: "Tickets added", message: `${totalTickets} ticket(s) were added.` } };
+        : { success: { title: "Tickets added", message: `${totalTickets} ticket(s) were added${remitted ? " and recorded as remitted" : ""}.` } };
     }
     // Saved all-or-nothing, so nothing was added and the form is left as it was.
     setReview(results);
     return { error: { title: "Nothing was saved", message: "Fix the entries marked in red." } };
   };
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (asRemitted) => {
     if (incomplete()) return;
+    setRemitted(asRemitted);
     if (IS_REMOTE) {
       confirmAction({
         title: `Queue ${totalTickets} ticket(s)?`,
@@ -170,7 +177,7 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
       });
       return;
     }
-    setReview(await submitRows(rows, false));
+    setReview(await submitRows(rows, false, asRemitted));
   };
 
   const reviewOk = review?.every((r) => r.outcome === "ok");
@@ -191,40 +198,57 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
           <button type="button" className="gnotice-dismiss" onClick={() => setLateDate(null)} aria-label="Dismiss">×</button>
         </div>
       )}
-      <div className="set-add-row">
-        <label className="set-field">
-          <span className="set-field-label">Date *</span>
-          <input type="date" className={`set-input${invalid(!date)}`} value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
-        <label className="set-field">
-          <span className="set-field-label">Ticket Series *</span>
-          <select className={`set-input${invalid(!series)}`} value={seriesId} onChange={(e) => setSeriesId(e.target.value)}>
-            <option value="">— select —</option>
-            {ticketSeries.filter((t) => t.remaining > 0).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.series_no} — {t.ticket_form_label} (₱{Number(t.ticket_form_price).toFixed(2)}) · {t.remaining} left
-              </option>
+      <section className="bf-step">
+        <h3 className="bf-step-title"><span>1</span> Which ticket series?</h3>
+        {series ? (
+          <div className="bf-picked">
+            <div>
+              <strong>{series.ticket_form_label}</strong>
+              <span className="bf-row-sub">{series.series_no} · {series.remaining} left</span>
+            </div>
+            <button type="button" className="bf-link" onClick={() => setSeriesId("")}>Change</button>
+          </div>
+        ) : (
+          <div className="bf-rows" role="listbox" aria-label="Ticket series">
+            {openSeries.map((t) => (
+              <button key={t.id} type="button" role="option" aria-selected={false} className="bf-row" onClick={() => setSeriesId(String(t.id))}>
+                <span className="bf-row-main">
+                  <strong>{t.ticket_form_label}</strong>
+                  <span className="bf-row-sub">{t.series_no}</span>
+                </span>
+                <span className="bf-row-count">{peso(t.ticket_form_price)} · {t.remaining} left</span>
+              </button>
             ))}
-          </select>
-        </label>
-        <label className="set-field">
-          <span className="set-field-label">Notes *</span>
-          <input
-            className={`set-input${invalid(!notes.trim())}`}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Why this is being backfilled, e.g. system outage"
-          />
-        </label>
-      </div>
+            {openSeries.length === 0 && <p className="bf-empty">No ticket series with tickets left.</p>}
+            {showErrors && <p className="bf-hint bf-hint--error">Pick a ticket series.</p>}
+          </div>
+        )}
+      </section>
+
+      {series && (
+      <section className="bf-step">
+        <h3 className="bf-step-title"><span>2</span> Which trips were remitted?</h3>
+        <div className="bf-pickers">
+          <label>
+            <span className="usr-label">Date</span>
+            <input type="date" className="usr-input" max={getPhDateString()} aria-invalid={showErrors && !date || undefined} value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <label>
+            <span className="usr-label">Mode</span>
+            <select className="usr-select" value={mode} onChange={(e) => setMode(e.target.value)}>
+              <option value="Queue">Queue</option>
+              <option value="Roaming">Roaming</option>
+            </select>
+          </label>
+        </div>
 
       {slots.map((slot, i) => (
         <div className="tbf-slot" key={slot.id}>
           <div className="tbf-slot-head">
             <label className="set-field">
-              <span className="set-field-label">Time {i + 1} *</span>
+              <span className="usr-label">Time {i + 1}</span>
               <select
-                className="set-input"
+                className="usr-select"
                 value={slot.hour}
                 onChange={(e) => editSlot(slot.id, (s) => ({ ...s, hour: e.target.value }))}
               >
@@ -245,13 +269,7 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
             )}
           </div>
 
-          <VehiclePicker
-            series={series}
-            invalid={showErrors && slot.plates.length === 0}
-            vehicles={vehicles}
-            onAdd={(plate) => editSlot(slot.id, (s) => ({ ...s, plates: [...s.plates, plate] }))}
-          />
-
+          {/* Picked list sits above the search so the open dropdown never hides it. */}
           <div className="tbf-chips">
             {slot.plates.map((plate, idx) => (
               <span className="tbf-chip" key={idx}>
@@ -268,23 +286,47 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
             ))}
             {slot.plates.length === 0 && <span className="tbf-meta">No vehicles added for this time yet.</span>}
           </div>
+
+          <VehiclePicker
+            series={series}
+            invalid={showErrors && slot.plates.length === 0}
+            vehicles={vehicles}
+            onAdd={(plate) => editSlot(slot.id, (s) => ({ ...s, plates: [...s.plates, plate] }))}
+          />
         </div>
       ))}
 
-      <div className="set-add-row">
-        <button className="tbf-plain-btn" onClick={addSlot} disabled={usedHours.size >= HOURS.length}>+ Add another time</button>
-      </div>
+      <button type="button" className="bf-link bf-toggle" onClick={addSlot} disabled={usedHours.size >= HOURS.length}>+ Add another time</button>
 
-      <div className="set-add-row">
-        <button
-          className="set-add-btn"
-          onClick={handleConfirm}
-          disabled={busy}
-        >
-          {IS_REMOTE ? "Queue for Backfill" : `Confirm & Add${totalTickets ? ` ${totalTickets} ticket(s)` : ""}`}
+      {totalTickets > 0 && (
+        <div className="bf-result">
+          <div className="bf-result-total">{peso(totalTickets * Number(series.ticket_form_price))}</div>
+          <div>
+            <div>{totalTickets} ticket(s) · {rows.length} trip(s)</div>
+            <div>{mode} · {date}</div>
+          </div>
+        </div>
+      )}
+
+      <label className="bf-note">
+        <span className="usr-label">Notes *</span>
+        <input className="usr-input" maxLength={255} aria-invalid={showErrors && !notes.trim() || undefined} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Why this is being recorded, e.g. system outage" />
+      </label>
+
+      <div className="bf-actions">
+        <button type="button" className="set-add-btn" onClick={() => handleConfirm(false)} disabled={busy}>
+          {IS_REMOTE ? "Queue for backfill" : "To be remitted"}
         </button>
-        <button className="set-delete-btn" onClick={reset} disabled={busy}>Clear</button>
+        {/* Only the LAN terminal can file the remittance; remote just queues the tickets. */}
+        {!IS_REMOTE && (
+          <button type="button" className="set-add-btn set-add-btn--danger bf-submit" onClick={() => handleConfirm(true)} disabled={busy}>
+            Save as remitted
+          </button>
+        )}
+        <button type="button" className="set-delete-btn" onClick={reset} disabled={busy}>Clear</button>
       </div>
+      </section>
+      )}
 
       {review && (
         <div className="usr-overlay" onClick={() => !busy && setReview(null)}>
@@ -295,7 +337,7 @@ export default function BackfillBuilder({ mode, vehicles, ticketSeries, busy, su
             <div className="usr-modal-body">
               <p className="set-rewards-note">
                 {mode} · {date} · Series {series?.series_no}. {reviewOk
-                  ? "This creates real records, numbered in this order."
+                  ? `This creates real records, numbered in this order${remitted ? ", and records their cash as already remitted outside the system. Undo it from Recorded so far" : ""}.`
                   : "Fix the entries in red in the form, then confirm again."}
               </p>
               <table className="set-table">

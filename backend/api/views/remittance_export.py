@@ -18,36 +18,28 @@ TEMPLATE_PATH = (
 SHEET1 = "Sheet1"  # A. Collections + B. Remittances/Deposits
 SHEET2 = "Sheet2"  # C. Accountability + D. Summary + Certification
 
-# Rows on Sheet1 pre-labeled with these exact ticket types (col A, merged A:B).
-FIXED_COLLECTION_ROWS = {
-    "Cash Tickets@2": 12,
-    "Cash Tickets@3": 13,
-    "Cash Tickets@5": 14,
-    "Cash Tickets@10": 15,
-}
-# Blank rows available for any collection type not in FIXED_COLLECTION_ROWS,
-# before the sheet's own TOTAL formula row (33).
-EXTRA_COLLECTION_ROWS = range(16, 33)
+# Sheet1 collection rows, one per ticket series collected, before the sheet's
+# own TOTAL formula row (33). The template pre-prints four ticket forms in the
+# first rows; they are cleared so only the forms actually collected remain.
+COLLECTION_ROWS = range(12, 33)
+TEMPLATE_TICKET_ROWS = 4
 
 # "B. Remittances/Deposits" denomination rows (col E).
 DENOMINATION_ROWS = {1000: 53, 500: 54, 200: 55, 100: 56, 50: 57, 20: 58}
 COIN_ROW = 59
 
-# Sheet2 "C. Accountability for Accountable Forms" mirrors the same ticket
-# types, in the same order, as Sheet1's collections table.
-FIXED_ACCOUNTABILITY_ROWS = {
-    "Cash Tickets@2": 8,
-    "Cash Tickets@3": 9,
-    "Cash Tickets@5": 10,
-    "Cash Tickets@10": 11,
-}
-EXTRA_ACCOUNTABILITY_ROWS = range(12, 49)
+# Sheet2 "C. Accountability for Accountable Forms" lists the same rows in the
+# same order as Sheet1's collections table.
+ACCOUNTABILITY_ROWS = range(8, 49)
 
 
 def _collection_fields(c):
-    from_no = float(c.get("from_no") or 0)
-    amount = float(c.get("amount") or 0)
-    return c.get("ticket_form_no") or "", from_no, from_no - amount, amount
+    """Form name, where the series stood when the day began, the last ticket issued, and the cash collected from it."""
+    return c.get("ticket_form_no") or "", _ticket_no(c.get("from_no")), _ticket_no(c.get("to_no")), float(c.get("amount") or 0)
+
+
+def _ticket_no(value):
+    return int(value) if str(value or "").isdigit() else (value or "")
 
 
 def render_remittance_xlsx(batch, serialized):
@@ -66,35 +58,25 @@ def render_remittance_xlsx(batch, serialized):
     sheet1["C5"] = officer_name
     sheet1["G5"] = report_no
 
+    for i in range(TEMPLATE_TICKET_ROWS):
+        sheet1[f"A{COLLECTION_ROWS[i]}"] = None
+        sheet2[f"A{ACCOUNTABILITY_ROWS[i]}"] = None
+
     collections = serialized.get("collections") or []
-    extra_rows = iter(EXTRA_COLLECTION_ROWS)
-    extra_accountability_rows = iter(EXTRA_ACCOUNTABILITY_ROWS)
-    for c in collections:
+    # zip stops at the shorter range, so rows beyond the form's capacity are dropped.
+    for c, row, acc_row in zip(collections, COLLECTION_ROWS, ACCOUNTABILITY_ROWS):
         name, from_no, to_no, amount = _collection_fields(c)
+        sheet1[f"A{row}"] = name
+        sheet1[f"C{row}"] = from_no
+        sheet1[f"E{row}"] = to_no
+        # The template formats "To" as money; it's a ticket number like "From".
+        sheet1[f"E{row}"].number_format = "General"
+        sheet1[f"G{row}"] = amount
 
-        row = FIXED_COLLECTION_ROWS.get(name)
-        if row is None:
-            row = next(extra_rows, None)
-            if row is not None:
-                sheet1[f"A{row}"] = name
-        if row is not None:
-            sheet1[f"C{row}"] = from_no
-            sheet1[f"E{row}"] = to_no
-            sheet1[f"G{row}"] = amount
-
-        # C. Accountability: Beginning Balance / Issued / Ending Balance are
-        # this same row's From / Amount / To from A. — carried into the
-        # "Cash Tickets" From sub-cell of each group so the sheet's own
-        # SUM(...) totals for that group pick them up automatically.
-        acc_row = FIXED_ACCOUNTABILITY_ROWS.get(name)
-        if acc_row is None:
-            acc_row = next(extra_accountability_rows, None)
-            if acc_row is not None:
-                sheet2[f"A{acc_row}"] = name
-        if acc_row is not None:
-            sheet2[f"C{acc_row}"] = from_no
-            sheet2[f"I{acc_row}"] = amount
-            sheet2[f"L{acc_row}"] = to_no
+        # C. Accountability: only the form name is filled in here; the balances
+        # need each series' last issued number, which the app's PDF export
+        # looks up and this export doesn't.
+        sheet2[f"A{acc_row}"] = name
 
     deposits = serialized.get("deposits") or []
     for i, d in enumerate(deposits):
@@ -109,13 +91,8 @@ def render_remittance_xlsx(batch, serialized):
         sheet1[f"F{row}"] = int(d.get("quantity") or 0)
         sheet1[f"H{row}"] = float(d.get("deposit_amount") or 0)
 
-    total_from = sum(_collection_fields(c)[1] for c in collections)
-
-    # D. Summary: only Beginning Balance is filled in — it carries the same
-    # figure as C.'s Beginning Balance total. Cash/Checks/Total/Less/Balance
-    # are left blank for manual reconciliation on the printed form.
-    sheet2["B51"] = total_from
-
+    # D. Summary (Beginning Balance, Cash/Checks/Total/Less/Balance) is left
+    # blank for manual reconciliation on the printed form.
     sheet2["A65"] = officer_name
     sheet2["D65"] = date_str
 

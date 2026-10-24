@@ -171,6 +171,7 @@ def remittance_batches(request):
         batch = RemittanceBatch.objects.create(
             batch_code=data.get('id'),
             issued_by=request.user if request.user.is_authenticated else None,
+            issued_by_role=getattr(request.user, 'role', ''),
             prepared_by_name=supervisor.display_name,
             total_amount=data.get('total_amount', 0),
             covers_date=covers_date,

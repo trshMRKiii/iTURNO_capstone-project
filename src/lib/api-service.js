@@ -422,11 +422,16 @@ export const apiService = {
     return this.post("/kiosk/cancel/", { vehicle_id: vehicleId });
   },
 
-  reorderQueue(routeId, vehicleIds) {
+  reorderQueue(routeId, vehicleIds, reason) {
     return this.post("/tickets/reorder-queue/", {
       route_id: routeId,
       vehicle_ids: vehicleIds,
+      reason,
     });
+  },
+
+  extendLoading(routeId, minutes) {
+    return this.post("/tickets/extend-loading/", { route_id: routeId, minutes });
   },
 
   getVehicles(params = {}) {
@@ -593,8 +598,8 @@ export const apiService = {
   // active - enforced server-side) it queues ONE RemoteBackfillRequest holding
   // every row instead, so `commit` is meaningless there: no remote preview, every
   // call queues for real. See useTicketBackfill's IS_REMOTE branching.
-  submitBackfillBatch(rows, commit) {
-    return this.post("/backfill/batch/", { rows, commit });
+  submitBackfillBatch(rows, commit, remitted = false) {
+    return this.post("/backfill/batch/", { rows, commit, remitted });
   },
 
   // Remote-only: recent RemoteBackfillRequest rows and their apply status,

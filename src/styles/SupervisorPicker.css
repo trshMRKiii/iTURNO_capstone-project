@@ -22,7 +22,7 @@
   padding: 7px 10px;
   text-align: left;
   font: inherit;
-  font-size: 13px;
+  font-size: 14.3px;
   color: var(--text-primary);
   background: transparent;
   border: none;
@@ -34,6 +34,6 @@
 }
 .sup-combo-empty {
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: 14.3px;
   color: var(--text-secondary);
 }

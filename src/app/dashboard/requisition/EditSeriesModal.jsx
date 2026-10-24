@@ -22,13 +22,16 @@ const EditSeriesModal = ({ editing, setEditing, updateEdit, saveEdit, saving }) 
           <div className="req-grid-2">
             <div className="req-field">
               <label className="req-label">Start No.</label>
-              <input className="req-input" inputMode="numeric" value={editing.start_no} onChange={(e) => updateEdit("start_no", e.target.value)} />
+              <input className="req-input" inputMode="numeric" value={editing.start_no} disabled={editing.startLocked} onChange={(e) => updateEdit("start_no", e.target.value)} />
             </div>
             <div className="req-field">
               <label className="req-label">End No.</label>
               <input className="req-input" inputMode="numeric" value={editing.end_no} onChange={(e) => updateEdit("end_no", e.target.value)} />
             </div>
           </div>
+          {editing.startLocked && (
+            <p className="req-hint">Tickets were already issued (last used: {editing.lastUsed}), so only the End No. can change.</p>
+          )}
         </div>
 
         <div className="req-modal-footer">

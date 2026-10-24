@@ -3,15 +3,13 @@ import { Navigate, useLocation } from "react-router-dom";
 import { apiService } from "../../../lib/api-service";
 import { useFeedback } from "../../../components/ui/kit";
 import SettingsModal from "../../../components/ui/settingsModal";
-import TicketBackfillTab from "./backfill/TicketBackfillTab";
-import OutsideRemittanceTab from "./outside/OutsideRemittanceTab";
+import BackfillModule from "./backfill/BackfillModule";
 import ArchiveTab from "./archive/ArchiveTab";
 import SettingsNav from "./SettingsNav";
 import TicketFormsSection from "./TicketFormsSection";
 import PuvTypesSection from "./PuvTypesSection";
 import RoutesSection from "./RoutesSection";
-import SystemSection from "./SystemSection";
-import { SETTINGS_SECTIONS, SETTINGS_BASE, canViewSection } from "./settingsSections";
+import SystemSection from "./SystemSection";import { SETTINGS_SECTIONS, SETTINGS_BASE, canViewSection } from "./settingsSections";
 import "../../../styles/Settings.css";
 import "../../../styles/SettingsUi.css";
 
@@ -106,7 +104,7 @@ async function withRow(setRows, id, state, fn) {
 
 const fetchPuvTypes = () => apiService.getPUVTypes();
 const fetchRoutes = () => apiService.getRoutes();
-// Must match the names the remittance export looks up (e.g. "Cash Tickets@3").
+// Form names are "Cash Tickets@<price>"; the remittance form lists them as configured here.
 const TICKET_FORM_PREFIX = "Cash Tickets@";
 const fetchTicketForms =() => apiService.getTicketForms();
 
@@ -606,7 +604,7 @@ function SettingsPage() {
           />
         )}
 
-        {/* Ticket Backfill (manual entry + CSV) + WIP mode */}
+        {/* Ticket backfill (WIP gate + manual entry) */}
         {activeTab === "ticket-backfill" && canManageBackfill && (
           <div className="set-section">
             <div className="set-panel-toolbar">
@@ -614,19 +612,7 @@ function SettingsPage() {
                 <h2 className="set-panel-title">Ticket Backfill</h2>
               </div>
             </div>
-            <TicketBackfillTab />
-          </div>
-        )}
-
-        {/* Tickets whose cash was remitted outside the system */}
-        {activeTab === "outside-remittance" && canManageBackfill && (
-          <div className="set-section">
-            <div className="set-panel-toolbar">
-              <div className="set-panel-heading">
-                <h2 className="set-panel-title">Outside Remittance</h2>
-              </div>
-            </div>
-            <OutsideRemittanceTab />
+            <BackfillModule />
           </div>
         )}
 

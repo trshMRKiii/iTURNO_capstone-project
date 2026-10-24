@@ -97,10 +97,12 @@ export function useRequisition() {
       const pcs = getPcs(s);
       const remaining = s.remaining ?? pcs;
       const price = parseFloat(s.ticket_form_price) || 0;
-      return { ...s, pcs, remaining, beginning: s.beginning ?? pcs, current_value: remaining * price };
+      return { ...s, pcs, remaining, beginning: s.beginning ?? pcs, current_value: remaining * price, pending: s.requisition_status === "PENDING" };
     });
-    const totalStock = enriched.reduce((sum, s) => sum + s.remaining, 0);
-    const totalValue = enriched.reduce((sum, s) => sum + s.current_value, 0);
+    // Unvalidated series are listed but aren't stock yet.
+    const usable = enriched.filter((s) => !s.pending);
+    const totalStock = usable.reduce((sum, s) => sum + s.remaining, 0);
+    const totalValue = usable.reduce((sum, s) => sum + s.current_value, 0);
     const activeSeries = enriched.length > 0 ? enriched[0] : null;
     const hasStock = totalStock > 0;
 
@@ -110,15 +112,17 @@ export function useRequisition() {
       if (!byDenomination[key]) {
         byDenomination[key] = { label: key, totalQty: 0, totalValue: 0, series: [] };
       }
-      byDenomination[key].totalQty += s.remaining;
-      byDenomination[key].totalValue += s.current_value;
+      if (!s.pending) {
+        byDenomination[key].totalQty += s.remaining;
+        byDenomination[key].totalValue += s.current_value;
+      }
       byDenomination[key].series.push(s);
     }
 
     const stockLevel =
       totalStock >= 10000 ? "high" : totalStock >= 5000 ? "normal" : "low";
 
-    return { totalStock, totalValue, activeSeries, hasStock, stockLevel, allStock: enriched, byDenomination };
+    return { totalStock, totalValue, activeSeries, hasStock, stockLevel, allStock: usable, byDenomination };
   }, [allSeries]);
 
   // Opening always starts from a blank form, so a cancelled entry never reappears.
@@ -235,24 +239,24 @@ export function useRequisition() {
     }
   };
 
-  const patchStatus = async (id, status, success, failTitle) => {
-    try {
-      await apiService.request(`/requisitions/${id}/`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
-      await fetchRequisitions();
-      notify.success(success);
-    } catch (err) {
-      notify.error({ title: failTitle, message: errorMessage(err), onRetry: () => patchStatus(id, status, success, failTitle) });
-    }
-  };
+  // Series stay locked (can't be issued) until a supervisor validates their requisition.
+  const canValidate = currentUser?.role === "SUPERVISOR";
 
-  const handleApprove = (id) =>
-    patchStatus(id, "APPROVED", { title: "Requisition approved", message: "It is ready to be issued." }, "Couldn't approve requisition");
-
-  const handleIssue = (id) =>
-    patchStatus(id, "ISSUED", { title: "Requisition issued", message: "The ticket series are now in stock." }, "Couldn't issue requisition");
+  const handleValidate = (id) => confirmAction({
+    title: "Validate this requisition?",
+    message: "Its ticket series will be available for issuing. This can't be undone.",
+    confirmLabel: "Validate",
+    busyLabel: "Validating...",
+    run: async () => {
+      try {
+        await apiService.patch(`/requisitions/${id}/`, { status: "APPROVED" });
+        await fetchRequisitions();
+        return { success: { title: "Requisition validated", message: "Its ticket series can now be issued." } };
+      } catch (err) {
+        return { error: { title: "Couldn't validate requisition", message: errorMessage(err) } };
+      }
+    },
+  });
 
   const restoreRequisition = async (id) => {
     try {
@@ -290,10 +294,13 @@ export function useRequisition() {
 
   const handleRestore = async (id) => report(await restoreRequisition(id));
 
-  // Corrects a mis-keyed series in place (the server refuses once any ticket or paper range uses it).
+  // Corrects a mis-keyed series in place (once tickets or a paper range use it, only End No. can change).
   const [editing, setEditing] = useState(null);
 
-  const startEdit = (ts) => setEditing({ id: ts.id, start_no: String(ts.start_no), end_no: String(ts.end_no) });
+  const startEdit = (ts) => setEditing({
+    id: ts.id, start_no: String(ts.start_no), end_no: String(ts.end_no),
+    startLocked: ts.last_used_no != null, lastUsed: ts.last_used_no,
+  });
 
   const updateEdit = (field, value) => setEditing((prev) => ({ ...prev, [field]: value.replace(/\D/g, "") }));
 
@@ -334,8 +341,8 @@ export function useRequisition() {
     removeSeriesItem,
     computeTotal,
     handleSave,
-    handleApprove,
-    handleIssue,
+    canValidate,
+    handleValidate,
     handleArchive,
     handleRestore,
     editing,

@@ -1,15 +1,17 @@
 
 /* light */
 :root {
-  --gold:           #c9a84c;
-  --gold-dim:       rgba(201, 168, 76, 0.13);
-  --gold-hover:     rgba(201, 168, 76, 0.2);
+  --gold:           #1a2744;
+  --gold-rgb:       26, 39, 68;
+  --on-gold:        #ffffff;
+  --gold-dim:       rgba(var(--gold-rgb), 0.13);
+  --gold-hover:     rgba(var(--gold-rgb), 0.2);
   --navy:           #1a2744;
 
   --bg-page:        #f4f5f8;
   --bg-surface:     #ffffff;
   --bg-hover:       rgba(26, 39, 68, 0.05);
-  --bg-active:      rgba(201, 168, 76, 0.12);
+  --bg-active:      rgba(var(--gold-rgb), 0.12);
 
   --border:         rgba(26, 39, 68, 0.1);
   --border-soft:    rgba(26, 39, 68, 0.06);
@@ -26,13 +28,16 @@
 
 /* dark */
 .dark {
+  --gold:           #ffffff;
+  --gold-rgb:       255, 255, 255;
+  --on-gold:        #1a2744;
   --bg-page:        #0d1421;
   --bg-surface:     #141f33;
-  --bg-hover:       rgba(201, 168, 76, 0.07);
-  --bg-active:      rgba(201, 168, 76, 0.13);
+  --bg-hover:       rgba(var(--gold-rgb), 0.07);
+  --bg-active:      rgba(var(--gold-rgb), 0.13);
 
-  --border:         rgba(201, 168, 76, 0.14);
-  --border-soft:    rgba(201, 168, 76, 0.07);
+  --border:         rgba(var(--gold-rgb), 0.14);
+  --border-soft:    rgba(var(--gold-rgb), 0.07);
 
   --text-primary:   #f4f5f8;
   --text-secondary: rgba(244, 245, 248, 0.6);
@@ -50,7 +55,7 @@
   grid-template-rows: 56px minmax(0, 1fr);
   height: 100vh;
   background: var(--bg-page);
-  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-family: Helvetica, Arial, sans-serif;
   transition: background 0.25s;
 }
 
@@ -72,7 +77,7 @@
 
 /* nav label */
 .sidebar-nav-label {
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -104,7 +109,7 @@
   gap: 10px;
   padding: 9px 12px;
   border-radius: 8px;
-  font-size: 13.5px;
+  font-size: 14.9px;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
@@ -157,9 +162,9 @@
   height: 34px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(201, 168, 76, 0.5);
-  color: var(--gold);
-  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  font-size: 13.2px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -184,7 +189,7 @@
 }
 
 .header-user-name {
-  font-size: 13px;
+  font-size: 14.3px;
   font-weight: 600;
   color: #fff;
   white-space: nowrap;
@@ -193,8 +198,8 @@
 }
 
 .header-user-role {
-  font-size: 10.5px;
-  color: var(--gold);
+  font-size: 11.6px;
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -220,13 +225,13 @@
 }
 
 .header-logout-label {
-  font-size: 13px;
+  font-size: 14.3px;
   font-weight: 600;
 }
 
 .header-icon-btn:hover {
-  background: rgba(201, 168, 76, 0.2);
-  color: var(--gold);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 /* Main */
@@ -245,7 +250,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  font-size: 13px;
+  font-size: 14.3px;
   font-weight: 500;
   border-bottom: 1px solid var(--border);
 }
@@ -260,7 +265,7 @@
   color: inherit;
   border-radius: 6px;
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: 13.2px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -303,7 +308,7 @@
   border-color: #16a34a;
   color: #fff;
   padding: 6px 16px;
-  font-size: 13px;
+  font-size: 14.3px;
   box-shadow: 0 1px 3px rgba(22, 163, 74, 0.35);
 }
 
@@ -318,12 +323,12 @@
 }
 
 .gnotice--wip {
-  background: rgba(201, 168, 76, 0.13);
+  background: rgba(var(--gold-rgb), 0.13);
   color: #92702a;
 }
 
 .dark .gnotice--wip {
-  background: rgba(201, 168, 76, 0.16);
+  background: rgba(var(--gold-rgb), 0.16);
   color: var(--gold);
 }
 
@@ -364,7 +369,7 @@
 }
 
 .mobile-header-name {
-  font-size: 14px;
+  font-size: 15.4px;
   font-weight: 700;
   color: #fff;
   white-space: nowrap;

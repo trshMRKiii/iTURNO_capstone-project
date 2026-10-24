@@ -3,9 +3,14 @@ import { useQueue } from "./useQueue";
 import Dispatch from "../dispatch/dispatch";
 import { useDeskDuty } from "../dispatch/useDeskDuty";
 import SeriesPicker from "./SeriesPicker";
+import TicketRecipes from "./TicketRecipes";
+import { SupervisorPicker } from "../../../components/ui/kit";
 import { getIwpStatus, getExpiryStatus } from "../driver/driver-utils";
 import "../../../styles/Queue.css";
 import { RouteIcon, SearchIcon } from "./queueIcon";
+
+// Supervisor and Manager are one position under two titles; they and the admin assign the desk personnel.
+const DESK_ASSIGNERS = ["SUPERADMIN", "SUPERVISOR", "MANAGER"];
 
 function Queue({ userRole }) {
   const {
@@ -26,25 +31,33 @@ function Queue({ userRole }) {
     activeDrivers,
     availableSeries,
     allSeries,
+    forms,
+    exhaustedLabel,
     setSeriesOverrideId,
     selectedSeriesId,
     setSelectedSeriesId,
-    ticketQuantity,
+    issuePlan,
+    ticketFee,
     selectVehicleById,
     handleDriverChange,
     handleIssueTicket,
     driverHasActiveTicket,
-    refreshQueueState,
   } = useQueue(userRole);
 
   const desk = useDeskDuty(selectedSeriesId);
+  const canAssignDesk = DESK_ASSIGNERS.includes(userRole);
+  // What the Issue button hands out: the vehicle's recipe, or the single series.
+  const ticketCount = issuePlan(desk.recipes).reduce((n, row) => n + row.quantity, 0);
+  // Every fare in use, one recipe slot each.
+  const farePrices = [...new Set(vehicles.map((v) => Number(v.terminal_price || 0)).filter(Boolean))].sort((a, b) => a - b);
   // Whoever takes a vehicle in is accountable for it; a roam is in and out at once, so it needs both.
   const missingPersonnel = !desk.checkinId
-    ? "Pick the check-in personnel on the Queued vehicles board below first."
+    ? "A supervisor or admin needs to pick the check-in personnel in Shift setup first."
     : issuanceType === "ROAM" && !desk.checkoutId
-      ? "Pick the check-out personnel on the Queued vehicles board below first."
+      ? "A supervisor or admin needs to pick the check-out personnel in Shift setup first."
       : "";
 
+  const [recipesOpen, setRecipesOpen] = useState(false);
   const [vehicleSearch, setVehicleSearch] = useState("");
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
   const [driverSearch, setDriverSearch] = useState("");
@@ -254,17 +267,6 @@ function Queue({ userRole }) {
               </div>
             )}
 
-            {/* Roaming only: cash denomination sits under the plate search. */}
-            {issuanceType === "ROAM" && (
-              <SeriesPicker
-                availableSeries={availableSeries}
-                allSeries={allSeries}
-                selectedSeriesId={selectedSeriesId}
-                setSelectedSeriesId={setSelectedSeriesId}
-                setSeriesOverrideId={setSeriesOverrideId}
-              />
-            )}
-
             {successMessage && (
               <div className="queue-alert queue-alert--success">
                 {successMessage}
@@ -282,7 +284,7 @@ function Queue({ userRole }) {
             <button
               type="button"
               className="queue-issue-btn"
-              onClick={() => handleIssueTicket()}
+              onClick={() => handleIssueTicket(desk.recipes)}
               disabled={
                 issuingTicket ||
                 !selectedVehicle ||
@@ -296,8 +298,8 @@ function Queue({ userRole }) {
                 ? "Issuing…"
                 : !selectedVehicle
                   ? "Pick a vehicle to continue"
-                  : issuanceType === "ROAM" && ticketQuantity > 1
-                  ? `Issue ${ticketQuantity} Tickets`
+                  : issuanceType === "ROAM" && ticketCount > 1
+                  ? `Issue ${ticketCount} Tickets`
                   : issuanceType === "ROAM"
                     ? "Issue Ticket"
                     : "Check In Vehicle"}
@@ -348,37 +350,84 @@ function Queue({ userRole }) {
       </div>
 
       <div className="queue-single-col">
-        <section className="queue-mode">
-          {/* Mode switch — Roaming reveals the cash denomination, Queue hides it. */}
-          <div className="queue-mode-switch" role="tablist" aria-label="Issuance mode">
-            {modes.map(({ type, title, sub }) => (
-              <button
-                key={type}
-                type="button"
-                role="tab"
-                aria-selected={issuanceType === type}
-                className={`queue-mode-tab${issuanceType === type ? " is-active" : ""}`}
-                onClick={() => setIssuanceType(type)}
-              >
-                {title} <em>{sub}</em>
-              </button>
-            ))}
-          </div>
-          <div className="queue-mode-body">
-            {issueForm}
-          </div>
-        </section>
+        <div className="queue-top">
+          <section className="queue-mode">
+            <div className="queue-card-head">
+              <h2 className="queue-card-title">Check in a vehicle</h2>
+            </div>
+            {/* Mode switch — Roaming issues cash tickets from the series in Shift setup. */}
+            <div className="queue-mode-switch" role="tablist" aria-label="Issuance mode">
+              {modes.map(({ type, title, sub }) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="tab"
+                  aria-selected={issuanceType === type}
+                  className={`queue-mode-tab queue-mode-tab--${type.toLowerCase()}${issuanceType === type ? " is-active" : ""}`}
+                  onClick={() => setIssuanceType(type)}
+                >
+                  {title} - <em>{sub}</em>
+                </button>
+              ))}
+            </div>
+            <div className="queue-mode-body">
+              {issueForm}
+            </div>
+          </section>
 
-        {/* ── Dispatch board (queued vehicles) ── */}
-        <Dispatch
-          desk={desk}
-          availableSeries={availableSeries}
-          allSeries={allSeries}
-          setSeriesOverrideId={setSeriesOverrideId}
-          selectedSeriesId={selectedSeriesId}
-          setSelectedSeriesId={setSelectedSeriesId}
-          onStockChange={refreshQueueState}
-        />
+          <section className="queue-shift">
+            <h2 className="queue-card-title">Shift setup</h2>
+            {/* Mix Values swaps the default series for the fare recipes. */}
+            {recipesOpen ? (
+              <TicketRecipes
+                prices={farePrices}
+                denominations={availableSeries}
+                allSeries={allSeries}
+                defaultSeries={availableSeries.find((s) => String(s.id) === String(selectedSeriesId))}
+                forms={forms}
+                recipes={desk.recipes}
+                onSave={desk.setRecipes}
+                onClose={() => setRecipesOpen(false)}
+                disabled={!canAssignDesk}
+              />
+            ) : (
+              <SeriesPicker
+                availableSeries={availableSeries}
+                allSeries={allSeries}
+                selectedSeriesId={selectedSeriesId}
+                setSelectedSeriesId={setSelectedSeriesId}
+                setSeriesOverrideId={setSeriesOverrideId}
+                onMix={() => setRecipesOpen(true)}
+                exhaustedLabel={exhaustedLabel}
+                pickExact
+              />
+            )}
+            <label className="queue-shift-field">
+              <span className="queue-label">Check-in personnel</span>
+              <SupervisorPicker
+                className="queue-shift-input"
+                label="Check-in personnel"
+                supervisors={desk.personnel}
+                disabled={!canAssignDesk}
+                value={desk.checkinId}
+                onChange={desk.setCheckin}
+              />
+            </label>
+            <label className="queue-shift-field">
+              <span className="queue-label">Check-out personnel</span>
+              <SupervisorPicker
+                className="queue-shift-input"
+                label="Check-out personnel"
+                supervisors={desk.personnel}
+                disabled={!canAssignDesk}
+                value={desk.checkoutId}
+                onChange={desk.setCheckout}
+              />
+            </label>
+          </section>
+        </div>
+
+        <Dispatch seriesId={selectedSeriesId} ticketFee={ticketFee} />
       </div>
 
     </div>

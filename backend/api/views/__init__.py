@@ -34,7 +34,7 @@ from .records import (
 from .dashboard import dashboard_stats, dashboard_busiest
 from .route_analytics import route_analytics
 
-from .kiosk import kiosk_scan, kiosk_check_in, kiosk_sessions, kiosk_cancel, desk_duty
+from .kiosk import kiosk_scan, kiosk_driver, kiosk_check_in, kiosk_sessions, kiosk_cancel, kiosk_switch_roam, desk_duty
 
 from .external_remittance import external_remittance, external_remittance_records, undo_external_remittance
 

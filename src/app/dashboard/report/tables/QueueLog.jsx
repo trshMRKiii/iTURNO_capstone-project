@@ -135,7 +135,7 @@ export default function QueueLog({
   };
 
   const renderQueueRow = (l, idx, { rowClass, cellClass }) => (
-    <tr key={l.id + idx} className={rowClass}>
+    <tr key={`${l.id}-${idx}`} className={rowClass}>
       <td className={`${cellClass} rpt-mono rpt-muted`}>{l.timestamp ? new Date(l.timestamp).toLocaleString() : "—"}</td>
       <td className={`${cellClass} rpt-mono`}>{l.ticket_id}</td>
       <td className={cellClass}>{l.issued_by}</td>

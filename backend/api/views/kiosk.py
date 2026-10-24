@@ -1,20 +1,23 @@
 import uuid
+from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework.decorators import api_view
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
-from ..models import DeskDuty, Driver, KioskSession, Ticket, TicketSeries, User, Vehicle, WipMode
+from ..models import DeskDuty, Driver, KioskSession, Ticket, TicketForm, TicketSeries, User, Vehicle, WipMode
 from ..serializers import TicketSerializer
-from .helpers import expire_stale_queue_tickets
-from .viewsets import _check_can_issue, _check_terminal_price, _finalize_queued_vehicle, _issue_roam_tickets
+from .helpers import expire_stale_queue_tickets, promote_queue_front
+from .viewsets import _check_can_issue, _check_plan, _consume_series_fifo, _finalize_queued_vehicle, _issue_roam_tickets
 
-# Self-service QR kiosk. The driver checks in (scan -> mode -> own name) and pays the
-# check-in Personnel on duty (see DeskDuty) on the spot; the next scan checks the vehicle
-# out under the check-out Personnel. Every outcome the kiosk screen reacts to comes back
-# as a `state` string instead of an HTTP error.
+# Self-service QR kiosk, two steps. The driver checks in (scan -> mode -> own name): a roam
+# pays the check-in Personnel on duty (see DeskDuty) and is numbered right then, a queue
+# vehicle just joins the line. The next scan checks the vehicle out under the check-out
+# Personnel, who takes a queue vehicle's payment as it is numbered and leaves. Every outcome the kiosk screen reacts to comes back as a `state` string
+# instead of an HTTP error.
 
 OPEN = KioskSession.OPEN_STATUSES
 PAUSED_MESSAGE = "Ticketing is paused for now — please see the dispatcher."
@@ -101,6 +104,19 @@ def _open_session(vehicle):
     return next((s for s in _live_sessions() if s.vehicle_id == vehicle.id), None)
 
 
+def _adopt_front_desk_queue(vehicle):
+    """A vehicle queued at the front desk has no kiosk visit; its first kiosk scan adopts it
+    (desk series, its own queue ticket's driver and check-in personnel) so it can check out here."""
+    ticket = _queue_ticket(vehicle)
+    desk = DeskDuty.get_solo()
+    if ticket is None or desk.series is None:
+        return None
+    return KioskSession.objects.create(
+        vehicle=vehicle, driver=ticket.driver, mode='QUEUE', plan=_stored(_plan_for(vehicle, desk)),
+        checked_in_by_name=ticket.checked_in_by_name,
+    )
+
+
 def _vehicle_info(vehicle):
     price = vehicle.transportation_id.terminal_price if vehicle.transportation_id else None
     return {
@@ -111,10 +127,35 @@ def _vehicle_info(vehicle):
     }
 
 
+def _expired_documents(vehicle, operator):
+    """Lapsed papers that stop a check-in, for the kiosk's expired screen."""
+    today = timezone.localdate()
+    papers = [
+        ("Vehicle registration", vehicle.franchise_expiration_date),
+        ("Driver IWP permit", operator.iwp_expiration_date if operator else None),
+    ]
+    return [
+        {'label': label, 'date': date, 'days_ago': (today - date).days}
+        for label, date in papers if date and date < today
+    ]
+
+
+def _breakdown(plan):
+    """The denominations a visit hands out, for the kiosk screen and the Dispatch board."""
+    forms = TicketForm.objects.in_bulk([row['form'] for row in plan])
+    return [
+        {'label': forms[row['form']].name, 'price': float(forms[row['form']].price), 'qty': row['qty']}
+        for row in plan if row['form'] in forms
+    ]
+
+
 def _reply(state, vehicle, session=None, **extra):
     data = {'state': state, 'vehicle': _vehicle_info(vehicle), **extra}
     if session:
-        data.update(mode=session.mode, driver=_driver_name(session.driver), checked_in_by=session.checked_in_by_name)
+        data.update(
+            mode=session.mode, driver=_driver_name(session.driver), checked_in_by=session.checked_in_by_name,
+            breakdown=_breakdown(session.plan),
+        )
         if session.mode == 'QUEUE':
             data['position'] = _queue_position(vehicle)
     return Response(data)
@@ -135,6 +176,58 @@ def _quantity_for(vehicle, series):
     return int(terminal / price) if terminal and price and terminal % price == 0 else 1
 
 
+def _price_key(price):
+    """How a terminal price is spelled in DeskDuty.recipes ('40', '12.5') — mirrors String(Number(price)) on the desk."""
+    return f"{float(price):g}"
+
+
+def _stocked(plan):
+    """Can every row of the plan be drawn right now?"""
+    try:
+        with transaction.atomic():
+            for form_id, quantity, series_id in plan:
+                _consume_series_fifo(form_id, quantity, series_id)
+    except ValidationError:
+        return False
+    return True
+
+
+def _usable(vehicle, plan):
+    try:
+        _check_plan(vehicle, plan)
+    except ValidationError:
+        return False
+    return _stocked(plan)
+
+
+def _plan_for(vehicle, desk):
+    """What this vehicle's visit draws, as [(ticket_form_id, quantity, series_id)]. The recipe
+    for its price wins while the stock lasts; otherwise the desk's default series, enough of it
+    to meet the price. With both short the dispatcher has to pick another denomination in
+    Shift setup."""
+    puv = vehicle.transportation_id
+    recipe = [(r['form'], r['qty'], None) for r in desk.recipes.get(_price_key(puv.terminal_price), [])] if puv else []
+    if recipe and _usable(vehicle, recipe):
+        return recipe
+    series = desk.series
+    default = [(series.ticket_form_id, _quantity_for(vehicle, series), series.id)]
+    _check_plan(vehicle, default)  # a default that can't meet the price is a setup problem, not a stock one
+    if not _stocked(default):
+        raise ValidationError({"detail": "No tickets left for this fare — please see the dispatcher."})
+    return default
+
+
+def _stored(plan):
+    return [{'form': form_id, 'qty': quantity, 'series': series_id} for form_id, quantity, series_id in plan]
+
+
+def _rows(session):
+    """The visit's plan back as [(ticket_form_id, quantity, series_id)]."""
+    if not session.plan:
+        raise ValidationError({"series": "The ticket plan for this visit is gone — please see the dispatcher."})
+    return [(row['form'], row['qty'], row.get('series')) for row in session.plan]
+
+
 def _driver_choices(vehicle):
     busy = _busy_driver_ids()
     mine = {vehicle.active_driver_id, vehicle.owner_driver_id}
@@ -147,19 +240,33 @@ def _check_out(session, request):
     if not DeskDuty.get_solo().checkout_user_id:
         raise ValidationError({"detail": "No check-out personnel is on duty — please see the dispatcher."})
     with transaction.atomic():
-        # Re-read under lock so a double scan can't issue a roam ticket twice.
+        # Re-read under lock so a double scan can't check a visit out twice.
         if not KioskSession.objects.select_for_update().filter(pk=session.pk, status='PAID').exists():
             raise ValidationError({"detail": "This visit was already checked out."})
-        series = session.series
-        if series is None or series.ticket_form_id is None:
-            raise ValidationError({"series": "The ticket series for this visit is gone — please see the dispatcher."})
-        if session.mode == 'QUEUE':
-            return _finalize_queued_vehicle(
-                session.vehicle, series.ticket_form_id, session.quantity, 'QUEUE', request, series.id,
-            )
-        return _issue_roam_tickets(
-            session.vehicle, session.driver, series.ticket_form, session.quantity, request, series.id,
-        )
+        if session.mode == 'ROAM':
+            return _depart_roam(session)
+        return _finalize_queued_vehicle(session.vehicle, _rows(session), 'QUEUE', request)
+
+
+def _depart_roam(session):
+    """A roam was numbered at check-in, so leaving only records the departure and who was on
+    the check-out desk."""
+    now = timezone.now()
+    Ticket.objects.filter(
+        vehicle=session.vehicle, mode='UNLOAD', status='COLLECTED', checked_out_at__isnull=True,
+        dispatched_at__gte=session.created_at,
+    ).update(checked_out_at=now, checked_out_by_name=DeskDuty.get_solo().checkout_name, updated_at=now)
+    session.status = 'DONE'
+    session.save(update_fields=['status', 'updated_at'])  # save, not update: the Dispatch board listens for it
+    return list(Ticket.objects.filter(vehicle=session.vehicle, mode='UNLOAD', checked_out_at=now))
+
+
+def _switch_out(session, request):
+    """A queued vehicle cutting the line to roam pays at check-out like any queue vehicle, so
+    its roam tickets are drawn and it leaves now, under the check-out Personnel."""
+    rows = _rows(session)
+    session.vehicle.refresh_from_db()  # the switch just freed it from QUEUED
+    return _issue_roam_tickets(session.vehicle, session.driver, rows, request)
 
 
 @api_view(['POST'])
@@ -173,10 +280,17 @@ def kiosk_scan(request):
 
     session = _open_session(vehicle)
     if session is None:
+        try:
+            session = _adopt_front_desk_queue(vehicle)
+        except ValidationError as exc:
+            return _reply('ERROR', vehicle, message=_error_text(exc))
+    if session is None:
         if vehicle.status != 'AVAILABLE':
             return _reply('BLOCKED', vehicle, message=f"This vehicle is {vehicle.status.lower()} and can't check in.")
-        if vehicle.franchise_expired:
-            return _reply('BLOCKED', vehicle, message="This vehicle's franchise has expired — please renew it first.")
+        operator = vehicle.active_driver or vehicle.owner_driver
+        expired = _expired_documents(vehicle, operator)
+        if expired:
+            return _reply('EXPIRED', vehicle, expired=expired, driver=_driver_name(operator) if operator else None)
         if _paused():
             return _reply('BLOCKED', vehicle, message=PAUSED_MESSAGE)
         return _reply('CHECK_IN', vehicle, drivers=_driver_choices(vehicle))
@@ -191,6 +305,21 @@ def kiosk_scan(request):
     except ValidationError as exc:
         return _reply('ERROR', vehicle, session, message=_error_text(exc))
     return _reply('DEPARTED', vehicle, session, tickets=[t.id for t in tickets])
+
+
+@api_view(['POST'])
+def kiosk_driver(request):
+    """Names the driver behind a scanned driver QR so the kiosk can show who is swapping in."""
+    expire_stale_queue_tickets()
+    try:
+        driver = _find_driver({'driver_qr': request.data.get('text')})
+    except ValidationError as exc:
+        return Response({'state': 'ERROR', 'message': _error_text(exc)})
+    if driver.iwp_expired:
+        return Response({'state': 'ERROR', 'message': "This driver's IWP has expired — please renew it first."})
+    if driver.id in _busy_driver_ids():
+        return Response({'state': 'ERROR', 'message': "This driver is already checked in on another vehicle."})
+    return Response({'state': 'DRIVER', 'driver': {'id': driver.id, 'name': _driver_name(driver)}})
 
 
 @api_view(['POST'])
@@ -217,8 +346,7 @@ def kiosk_check_in(request):
             if driver.id in _busy_driver_ids():
                 raise ValidationError({"driver_id": "This driver is already checked in on another vehicle."})
             _check_can_issue(vehicle, driver)
-            quantity = _quantity_for(vehicle, desk.series)
-            _check_terminal_price(vehicle, desk.series.ticket_form.price or 0, quantity)
+            plan = _plan_for(vehicle, desk)
 
             queue_code = ''
             if mode == 'QUEUE':
@@ -229,9 +357,10 @@ def kiosk_check_in(request):
                 serializer.is_valid(raise_exception=True)
                 queue_code = serializer.save(active_user=_staff(request)).queue_code
             session = KioskSession.objects.create(
-                vehicle=vehicle, driver=driver, mode=mode, series=desk.series, quantity=quantity,
-                checked_in_by_name=desk.checkin_name,
+                vehicle=vehicle, driver=driver, mode=mode, plan=_stored(plan), checked_in_by_name=desk.checkin_name,
             )
+            if mode == 'ROAM':
+                _issue_roam_tickets(vehicle, driver, plan, request, depart=False)
     except (Vehicle.DoesNotExist, Driver.DoesNotExist):
         return Response({'state': 'ERROR', 'message': "That vehicle or driver wasn't found."})
     except ValidationError as exc:
@@ -251,6 +380,7 @@ def kiosk_sessions(request):
             'driver': _driver_name(s.driver),
             'mode': s.mode,
             'amount': _vehicle_info(s.vehicle)['amount'],
+            'breakdown': _breakdown(s.plan),
             'checked_in_by': s.checked_in_by_name,
             'checked_in_at': s.created_at,
         }
@@ -264,6 +394,7 @@ def _desk_payload(desk):
         'checkin_user': desk.checkin_user_id,
         'checkout_user': desk.checkout_user_id,
         'series': desk.series_id,
+        'recipes': desk.recipes,
         'personnel': [{'id': u.id, 'name': u.display_name} for u in personnel],
     }
 
@@ -278,6 +409,34 @@ def _pick(request, field, queryset):
     return obj
 
 
+def _clean_recipes(raw):
+    """Each recipe must add up exactly to its price: {"40": [{"form": id, "qty": n}, ...]}.
+    An emptied recipe is a removed one."""
+    if not isinstance(raw, dict):
+        raise ValidationError({"recipes": "Recipes must map each price to its ticket rows."})
+    forms = TicketForm.objects.in_bulk()
+    clean = {}
+    for price, rows in raw.items():
+        try:
+            target = Decimal(str(price))
+            parsed = [(int(row['form']), int(row['qty'])) for row in rows]
+        except (ArithmeticError, TypeError, ValueError, KeyError):
+            raise ValidationError({"recipes": f"The ₱{price} recipe is malformed."})
+        if not parsed:
+            continue
+        if len({form_id for form_id, _ in parsed}) < len(parsed) or any(f not in forms or q < 1 for f, q in parsed):
+            raise ValidationError({"recipes": f"The ₱{price} recipe has an unknown ticket form, a repeated one, or a quantity below 1."})
+        total = sum(forms[form_id].price * quantity for form_id, quantity in parsed)
+        if total != target:
+            raise ValidationError({"recipes": f"The ₱{price} recipe adds up to ₱{total:.2f}."})
+        clean[_price_key(target)] = [{'form': form_id, 'qty': quantity} for form_id, quantity in parsed]
+    return clean
+
+
+# Supervisor and Manager are one position under two titles.
+DESK_ASSIGNERS = ('SUPERADMIN', 'SUPERVISOR', 'MANAGER')
+
+
 @api_view(['GET', 'PATCH'])
 def desk_duty(request):
     """Who is on the Dispatch desk (check-in / check-out Personnel) and which ticket series the
@@ -287,11 +446,46 @@ def desk_duty(request):
         personnel = User.objects.filter(role='PERSONNEL', is_active=True)
         for field in ('checkin_user', 'checkout_user'):
             if field in request.data:
+                if request.user.role not in DESK_ASSIGNERS:
+                    raise PermissionDenied('Only an admin or supervisor can change the desk personnel.')
                 setattr(desk, field, _pick(request, field, personnel))
         if 'series' in request.data:
-            desk.series = _pick(request, 'series', TicketSeries.objects.filter(ticket_form__isnull=False))
+            desk.series = _pick(request, 'series', TicketSeries.objects.filter(ticket_form__isnull=False).exclude(requisition__status='PENDING'))  # unvalidated stock can't be issued
+        if 'recipes' in request.data:
+            if request.user.role not in DESK_ASSIGNERS:
+                raise PermissionDenied('Only an admin or supervisor can change the ticket recipes.')
+            desk.recipes = _clean_recipes(request.data['recipes'])
         desk.save()
     return Response(_desk_payload(desk))
+
+
+@api_view(['POST'])
+def kiosk_switch_roam(request):
+    """A queued vehicle that isn't at the front would rather roam than load from the line.
+    The switch is the check-out: its queue ticket is dropped, its roam tickets are issued and
+    it leaves now, skipping the line."""
+    vehicle = _find_vehicle(request.data.get('text'))
+    if vehicle is None:
+        return Response({'state': 'UNKNOWN'})
+    session = _open_session(vehicle)
+    route = vehicle.route
+    if session is None or session.mode != 'QUEUE':
+        return _reply('ERROR', vehicle, message="This vehicle isn't waiting in a queue.")
+    if _paused():
+        return _reply('ERROR', vehicle, session, message=PAUSED_MESSAGE)
+    try:
+        with transaction.atomic():
+            Ticket.objects.filter(vehicle=vehicle, mode='QUEUE', status='QUEUED').update(
+                status='CANCELLED', updated_at=timezone.now(),
+            )
+            Vehicle.objects.filter(id=vehicle.id, status='QUEUED').update(status='AVAILABLE', updated_at=timezone.now())
+            session.mode = 'ROAM'
+            session.save(update_fields=['mode', 'updated_at'])
+            tickets = _switch_out(session, request)
+    except ValidationError as exc:
+        return _reply('ERROR', vehicle, session, message=_error_text(exc))
+    promote_queue_front(route)
+    return _reply('DEPARTED', vehicle, session, tickets=[t.id for t in tickets])
 
 
 @api_view(['POST'])

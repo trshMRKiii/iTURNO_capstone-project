@@ -10,7 +10,8 @@ const MODELS = {
   Requisition: { filter: "Requisitions", noun: "requisition", badge: "RQ" },
   TicketForm: { filter: "Ticket forms", noun: "ticket form", badge: "TF" },
 };
-const REQUISITION_NOTES = { PENDING: "Waiting for approval", APPROVED: "Approved", ISSUED: "Issued" };
+const REQUISITION_NOTES = { PENDING: "Waiting for validation", APPROVED: "Validated", ISSUED: "Issued" };
+const STATE_LABELS = { PENDING: "Pending", APPROVED: "Validated", ISSUED: "Issued" };
 
 const categoryOf = (log) => (MODELS[log.model_name] ? log.model_name : "Other");
 const inThousands = (n) => Number(n).toLocaleString("en-US");
@@ -107,7 +108,7 @@ export default function RecentActivity({ logs }) {
                 <div className="ra-main">
                   <span className="ra-title">
                     {title}
-                    {state && <em className={`ra-state ra-state--${state}`}>{state[0] + state.slice(1).toLowerCase()}</em>}
+                    {state && <em className={`ra-state ra-state--${state}`}>{STATE_LABELS[state] || state[0] + state.slice(1).toLowerCase()}</em>}
                   </span>
                   {sub && <span className="ra-sub">{sub}</span>}
                 </div>

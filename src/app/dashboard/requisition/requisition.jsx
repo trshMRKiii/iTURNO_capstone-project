@@ -4,7 +4,8 @@ import RequisitionFormModal from "./RequisitionFormModal";
 import EditSeriesModal from "./EditSeriesModal";
 import { IS_REMOTE } from "../../../lib/api-service";
 import "../../../styles/requisition.css";
-import "../../../components/ui/kit";
+import { CheckIcon, EditIcon } from "../../../components/ui/kit";
+import RowMenu from "../registry/RowMenu";
 
 function formatCurrency(val) {
   return "₱" + Number(val || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -78,6 +79,8 @@ function Requisition() {
     startEdit,
     updateEdit,
     saveEdit,
+    canValidate,
+    handleValidate,
   } = useRequisition();
 
   const [expandedDenom, setExpandedDenom] = useState(null);
@@ -92,7 +95,7 @@ function Requisition() {
       Object.entries(inventory.byDenomination)
         .map(([denom, d]) => {
           const inStock = d.series.filter((ts) => ts.remaining > 0);
-          return { denom, ...d, seriesCount: inStock.length, shown: query ? inStock.filter((ts) => seriesHasTicket(ts, query)) : inStock };
+          return { denom, ...d, seriesCount: inStock.length, pendingCount: inStock.filter((ts) => ts.pending).length, shown: query ? inStock.filter((ts) => seriesHasTicket(ts, query)) : inStock };
         })
         .filter((g) => (query ? g.shown.length > 0 : g.series.length > 0)),
     [inventory, query]
@@ -192,7 +195,10 @@ function Requisition() {
                     </span>
                     <span>
                       <strong>{g.denom}</strong>
-                      <small>{g.seriesCount} series</small>
+                      <small>
+                        {g.seriesCount} series
+                        {g.pendingCount > 0 && <span className="rq-pending">{g.pendingCount} pending validation</span>}
+                      </small>
                     </span>
                   </span>
                   <span className="rq-num">{fmt(g.totalQty)}</span>
@@ -207,6 +213,7 @@ function Requisition() {
                       <span>Last issued no.</span>
                       <SortHead id="remaining" sort={sort} onSort={onSort}>Remaining</SortHead>
                       <SortHead id="amount" sort={sort} onSort={onSort} className="rq-num">Amount</SortHead>
+                      <span className="rq-num">Actions</span>
                     </div>
                     {sortSeries(g.shown).map((ts) => {
                       const total = ts.pcs || ts.remaining;
@@ -215,7 +222,10 @@ function Requisition() {
                         <div key={ts.id} className="rq-cols rq-cols--series rq-series-row">
                           <span>
                             <span className="rq-mono">{serial(ts.start_no)} - {serial(ts.end_no)}</span>
-                            <small>{count(ts.pcs, "ticket")}</small>
+                            <small>
+                              {count(ts.pcs, "ticket")}
+                              {ts.pending && <span className="rq-pending">Pending validation</span>}
+                            </small>
                           </span>
                           <span>{formatDate(ts.created_at)}</span>
                           <span className="rq-mono">{ts.last_used_no != null ? serial(ts.last_used_no) : "None yet"}</span>
@@ -223,12 +233,15 @@ function Requisition() {
                             <span className="rq-remaining"><strong>{fmt(ts.remaining)}</strong> of {fmt(total)}</span>
                             <span className="rq-bar"><span style={{ width: `${pct}%` }} /></span>
                           </span>
+                          <span className="rq-num">{formatCurrency(ts.current_value)}</span>
                           <span className="rq-num">
-                            {formatCurrency(ts.current_value)}
                             {!IS_REMOTE && (
-                              <button type="button" className="rq-link" onClick={() => startEdit(ts)}>
-                                Edit
-                              </button>
+                              <RowMenu
+                                items={[
+                                  { label: "Validate", icon: <CheckIcon size={14} />, onClick: () => handleValidate(ts.requisition_id), hidden: !ts.pending || !canValidate },
+                                  { label: "Edit", icon: <EditIcon size={14} />, onClick: () => startEdit(ts) },
+                                ]}
+                              />
                             )}
                           </span>
                         </div>

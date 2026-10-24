@@ -76,7 +76,7 @@ export function exportPDF(collections, filters) {
   <title>Collection Receipt</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; display: flex; justify-content: center; padding: 40px 20px; background: #f5f5f5; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 13px; color: #111; display: flex; justify-content: center; padding: 40px 20px; background: #f5f5f5; }
     .receipt { background: #fff; width: 420px; padding: 32px 28px; border: 1px solid #ddd; }
     .receipt-header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 16px; margin-bottom: 16px; }
     .receipt-header h2 { font-size: 16px; letter-spacing: 1px; text-transform: uppercase; }
@@ -165,7 +165,7 @@ export function exportTablePDF(data, title = "Report") {
   <title>${title}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 32px; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #111; padding: 32px; }
     h2 { font-size: 16px; margin-bottom: 4px; }
     p.meta { font-size: 11px; color: #666; margin-bottom: 16px; }
     table { width: 100%; border-collapse: collapse; font-size: 11px; }

@@ -9,14 +9,14 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.join(__dirname, "report_templates", "report_of_collections_and_deposits.xlsx");
 
-const FIXED_COLLECTION_ROWS = { "Cash Tickets@2": 12, "Cash Tickets@3": 13, "Cash Tickets@5": 14, "Cash Tickets@10": 15 };
-const EXTRA_COLLECTION_ROWS = range(16, 33);
+// One row per ticket series collected. The template pre-prints four ticket forms in the first rows;
+// they are cleared so only the forms actually collected remain.
+const COLLECTION_ROWS = range(12, 33);
+const ACCOUNTABILITY_ROWS = range(8, 49);
+const TEMPLATE_TICKET_ROWS = 4;
 
 const DENOMINATION_ROWS = { 1000: 53, 500: 54, 200: 55, 100: 56, 50: 57, 20: 58 };
 const COIN_ROW = 59;
-
-const FIXED_ACCOUNTABILITY_ROWS = { "Cash Tickets@2": 8, "Cash Tickets@3": 9, "Cash Tickets@5": 10, "Cash Tickets@10": 11 };
-const EXTRA_ACCOUNTABILITY_ROWS = range(12, 49);
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -29,10 +29,10 @@ function phLongDate(isoString) {
   return `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, "0")}, ${d.getUTCFullYear()}`;
 }
 
+// Form name, where the series stood when the day began, the last ticket issued, and the cash collected from it.
 function collectionFields(c) {
-  const fromNo = Number(c.from_no) || 0;
-  const amount = Number(c.amount) || 0;
-  return [c.ticket_form_no || "", fromNo, fromNo - amount, amount];
+  const ticketNo = (v) => (/^\d+$/.test(String(v ?? "")) ? Number(v) : v || "");
+  return [c.ticket_form_no || "", ticketNo(c.from_no), ticketNo(c.to_no), Number(c.amount) || 0];
 }
 
 export async function renderRemittanceXlsx(batch) {
@@ -53,40 +53,27 @@ export async function renderRemittanceXlsx(batch) {
   sheet1.getCell("C5").value = officerName;
   sheet1.getCell("G5").value = reportNo;
 
-  const collections = batch.collections || [];
-  let extraIdx = 0;
-  let extraAccIdx = 0;
-
-  for (const c of collections) {
-    const [name, fromNo, toNo, amount] = collectionFields(c);
-
-    let row = FIXED_COLLECTION_ROWS[name];
-    if (row === undefined) {
-      row = EXTRA_COLLECTION_ROWS[extraIdx++];
-      if (row !== undefined) sheet1.getCell(`A${row}`).value = name;
-    }
-    if (row !== undefined) {
-      sheet1.getCell(`C${row}`).value = fromNo;
-      // Template gives "From" (C) no number format but "To" (E) a 2-decimal
-      // money format, even though both are ticket numbers, not currency —
-      // match E to C's plain format so the pair reads consistently.
-      const toCell = sheet1.getCell(`E${row}`);
-      toCell.value = toNo;
-      toCell.numFmt = "General";
-      sheet1.getCell(`G${row}`).value = amount;
-    }
-
-    let accRow = FIXED_ACCOUNTABILITY_ROWS[name];
-    if (accRow === undefined) {
-      accRow = EXTRA_ACCOUNTABILITY_ROWS[extraAccIdx++];
-      if (accRow !== undefined) sheet2.getCell(`A${accRow}`).value = name;
-    }
-    if (accRow !== undefined) {
-      sheet2.getCell(`C${accRow}`).value = fromNo;
-      sheet2.getCell(`I${accRow}`).value = amount;
-      sheet2.getCell(`L${accRow}`).value = toNo;
-    }
+  for (let i = 0; i < TEMPLATE_TICKET_ROWS; i++) {
+    sheet1.getCell(`A${COLLECTION_ROWS[i]}`).value = null;
+    sheet2.getCell(`A${ACCOUNTABILITY_ROWS[i]}`).value = null;
   }
+
+  const collections = batch.collections || [];
+  collections.slice(0, COLLECTION_ROWS.length).forEach((c, i) => {
+    const [name, fromNo, toNo, amount] = collectionFields(c);
+    const row = COLLECTION_ROWS[i];
+    sheet1.getCell(`A${row}`).value = name;
+    sheet1.getCell(`C${row}`).value = fromNo;
+    // The template formats "To" (E) as money, but it's a ticket number like "From".
+    const toCell = sheet1.getCell(`E${row}`);
+    toCell.value = toNo;
+    toCell.numFmt = "General";
+    sheet1.getCell(`G${row}`).value = amount;
+
+    // C. Accountability: only the form name is filled in; the balances need each series' last
+    // issued number, which the app's PDF export looks up and this export doesn't.
+    sheet2.getCell(`A${ACCOUNTABILITY_ROWS[i]}`).value = name;
+  });
 
   const deposits = batch.deposits || [];
   deposits.forEach((d, i) => {
@@ -97,9 +84,6 @@ export async function renderRemittanceXlsx(batch) {
     sheet1.getCell(`H${row}`).value = Number(d.deposit_amount) || 0;
   });
 
-  const totalFrom = collections.reduce((sum, c) => sum + collectionFields(c)[1], 0);
-
-  sheet2.getCell("B51").value = totalFrom;
   sheet2.getCell("A65").value = officerName;
   sheet2.getCell("D65").value = dateStr;
 

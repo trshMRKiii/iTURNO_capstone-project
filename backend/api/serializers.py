@@ -105,7 +105,7 @@ class RouteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Route
         fields = [
-            'id', 'origin', 'full_name', 'destination',
+            'id', 'origin', 'full_name', 'destination', 'estimated_loading_minutes',
             'is_active', 'created_at', 'updated_at',
         ]
 
@@ -196,6 +196,8 @@ class TicketSerializer(serializers.ModelSerializer):
             # Always the Dispatch desk's Personnel (see DeskDuty), never client-supplied.
             'checked_in_by_name': {'read_only': True},
             'checked_out_by_name': {'read_only': True},
+            'checked_out_at': {'read_only': True},
+            'bay_swap_reason': {'read_only': True},
         }
 
     def create(self, validated_data):
@@ -260,7 +262,7 @@ class TicketSerializer(serializers.ModelSerializer):
                 # collected with no queue/dispatch step.
                 validated_data['status'] = 'COLLECTED'
                 validated_data['is_verified'] = True
-                validated_data['dispatched_at'] = validated_data['checked_in_at'] = timezone.now()
+                validated_data['dispatched_at'] = validated_data['checked_in_at'] = validated_data['checked_out_at'] = timezone.now()
                 desk = DeskDuty.get_solo()
                 if not desk.checkin_name or not desk.checkout_name:
                     raise serializers.ValidationError(
@@ -476,6 +478,7 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
     beginning = serializers.SerializerMethodField()
     remaining = serializers.SerializerMethodField()
     last_used_no = serializers.SerializerMethodField()
+    requisition_status = serializers.CharField(source='requisition.status', read_only=True)
 
     def _get_original_pcs(self, obj):
         start = int(obj.start_no or 0)
@@ -554,7 +557,9 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
 
         # Ticket.id is the primary key, so a number already issued (by any series) can't be in this range.
         if self.instance is None or 'start_no' in attrs or 'end_no' in attrs:
-            taken = next((i for i in Ticket.objects.values_list('id', flat=True) if str(i).isdigit() and start <= int(i) <= end), None)
+            # An edited series' own tickets don't count: extending a used series keeps them in range.
+            issued = Ticket.objects.exclude(series=self.instance) if self.instance else Ticket.objects
+            taken = next((i for i in issued.values_list('id', flat=True) if str(i).isdigit() and start <= int(i) <= end), None)
             if taken is not None:
                 raise serializers.ValidationError({"start_no": f"Ticket number {taken} in this range was already issued."})
         return attrs
@@ -564,7 +569,7 @@ class TicketSeriesSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'series_no', 'ticket_form', 'ticket_form_label', 'ticket_form_price',
             'start_no', 'end_no',
-            'unit_value', 'total_value', 'requisition',
+            'unit_value', 'total_value', 'requisition', 'requisition_status',
             'issued_to', 'issued_to_name', 'date_issued',
             'beginning', 'remaining', 'last_used_no',
             'created_at', 'updated_at',
@@ -596,10 +601,10 @@ class RequisitionSerializer(serializers.ModelSerializer):
         model = Requisition
         fields = [
             'id', 'date_requested', 'requested_by', 'requested_by_name',
-            'issued_by_name', 'status', 'total_value', 'is_archived',
+            'issued_by_name', 'issued_by_role', 'status', 'total_value', 'is_archived',
             'ticket_series', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['issued_by_name']
+        read_only_fields = ['issued_by_name', 'issued_by_role']
 
 
 class AuditLogSerializer(serializers.ModelSerializer):

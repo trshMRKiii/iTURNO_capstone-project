@@ -4,7 +4,7 @@
   padding: 28px 32px;
   background: var(--bg-page);
   min-height: 100vh;
-  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-family: Helvetica, Arial, sans-serif;
   transition: background 0.25s;
 }
 
@@ -76,7 +76,7 @@
   border-radius: 7px;
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 14.3px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
@@ -89,7 +89,7 @@
 
 .dark .reg-search:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+  box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.12);
 }
 
 .reg-add-btn {
@@ -101,7 +101,7 @@
   border-radius: 8px;
   background: #1a2744;
   color: #fff;
-  font-size: 13px;
+  font-size: 14.3px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;

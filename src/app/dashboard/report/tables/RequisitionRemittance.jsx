@@ -1,15 +1,18 @@
 import React, { useState } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
+import { nameWithRole } from "../../../../lib/roles";
 import { peso } from "../reportHook";
 import Pager from "./Pager";
 import ViewRemittance from "../../remittance/viewRemittance";
 import { downloadRemittancePDF } from "../../remittance/exportRemittancePDF";
 import { getBatchCashierName } from "../../remittance/useCashierName";
 import { useFeedback } from "../../../../components/ui/kit";
+import { EyeIcon, DownloadIcon } from "../../../../components/ui/kit/icons";
+import RowMenu from "../../registry/RowMenu";
 import { matchesRequisitionRow, matchesRemittanceRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
 
-const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Issued By", "Ticket Series", "Total Value"];
-const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Prepared By", "Issued By", "Total Amount", "Actions"];
+const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Recorded By", "Ticket Series", "Total Value"];
+const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Prepared By", "Recorded By", "Total Amount", "Actions"];
 // Rows per page on the card.
 const PREVIEW_SIZE = 5;
 
@@ -79,7 +82,7 @@ export default function RequisitionRemittance({
         >
           <td className={cellClass}>{r.date_requested ? r.date_requested.slice(0, 10) : "—"}</td>
           <td className={`${cellClass} rpt-bold`}>{r.requested_by_name || "—"}</td>
-          <td className={cellClass}>{r.issued_by_name || <span className="rpt-na">—</span>}</td>
+          <td className={cellClass}>{nameWithRole(r.issued_by_name, r.issued_by_role) || <span className="rpt-na">—</span>}</td>
           <td className={cellClass}>
             {hasSeries && (
               <span className={`req-expand-icon ${isExpanded ? "req-expand-icon--open" : ""}`}>&#9654;</span>
@@ -138,31 +141,21 @@ export default function RequisitionRemittance({
       <td className={cellClass}>{b.batch_code || b.id}</td>
       <td className={cellClass}>{b.issued_at ? new Date(b.issued_at).toLocaleString() : "—"}</td>
       <td className={`${cellClass} rpt-bold`}>{b.prepared_by_name || <span className="rpt-na">—</span>}</td>
-      <td className={cellClass}>{b.issued_by_name || "—"}</td>
+      <td className={cellClass}>{nameWithRole(b.issued_by_name, b.issued_by_role) || "—"}</td>
       <td className={cellClass}>{peso(b.total_amount)}</td>
       <td className={cellClass}>
         <div className="rpt-row-actions rpt-row-actions--center">
-          <button className="rpt-btn rpt-btn--secondary" onClick={() => setViewBatch(b)}>
-            View
-          </button>
-          <button
-            className="rpt-btn rpt-btn--secondary rpt-btn--icon"
-            title="Export PDF"
-            aria-label="Export PDF"
-            disabled={downloadingId === b.id}
-            onClick={() => downloadBatch(b)}
-          >
-            {downloadingId === b.id ? (
-              <span className="rpt-spinner rpt-spinner--dark" />
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            )}
-            Download
-          </button>
+          <RowMenu
+            items={[
+              { label: "View", icon: <EyeIcon size={14} />, onClick: () => setViewBatch(b) },
+              {
+                label: "Download",
+                icon: <DownloadIcon size={14} />,
+                onClick: () => downloadBatch(b),
+                hidden: downloadingId === b.id,
+              },
+            ]}
+          />
         </div>
       </td>
     </tr>

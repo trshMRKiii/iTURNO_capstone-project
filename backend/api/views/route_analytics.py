@@ -86,18 +86,20 @@ def route_analytics(request):
     database so the report never ships every ticket to the browser.
       (default)    one row per route, busiest first
       ?route=NAME  that route's drivers, paginated (?page, ?page_size) and sortable (?sort, ?dir)
-      ?export=1    every route's drivers, flat, for the PDF
+      ?export=1    every route's drivers, flat, for the PDF (narrowed to ?route=NAME if given)
     """
     params = request.query_params
     qs = _tickets(params)
+
+    route = params.get('route')
+    if route:
+        qs = qs.filter(route__isnull=True) if route == NO_ROUTE else qs.filter(route__origin=route)
 
     if params.get('export'):
         plates = _plates(qs)
         return Response({'results': [_driver_row(r, plates) for r in _by_driver(qs, 'route__origin')]})
 
-    route = params.get('route')
     if route:
-        qs = qs.filter(route__isnull=True) if route == NO_ROUTE else qs.filter(route__origin=route)
         rows = _by_driver(qs, 'route__origin', order=_order(params))
         page_num, page_size, total, sliced = paginate_request(request, rows) or (1, 25, rows.count(), rows[:25])
         plates = _plates(qs)

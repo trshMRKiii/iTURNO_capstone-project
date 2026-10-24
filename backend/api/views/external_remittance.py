@@ -72,7 +72,7 @@ def _file_batches(tickets, user):
         while RemittanceBatch.objects.filter(batch_code=code).exists():
             code, n = f"{base}-{n}", n + 1
         amount = sum(float(t.collection_amount or 0) for t in day_tickets)
-        batch = RemittanceBatch.objects.create(batch_code=code, issued_by=user, covers_date=day, total_amount=amount)
+        batch = RemittanceBatch.objects.create(batch_code=code, issued_by=user, issued_by_role=user.role, covers_date=day, total_amount=amount)
         series = day_tickets[0].series
         numbers = sorted(int(t.id) for t in day_tickets)
         Collection.objects.create(
@@ -196,12 +196,12 @@ def undo_external_remittance(request, batch_id):
     Only batches made by this feature (EXT-…); real remittances are never touched here."""
     batch = RemittanceBatch.objects.filter(pk=batch_id, batch_code__startswith='EXT-').first()
     if not batch:
-        raise ValidationError("That outside remittance no longer exists.")
+        raise ValidationError("That backfilled remittance no longer exists.")
     with transaction.atomic():
         ticket_ids = list(batch.tickets.values_list('id', flat=True))
         record_audit_log(
             user=request.user, action='DELETE', model_name='RemittanceBatch', object_id=batch.pk,
-            object_repr=f"Undid outside remittance {batch.batch_code}: {len(ticket_ids)} ticket(s) count as unremitted again",
+            object_repr=f"Undid backfilled remittance {batch.batch_code}: {len(ticket_ids)} ticket(s) count as unremitted again",
             changes={'source': 'external_remittance_undo', 'ticket_ids': ticket_ids, 'total_amount': str(batch.total_amount)},
         )
         batch.delete()  # tickets' remittance_batch is SET_NULL; its collections go with it

@@ -11,7 +11,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // Everything recorded outside the system that hasn't been folded into a real remittance, newest
 // first, so a mistake can be taken back. Undoing a "marked as remitted" makes those tickets count
 // as cash still to remit again; undoing a paper range frees its numbers for the system.
-export default function OutsideRemittanceRecords() {
+export default function BackfillRecords() {
   const { confirmAction } = useFeedback();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -33,9 +33,9 @@ export default function OutsideRemittanceRecords() {
       sub: `${b.batch_code} · marked as already remitted`, amount: b.total_amount,
       label: "Undo", path: `${URL}${b.id}/`,
       confirm: {
-        title: "Undo this outside remittance?",
+        title: "Undo this backfilled remittance?",
         message: `${plural(b.ticket_count, "ticket")} (${peso(b.total_amount)}) will count as cash still to remit again. Nothing is deleted.`,
-        done: "Outside remittance undone",
+        done: "Backfilled remittance undone",
       },
     })),
     ...data.paper.map((p) => ({
@@ -68,20 +68,20 @@ export default function OutsideRemittanceRecords() {
   });
 
   return (
-    <section className="otr-step">
-      {error && <p className="otr-error">{error} <button type="button" className="otr-link" onClick={load}>Try again</button></p>}
-      {!error && rows.length === 0 && <p className="otr-empty">Nothing has been recorded outside the system.</p>}
+    <section className="bf-step">
+      {error && <p className="bf-error">{error} <button type="button" className="bf-link" onClick={load}>Try again</button></p>}
+      {!error && rows.length === 0 && <p className="bf-empty">Nothing has been recorded outside the system.</p>}
       {rows.length > 0 && (
-        <div className="otr-rows">
+        <div className="bf-rows">
           {rows.map((r) => (
-            <div key={r.key} className="otr-row otr-row--static">
-              <span className="otr-row-main">
+            <div key={r.key} className="bf-row bf-row--static">
+              <span className="bf-row-main">
                 <strong>{r.title}</strong>
-                <span className="otr-row-sub">{day(r.date)} · {r.sub}</span>
+                <span className="bf-row-sub">{day(r.date)} · {r.sub}</span>
               </span>
-              <span className="otr-row-actions">
-                <span className="otr-row-count">{peso(r.amount)}</span>
-                <button type="button" className="otr-undo" onClick={() => undo(r)}>{r.label}</button>
+              <span className="bf-row-actions">
+                <span className="bf-row-count">{peso(r.amount)}</span>
+                <button type="button" className="bf-undo" onClick={() => undo(r)}>{r.label}</button>
               </span>
             </div>
           ))}

@@ -65,10 +65,10 @@ export function useTicketBackfill() {
 
   // The whole batch goes in one call and is saved all-or-nothing. Returns one result
   // per row, in order, so the caller can show which row (if any) blocked the save.
-  const submitRows = async (rows, commit) => {
+  const submitRows = async (rows, commit, remitted = false) => {
     setSubmitBusy(true);
     try {
-      const data = await apiService.submitBackfillBatch(rows, commit);
+      const data = await apiService.submitBackfillBatch(rows, commit, remitted);
       // Remote only queues, so it has no per-row results.
       const results = rows.map((row, i) => ({ row, ...(data.results?.[i] || { outcome: data.outcome }) }));
       if (commit && data.outcome === "ok" && IS_REMOTE) await fetchRemoteRequests();

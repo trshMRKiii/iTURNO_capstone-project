@@ -3,7 +3,7 @@ import { apiService } from "../../../lib/api-service";
 import { useFeedback } from "../../../components/ui/kit";
 
 // The Dispatch desk (DeskDuty in backend/api/models.py): which Personnel is checking vehicles
-// in and which is checking them out, plus the ticket series the kiosk draws from. It lives on
+// in and which is checking them out, plus the ticket series (and per-price mixed recipes) the kiosk draws from. It lives on
 // the server so the kiosk tab and every Dispatch tab stamp the same people.
 export function useDeskDuty(seriesId) {
   const [duty, setDuty] = useState(null);
@@ -29,8 +29,10 @@ export function useDeskDuty(seriesId) {
   const update = async (fields) => {
     try {
       setDuty(await apiService.setDeskDuty(fields));
+      return true;
     } catch (err) {
       notify.error({ title: err.message || "Couldn't update the desk." });
+      return false;
     }
   };
 
@@ -38,7 +40,9 @@ export function useDeskDuty(seriesId) {
     personnel: duty?.personnel ?? [],
     checkinId: duty?.checkin_user ?? "",
     checkoutId: duty?.checkout_user ?? "",
+    recipes: duty?.recipes ?? {},
     setCheckin: (id) => update({ checkin_user: id }),
     setCheckout: (id) => update({ checkout_user: id }),
+    setRecipes: (recipes) => update({ recipes }),
   };
 }

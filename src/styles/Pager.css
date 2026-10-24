@@ -9,7 +9,7 @@
 }
 
 .rpt-pager-info {
-  font-size: 12px;
+  font-size: 13.2px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -26,7 +26,7 @@
 
 .rpt-pager-page {
   padding: 0 14px;
-  font-size: 13px;
+  font-size: 14.3px;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -39,7 +39,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: 19.8px;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s;

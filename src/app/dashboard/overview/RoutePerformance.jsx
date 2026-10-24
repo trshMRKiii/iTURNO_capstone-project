@@ -28,7 +28,6 @@ export default function RoutePerformance({ routes, rangeLabel, selected, onSelec
         <div>
           <div className="dash-card-title">Route performance</div>
           <div className="dash-card-sub">
-            {rangeLabel} · {plural(ranked.length, "route")} with {noun} · ranked by revenue
           </div>
         </div>
         <SegmentedControl label="Show tickets" options={FILTERS} value={filter} onChange={setFilter} />
@@ -41,7 +40,6 @@ export default function RoutePerformance({ routes, rangeLabel, selected, onSelec
               <span className="hc-key hc-key--roamed">Roam</span>
             </>
           )}
-          <span className="rp-hint">Click a route to filter the hourly chart</span>
         </div>
       )}
       {ranked.length === 0 ? (

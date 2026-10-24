@@ -32,7 +32,7 @@ class PaperIssuanceTests(TestCase):
     def setUp(self):
         from .models import Requisition, TicketForm, TicketSeries
         form = TicketForm.objects.create(name='Std', price=10)
-        req = Requisition.objects.create()
+        req = Requisition.objects.create(status='APPROVED')
         self.series = TicketSeries.objects.create(
             series_no='S1', ticket_form=form, start_no='1', end_no='1000', unit_value=0, requisition=req,
         )
@@ -49,6 +49,17 @@ class PaperIssuanceTests(TestCase):
         self._paper(700, 710)
         units = _consume_series_fifo(self.form.id, 3)
         self.assertEqual([u[1] for u in units], ['625', '626', '627'])
+
+    def test_unvalidated_series_cannot_be_issued(self):
+        from rest_framework.exceptions import ValidationError
+        from .views.viewsets import _consume_series_fifo
+        self.series.requisition.status = 'PENDING'
+        self.series.requisition.save()
+        with self.assertRaises(ValidationError):
+            _consume_series_fifo(self.form.id, 1)
+        self.series.requisition.status = 'APPROVED'
+        self.series.requisition.save()
+        self.assertEqual(len(_consume_series_fifo(self.form.id, 1)), 1)
 
     def test_stock_and_amount_count_paper(self):
         from .serializers import TicketSeriesSerializer, PaperIssuanceSerializer
@@ -113,7 +124,7 @@ class PaperIssuanceTests(TestCase):
         self.assertFalse(Requisition.objects.exists())  # it held only this series
         again = TicketSeries.objects.create(
             series_no='S1', ticket_form=self.form, start_no='1', end_no='1000', unit_value=0,
-            requisition=Requisition.objects.create(),
+            requisition=Requisition.objects.create(status='APPROVED'),
         )
         self.assertTrue(again.pk)
 
@@ -416,7 +427,7 @@ class ExternalRemittanceTests(TestCase):
             self.addCleanup(patcher.stop)
         form = TicketForm.objects.create(name='Std', price=10)
         self.series = TicketSeries.objects.create(
-            series_no='S1', ticket_form=form, start_no='1', end_no='100', unit_value=0, requisition=Requisition.objects.create(),
+            series_no='S1', ticket_form=form, start_no='1', end_no='100', unit_value=0, requisition=Requisition.objects.create(status='APPROVED'),
         )
         vehicle = Vehicle.objects.create(plate_number='ABC123')
         driver = Driver.objects.create(first_name='Juan', last_name='Cruz', contact='09170000000')
@@ -687,7 +698,7 @@ class OneRemittancePerDayTests(TestCase):
         self.assertEqual(self.client.post(self.URL, self._body('TER-2', '2026-10-20'), format='json').status_code, 201)
         self.assertEqual(RemittanceBatch.objects.count(), 2)
 
-    def test_outside_remittance_does_not_block_the_day(self):
+    def test_backfilled_remittance_does_not_block_the_day(self):
         from .models import RemittanceBatch
         RemittanceBatch.objects.create(batch_code='EXT-1', covers_date='2026-10-19', total_amount=50)
         self.assertEqual(self.client.post(self.URL, self._body('TER-1', '2026-10-19'), format='json').status_code, 201)
@@ -711,6 +722,46 @@ class OneRemittancePerDayTests(TestCase):
             self.assertEqual(self.client.post(f'{self.URL}{b.id}/amend/', self._body('x', '2026-10-19'), format='json').status_code, 400)
 
 
+class BackfillRemittedTests(TestCase):
+    URL = '/api/backfill/batch/'
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import Requisition, TicketForm, TicketSeries, User
+        puv = PUVType.objects.create(name='Jeep', terminal_price=20)
+        driver = Driver.objects.create(first_name='Ana', last_name='Cruz', contact='09170000001')
+        Vehicle.objects.create(plate_number='AAA111', qr_code='QR-A', transportation_id=puv, owner_driver=driver)
+        self.series = TicketSeries.objects.create(
+            series_no='S1', ticket_form=TicketForm.objects.create(name='Std', price=10),
+            start_no='1', end_no='100', unit_value=0, requisition=Requisition.objects.create(status='APPROVED'),
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(User.objects.create_user(username='sup', password='x', role='SUPERVISOR'))
+
+    def _post(self, **extra):
+        row = {'Vehicle Plate Number': 'AAA111', 'Ticket Type': 'Std', 'Ticket Series': str(self.series.id),
+               'Date and Time Issued': '2026-10-19 07:00', 'Mode': 'Queue', 'Notes': 'outage'}
+        return self.client.post(self.URL, {'rows': [row, row], **extra}, format='json')
+
+    def test_to_be_remitted_leaves_the_cash_owed(self):
+        from .models import RemittanceBatch, Ticket
+        self.assertEqual(self._post(commit=True).data['outcome'], 'ok')
+        self.assertEqual(Ticket.objects.filter(remittance_batch__isnull=True).count(), 4)
+        self.assertFalse(RemittanceBatch.objects.exists())
+
+    def test_save_as_remitted_files_one_outside_batch_per_day(self):
+        from .models import RemittanceBatch, Ticket
+        res = self._post(commit=True, remitted=True)
+        self.assertEqual(res.data['batches'], ['EXT-20261019'])
+        batch = RemittanceBatch.objects.get()
+        self.assertEqual((float(batch.total_amount), Ticket.objects.filter(remittance_batch=batch).count()), (40.0, 4))
+
+    def test_preview_writes_nothing_even_when_remitted(self):
+        from .models import RemittanceBatch, Ticket
+        self._post(remitted=True)
+        self.assertFalse(Ticket.objects.exists() or RemittanceBatch.objects.exists())
+
+
 class KioskTests(TestCase):
     def setUp(self):
         from unittest import mock
@@ -729,7 +780,7 @@ class KioskTests(TestCase):
         self.d2 = Driver.objects.create(first_name='Ben', last_name='Diaz', contact='09170000002')
         self.series = TicketSeries.objects.create(
             series_no='S1', ticket_form=TicketForm.objects.create(name='Std', price=10),
-            start_no='1', end_no='100', unit_value=0, requisition=Requisition.objects.create(),
+            start_no='1', end_no='100', unit_value=0, requisition=Requisition.objects.create(status='APPROVED'),
         )
         self.client = APIClient()
         self.admin = User.objects.create_user(username='cashier', password='x', role='SUPERADMIN')
@@ -816,23 +867,40 @@ class KioskTests(TestCase):
         self.assertEqual((waiting['state'], waiting['position']), ('WAIT_TURN', 2))
         self.assertTrue(Ticket.objects.filter(vehicle=self.b, status='QUEUED').exists())
 
-    def test_roam_visit_checks_out_with_both_personnel(self):
+    def test_roam_is_numbered_at_check_in_and_scans_out_under_the_check_out_personnel(self):
         self._on_duty()
         self.assertEqual(self._check_in(self.a, self.d1, 'ROAM')['state'], 'CHECKED_IN')
-        self.assertFalse(Ticket.objects.exists())  # nothing issued before checkout
+        ticket = Ticket.objects.get()  # paid at check-in, so already numbered
+        self.assertEqual((ticket.status, ticket.mode, ticket.checked_in_by_name), ('COLLECTED', 'UNLOAD', 'Ira In'))
+        self.assertIsNone(ticket.checked_out_at)
         pending = self.client.get('/api/kiosk/sessions/').data
         self.assertEqual([(s['plate'], s['mode'], s['checked_in_by']) for s in pending], [('AAA111', 'ROAM', 'Ira In')])
         self.assertIsNotNone(pending[0]['checked_in_at'])  # the Dispatch roam timer counts from here
 
         self._duty(checkin_user=self.out_desk.id)  # desk changes hands before the driver leaves
         out = self._scan('QR-A')
-        self.assertEqual(out['state'], 'DEPARTED')
-        ticket = Ticket.objects.get(id=out['tickets'][0])
-        self.assertEqual((ticket.status, ticket.mode), ('COLLECTED', 'UNLOAD'))
+        self.assertEqual((out['state'], out['tickets']), ('DEPARTED', [ticket.id]))
+        ticket.refresh_from_db()
         self.assertEqual((ticket.checked_in_by_name, ticket.checked_out_by_name), ('Ira In', 'Olga Out'))
-        # A kiosk roam's stay runs from its check-in scan to checkout.
-        self.assertLess(ticket.checked_in_at, ticket.dispatched_at)
+        self.assertLess(ticket.checked_in_at, ticket.checked_out_at)
         self.assertEqual(self.client.get('/api/kiosk/sessions/').data, [])
+        self.assertEqual(Ticket.objects.count(), 1)  # leaving issued nothing new
+
+    def test_roam_cannot_leave_without_a_check_out_personnel(self):
+        self._duty(checkin_user=self.in_desk.id, series=self.series.id)
+        self._check_in(self.a, self.d1, 'ROAM')
+        self.assertEqual(self._scan('QR-A')['state'], 'ERROR')
+        self._duty(checkout_user=self.out_desk.id)
+        self.assertEqual(self._scan('QR-A')['state'], 'DEPARTED')
+
+    def test_queue_vehicle_switching_to_roam_leaves_with_roam_tickets(self):
+        self._on_duty()
+        self._check_in(self.a, self.d1, 'QUEUE')
+        res = self.client.post('/api/kiosk/switch-roam/', {'text': 'QR-A'}, format='json')
+        self.assertEqual(res.data['state'], 'DEPARTED')
+        ticket = Ticket.objects.get(id=res.data['tickets'][0])
+        self.assertEqual((ticket.mode, ticket.status), ('UNLOAD', 'COLLECTED'))
+        self.assertEqual(self._scan('QR-A')['state'], 'CHECK_IN')
 
     def test_front_desk_check_in_and_dispatch_are_stamped_too(self):
         self._on_duty()
@@ -842,12 +910,21 @@ class KioskTests(TestCase):
             'checked_in_by_name': 'Spoofed',  # read-only: only the desk's personnel is ever stamped
         }, format='json')
         self.assertEqual(Ticket.objects.get(vehicle=self.a, status='QUEUED').checked_in_by_name, 'Ira In')
-        self.assertEqual(self._scan('QR-A')['state'], 'BLOCKED')  # no kiosk visit: the dispatcher handles it
 
         res = self.client.post('/api/tickets/dispatch/', {'vehicle_id': self.a.id, 'series_id': self.series.id, 'quantity': 1}, format='json')
         self.assertEqual(res.status_code, 200, res.data)
         ticket = Ticket.objects.get(vehicle=self.a, status='COLLECTED')
         self.assertEqual((ticket.checked_in_by_name, ticket.checked_out_by_name), ('Ira In', 'Olga Out'))
+
+    def test_kiosk_checks_out_a_vehicle_queued_at_the_front_desk(self):
+        self._on_duty()
+        self.client.post('/api/tickets/', {
+            'id': 'Q-z', 'vehicle_id': self.a.id, 'driver_id': self.d1.id, 'route': self.a.route_id,
+            'status': 'QUEUED', 'mode': 'QUEUE', 'is_verified': False,
+        }, format='json')
+        out = self._scan('QR-A')  # no kiosk visit yet: the scan adopts the queue ticket
+        self.assertEqual(out['state'], 'DEPARTED')
+        self.assertEqual(Ticket.objects.get(id=out['tickets'][0]).checked_in_by_name, 'Ira In')
 
     def test_front_desk_cannot_check_in_or_dispatch_without_personnel(self):
         body = {
@@ -869,6 +946,51 @@ class KioskTests(TestCase):
         self.series.ticket_form.save()
         self._on_duty()
         self.assertEqual(self._check_in(self.a, self.d1, 'ROAM')['state'], 'ERROR')
+
+    def _fare_of_40(self, tens=100, fives=100):
+        """A ₱40 vehicle, a ₱5 series next to the ₱10 default, and the 3 x ₱10 + 2 x ₱5 recipe."""
+        from .models import Requisition, TicketForm, TicketSeries
+        bus = Vehicle.objects.create(
+            plate_number='CCC333', qr_code='QR-C', route=self.a.route,
+            transportation_id=PUVType.objects.create(name='Bus', terminal_price=40),
+        )
+        five = TicketSeries.objects.create(
+            series_no='S5', ticket_form=TicketForm.objects.create(name='Five', price=5),
+            start_no='1001', end_no=str(1000 + fives), unit_value=0, requisition=Requisition.objects.create(status='APPROVED'),
+        )
+        self.series.end_no = str(tens)
+        self.series.save()
+        self._on_duty()
+        res = self._duty(recipes={'40': [{'form': self.series.ticket_form_id, 'qty': 3}, {'form': five.ticket_form_id, 'qty': 2}]})
+        self.assertEqual(res.status_code, 200, res.data)
+        return bus
+
+    def test_recipe_mixes_denominations_for_its_price(self):
+        bus = self._fare_of_40()
+        done = self._check_in(bus, self.d1, 'ROAM')
+        self.assertEqual(done['state'], 'CHECKED_IN', done)
+        self.assertEqual([(b['label'], b['qty']) for b in done['breakdown']], [('Std', 3), ('Five', 2)])
+        self.assertEqual(sorted(Ticket.objects.filter(vehicle=bus).values_list('collection_amount', flat=True)), [5, 5, 10, 10, 10])
+        self.assertEqual(self._check_in(self.a, self.d2, 'ROAM')['breakdown'], [{'label': 'Std', 'price': 10.0, 'qty': 1}])  # no recipe at ₱10: the default
+
+    def test_short_recipe_falls_back_to_the_default_series(self):
+        bus = self._fare_of_40(fives=1)  # one ₱5 left, the recipe needs two
+        done = self._check_in(bus, self.d1, 'ROAM')
+        self.assertEqual([(b['label'], b['qty']) for b in done['breakdown']], [('Std', 4)])
+
+    def test_nothing_in_stock_for_a_fare_asks_for_the_dispatcher(self):
+        bus = self._fare_of_40(tens=2, fives=1)  # neither 3 x ₱10 + 2 x ₱5 nor 4 x ₱10
+        done = self._check_in(bus, self.d1, 'ROAM')
+        self.assertEqual(done['state'], 'ERROR')
+        self.assertIn('dispatcher', done['message'])
+        self.assertFalse(Ticket.objects.exists())
+
+    def test_recipe_must_add_up_to_its_price(self):
+        form = self.series.ticket_form_id
+        self.assertEqual(self._duty(recipes={'40': [{'form': form, 'qty': 3}]}).status_code, 400)  # ₱30
+        self.assertEqual(self._duty(recipes={'40': [{'form': 999, 'qty': 4}]}).status_code, 400)
+        self.assertEqual(self._duty(recipes={'40': [{'form': form, 'qty': 4}]}).data['recipes'], {'40': [{'form': form, 'qty': 4}]})
+        self.assertEqual(self._duty(recipes={'40': []}).data['recipes'], {})  # emptied = removed
 
     def test_desk_duty_only_accepts_active_personnel(self):
         self.assertEqual(self._duty(checkin_user=self.admin.id).status_code, 400)  # an admin, not Personnel

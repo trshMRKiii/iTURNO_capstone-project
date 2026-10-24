@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { DataTable } from "../../../components/ui/dataTable";
+import { nameWithRole } from "../../../lib/roles";
 import {
   getToday,
   PERIODS,
@@ -288,7 +289,7 @@ export default function Report() {
   const buildRequisitionExportRow = (r) => ({
     "Date Requested": r.date_requested ? r.date_requested.slice(0, 10) : "—",
     "Requested By": r.requested_by_name || "—",
-    "Issued By": r.issued_by_name || "—",
+    "Issued By": nameWithRole(r.issued_by_name, r.issued_by_role) || "—",
     "Ticket Series": r.ticket_series && r.ticket_series.length
       ? r.ticket_series.map((ts) => ts.series_no).join("; ")
       : "—",
@@ -308,7 +309,7 @@ export default function Report() {
   const buildRemittanceExportRow = (b) => ({
     "Issued At": b.issued_at ? new Date(b.issued_at).toLocaleString() : "—",
     "Prepared By": b.prepared_by_name || "—",
-    "Issued By": b.issued_by_name || "—",
+    "Issued By": nameWithRole(b.issued_by_name, b.issued_by_role) || "—",
     Collections: b.collections ? b.collections.length : 0,
     "Total Amount": b.total_amount,
     Status: b.status,
@@ -351,7 +352,7 @@ export default function Report() {
     exportTable(rows.filter((t) => matchesRoamingRow(t, search)).map(buildRoamingExportRow), "Roaming Logs");
   };
 
-  const handleExportRouteAnalyticsPDF = (rows) => exportTable(rows, "Route Analytics");
+  const handleExportRouteAnalyticsPDF = (rows, title = "Route Analytics") => exportTable(rows, title);
 
   // Tallied server-side: the summary, one route's drivers (paged) or the export rows,
   // depending on `extra`, so the browser never downloads every ticket.

@@ -2,15 +2,41 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQrScanner, SCANNER_STATUS_LABEL } from "../useQrScanner";
 import { useKiosk, operatorsOf } from "./useKiosk";
-import { ModePanel, WhoPanel, SwapPanel, DriverPanel, ResultPanel } from "./KioskPanels";
+import { ModePanel, SwapPanel, DriverPanel, ResultPanel, ExpiredList } from "./KioskPanels";
 import sfcLogo from "../../../../pictures/sfc-nobg-logo.png";
 import "../../../../styles/Kiosk.css";
 
-const STEPS = ["Scan your QR", "Queue or Roaming", "Pick your name", "Pay the personnel", "Scan again to leave"];
+const ERROR_STATES = ["EXPIRED", "BLOCKED", "ERROR", "UNKNOWN"];
+
+// A lone registered operator is named on the card; otherwise the name is picked after the tap.
+const operatorName = (drivers) => {
+  const operators = operatorsOf(drivers);
+  return operators.length === 1 ? operators[0].name : "Choose on the next step";
+};
+
+// Left-card look and caption for each screen: blue = ready to scan, green = go ahead, red = stop.
+function cardOf(screen) {
+  switch (screen.type) {
+    case "idle":
+      return { tone: "idle", caption: "Scan your vehicle QR — hold it inside the frame" };
+    case "mode":
+      return { tone: "go", caption: screen.swap && !screen.swapDriver?.id ? "Hold your driver QR inside the frame" : "Now tap Queue or Roaming →" };
+    case "driver":
+      return { tone: "go", caption: "Now find your name →" };
+    case "swap":
+      return { tone: "go", caption: "Hold your driver QR inside the frame" };
+    case "result":
+      return ERROR_STATES.includes(screen.state)
+        ? { tone: "error", caption: screen.state === "EXPIRED" ? null : "Next vehicle can scan now" }
+        : { tone: "idle", caption: "Next vehicle can scan now" };
+    default:
+      return { tone: "idle", caption: "Please wait…" };
+  }
+}
 
 // Self-service terminal for the driver-facing screen. The camera runs the whole time
-// (a different QR always restarts the flow); idle shows it full screen, every other
-// step shrinks it to a corner preview and puts the step on top.
+// (a different QR always restarts the flow): the left card is always the camera, the
+// right card is the current step. Landscape sits them side by side, portrait stacks them.
 function KioskScreen() {
   const kiosk = useKiosk();
   const { screen } = kiosk;
@@ -22,57 +48,83 @@ function KioskScreen() {
   }, []);
 
   const { videoRef, canvasRef, status } = useQrScanner(kiosk.scan);
-  const idle = screen.type === "idle";
+  const { tone, caption } = cardOf(screen);
+  const seconds = kiosk.secondsLeft;
+  const expired = screen.type === "result" && screen.state === "EXPIRED";
+  // scan = camera fills the screen, panel = the transaction fills it (camera keeps scanning
+  // off-screen); the camera stays visible only when a second QR is needed or the expired list shows.
+  const needsCamera = expired || screen.type === "swap" || (screen.type === "mode" && screen.swap && !screen.swapDriver?.id);
+  const layout = screen.type === "idle" ? "scan" : needsCamera ? null : "panel";
 
   return (
-    <div className={`kiosk kiosk--${idle ? "idle" : "active"}`}>
+    <div className="kiosk">
       <header className="kiosk-top">
         <div className="kiosk-brand">
           <img src={sfcLogo} alt="SFC Logo" />
           <span>North Central Terminal</span>
         </div>
         <div className="kiosk-clock">
-          {now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          <strong>{now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</strong>
+          <small>{now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</small>
         </div>
       </header>
 
-      <div className="kiosk-stage">
-        <video ref={videoRef} className="kiosk-video" muted playsInline />
-        <canvas ref={canvasRef} className="kiosk-canvas" />
-        {status !== "on" && <div className="kiosk-hint">{SCANNER_STATUS_LABEL[status]}</div>}
-
-        {idle && (
-          <>
-            <div className="kiosk-frame" />
-            <div className="kiosk-prompt">
-              <div className="kiosk-prompt-title">Scan your QR code</div>
-              <ol className="kiosk-steps">
-                {STEPS.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
+      <main className={`kiosk-stage${layout ? ` kiosk-stage--${layout}` : ""}`}>
+        <section className={`kiosk-card kiosk-card--${tone}`}>
+          <video ref={videoRef} className="kiosk-video" muted playsInline />
+          <canvas ref={canvasRef} className="kiosk-canvas" />
+          {status !== "on" && <div className="kiosk-hint">{SCANNER_STATUS_LABEL[status]}</div>}
+          {expired ? (
+            <ExpiredList items={screen.expired} />
+          ) : (
+            <div className="kiosk-frame">
+              <i /><i /><i /><i />
+              {tone === "idle" && <span className="kiosk-scanline" />}
             </div>
-          </>
-        )}
+          )}
+          {caption && <div className="kiosk-caption">{caption}</div>}
+        </section>
 
-        {screen.type === "busy" && <div className="kiosk-panel kiosk-busy">Please wait…</div>}
-        {screen.type === "mode" && (
-          <ModePanel vehicle={screen.vehicle} onPick={kiosk.chooseMode} onCancel={kiosk.reset} />
-        )}
-        {screen.type === "who" && <WhoPanel vehicle={screen.vehicle} onPick={kiosk.chooseWho} onBack={kiosk.backToMode} />}
-        {screen.type === "swap" && <SwapPanel vehicle={screen.vehicle} onBack={kiosk.backToWho} />}
-        {screen.type === "driver" && (
-          <DriverPanel
-            vehicle={screen.vehicle}
-            mode={screen.mode}
-            drivers={operatorsOf(screen.drivers)}
-            onPick={kiosk.checkIn}
-            onBack={kiosk.backToWho}
-            onActivity={kiosk.touch}
-          />
-        )}
-        {screen.type === "result" && <ResultPanel result={screen} onDone={kiosk.reset} />}
-      </div>
+        {screen.type !== "idle" && <section className="kiosk-side">
+          {screen.type === "busy" && <div className="kiosk-panel kiosk-busy">Please wait…</div>}
+          {screen.type === "mode" && (
+            <ModePanel
+              vehicle={screen.vehicle}
+              driverName={operatorName(screen.drivers)}
+              swap={screen.swap}
+              swapDriver={screen.swapDriver}
+              heading="Tap one to check in"
+              onPick={kiosk.chooseMode}
+              onSwap={kiosk.toggleSwap}
+              onCancel={kiosk.reset}
+              seconds={seconds}
+            />
+          )}
+          {screen.type === "swap" && <SwapPanel vehicle={screen.vehicle} mode={screen.mode} onBack={kiosk.backToMode} seconds={seconds} />}
+          {screen.type === "driver" && (
+            <DriverPanel
+              vehicle={screen.vehicle}
+              mode={screen.mode}
+              drivers={operatorsOf(screen.drivers)}
+              onPick={kiosk.checkIn}
+              onBack={kiosk.backToMode}
+              onActivity={kiosk.touch}
+              seconds={seconds}
+            />
+          )}
+          {expired && (
+            <ModePanel
+              blocked
+              vehicle={screen.vehicle}
+              driverName={screen.driver || "No registered driver"}
+              heading={`Expired ${screen.expired.map((e) => e.label).join(" / ")}`}
+              onCancel={kiosk.reset}
+              seconds={seconds}
+            />
+          )}
+          {screen.type === "result" && !expired && <ResultPanel result={screen} onDone={kiosk.reset} onAction={kiosk.switchToRoam} seconds={seconds} />}
+        </section>}
+      </main>
     </div>
   );
 }

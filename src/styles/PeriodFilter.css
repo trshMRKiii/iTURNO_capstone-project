@@ -15,7 +15,7 @@
   border: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 13.2px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12.1px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -36,8 +36,8 @@
 }
 
 .period-filter input[type="date"] {
-  font-family: inherit;
-  font-size: 12.5px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 13.8px;
   font-weight: 500;
   color: var(--text-primary);
   background: var(--bg-surface);

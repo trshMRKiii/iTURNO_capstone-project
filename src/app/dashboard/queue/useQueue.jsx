@@ -155,7 +155,7 @@ export function useQueue(userRole = "") {
     !!driver && tickets.some((t) => t.driver?.id === driver.id && t.status === "QUEUED");
 
   // Issue ticket handler. Returns { ticket } on success, { error } on failure.
-  const handleIssueTicket = async () => {
+  const handleIssueTicket = async (recipes) => {
     const vehicle = selectedVehicle;
     const driver = selectedDriver;
     setSuccessMessage("");
@@ -228,55 +228,59 @@ export function useQueue(userRole = "") {
       }
     }
 
-    const quantity = ticketsNeeded(vehicle, ticketFee);
+    const plan = issuePlan(recipes);
 
-    const series = availableSeries.find((s) => String(s.id) === String(selectedSeriesId));
-    if (!series) {
+    if (plan.some(({ series }) => !series)) {
       return fail("Selected ticket series not found.");
     }
-    if (quantity > series.pcs) {
-      return fail(`Only ${series.pcs} ticket(s) remaining in this series.`);
+    const short = plan.find(({ series, quantity: q }) => q > series.pcs);
+    if (short) {
+      return fail(`Only ${short.series.pcs} ticket(s) remaining in ${short.series.ticket_form_label || "this series"}.`);
     }
 
     const cap = Number(vehicle.terminal_price || 0);
-    if (cap > 0 && ticketFee * quantity !== cap) {
+    const total = plan.reduce((sum, { series, quantity: q }) => sum + Number(series.ticket_form_price || 0) * q, 0);
+    if (cap > 0 && total !== cap) {
       return fail(`The ${vehicle.transportation_name} terminal price of ₱${cap.toFixed(2)} isn't a multiple of this ticket form's ₱${ticketFee.toFixed(2)} — pick a different ticket form.`);
     }
 
     try {
       setIssuingTicket(true);
-      let nextStartNo = parseInt(series.start_no);
       const issuedIds = [];
       const issuedTickets = [];
       const issuanceGroup = crypto.randomUUID();
 
-      for (let i = 0; i < quantity; i++) {
-        const ticketPayload = {
-          id: `${nextStartNo}`,
-          vehicle_id: vehicle.id,
-          driver_id: driver.id,
-          route: vehicle.route_detail?.id || null,
-          series_id: parseInt(selectedSeriesId),
-          // Roam pays the toll on the spot — the backend always issues these
-          // as COLLECTED/verified regardless of what's sent here (see the
-          // is_roam branch in TicketSerializer.create()).
-          status: "COLLECTED",
-          mode: "UNLOAD",
-          is_verified: true,
-          issuance_group: issuanceGroup,
-        };
-        if (ticketFee > 0) {
-          ticketPayload.collection_amount = ticketFee;
+      for (const { series, quantity: q } of plan) {
+        const fee = Number(series.ticket_form_price || 0);
+        let nextStartNo = parseInt(series.start_no);
+        for (let i = 0; i < q; i++) {
+          const ticketPayload = {
+            id: `${nextStartNo}`,
+            vehicle_id: vehicle.id,
+            driver_id: driver.id,
+            route: vehicle.route_detail?.id || null,
+            series_id: parseInt(series.id),
+            // Roam pays the toll on the spot — the backend always issues these
+            // as COLLECTED/verified regardless of what's sent here (see the
+            // is_roam branch in TicketSerializer.create()).
+            status: "COLLECTED",
+            mode: "UNLOAD",
+            is_verified: true,
+            issuance_group: issuanceGroup,
+          };
+          if (fee > 0) {
+            ticketPayload.collection_amount = fee;
+          }
+          const newTicket = await apiService.createTicket(ticketPayload);
+          issuedIds.push(newTicket.id);
+          issuedTickets.push(newTicket);
+          nextStartNo += 1;
         }
-        const newTicket = await apiService.createTicket(ticketPayload);
-        issuedIds.push(newTicket.id);
-        issuedTickets.push(newTicket);
-        nextStartNo += 1;
       }
 
       setSuccessMessage(
-        quantity > 1
-          ? `Tickets ${issuedIds[0]}–${issuedIds[issuedIds.length - 1]} issued successfully.`
+        issuedIds.length > 1
+          ? `Tickets ${plan.length > 1 ? issuedIds.join(", ") : `${issuedIds[0]}–${issuedIds[issuedIds.length - 1]}`} issued successfully.`
           : `Ticket ${issuedIds[0]} issued successfully.`
       );
       fetchTickets();
@@ -312,7 +316,7 @@ export function useQueue(userRole = "") {
         ...s,
         pcs: s.remaining ?? 0,
       }))
-      .filter((s) => s.pcs > 0)
+      .filter((s) => s.pcs > 0 && s.requisition_status !== "PENDING")
       .sort(
         (a, b) =>
           (Date.parse(a.created_at) || 0) - (Date.parse(b.created_at) || 0) ||
@@ -331,6 +335,22 @@ export function useQueue(userRole = "") {
     });
   }, [availableSeries]);
 
+  // Every ticket form the desk has stock records for, in or out of stock (names the kiosk recipes).
+  const forms = useMemo(() => {
+    const byId = new Map();
+    ticketSeries.forEach((s) => {
+      if (s.ticket_form) byId.set(s.ticket_form, { id: s.ticket_form, label: s.ticket_form_label, price: Number(s.ticket_form_price || 0) });
+    });
+    return [...byId.values()];
+  }, [ticketSeries]);
+
+  // The denomination the desk chose has run out entirely, so the picker below moved on to another.
+  const exhaustedLabel = useMemo(() => {
+    const chosen = ticketSeries.find((s) => String(s.id) === String(chosenSeriesId));
+    const label = chosen?.ticket_form_label || "Unspecified";
+    return chosen && !denominations.some((s) => (s.ticket_form_label || "Unspecified") === label) ? label : "";
+  }, [ticketSeries, denominations, chosenSeriesId]);
+
   const selectedSeriesId = useMemo(() => {
     const chosen = availableSeries.find((s) => String(s.id) === String(chosenSeriesId));
     if (!chosen) return denominations[0] ? String(denominations[0].id) : "";
@@ -345,6 +365,19 @@ export function useQueue(userRole = "") {
     const series = availableSeries.find((s) => String(s.id) === String(selectedSeriesId));
     return Number(series?.ticket_form_price || 0);
   }, [availableSeries, selectedSeriesId]);
+
+  // What one issue hands out, as [{ series, quantity }]: the vehicle's fare recipe while every
+  // row has stock (rows draw from their denomination's head series), else the selected series
+  // x enough tickets to meet the price — the same fallback the kiosk makes (kiosk._plan_for).
+  const issuePlan = (recipes = {}) => {
+    const recipe = recipes[String(Number(selectedVehicle?.terminal_price || 0))] ?? [];
+    const mixed = recipe.map(({ form, qty }) => ({ series: denominations.find((s) => s.ticket_form === form), quantity: qty }));
+    if (mixed.length > 0 && mixed.every(({ series, quantity }) => series && quantity <= series.pcs)) return mixed;
+    return [{
+      series: availableSeries.find((s) => String(s.id) === String(selectedSeriesId)),
+      quantity: ticketsNeeded(selectedVehicle, ticketFee),
+    }];
+  };
 
   return {
     // State
@@ -368,10 +401,12 @@ export function useQueue(userRole = "") {
     activeDrivers,
     availableSeries: denominations,
     allSeries: availableSeries,
+    forms,
+    exhaustedLabel,
     setSeriesOverrideId,
     selectedSeriesId,
     setSelectedSeriesId: updateSelectedSeriesId,
-    ticketQuantity: ticketsNeeded(selectedVehicle, ticketFee),
+    issuePlan,
     // Actions
     fetchTickets,
     fetchTicketSeries,

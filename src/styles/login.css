@@ -2,15 +2,10 @@
    NORTH CENTRAL TERMINAL — LANDING PAGE STYLES
    Color Palette:
      Navy   #1a2744  (primary)
-     Gold   #c9a84c  (accent)
+     Gold   var(--lp-gold)  (accent)
      White  #ffffff  (background / text)
    ============================================================ */
 
-@import "@fontsource/playfair-display/700.css";
-@import "@fontsource/playfair-display/800.css";
-@import "@fontsource/dm-sans/400.css";
-@import "@fontsource/dm-sans/500.css";
-@import "@fontsource/dm-sans/600.css";
 
 *, *::before, *::after {
   margin: 0;
@@ -21,11 +16,11 @@
 :root {
   --navy:   #1a2744;
   --navy2:  #243258;
-  --gold:   #c9a84c;
-  --gold2:  #e2be6e;
+  --lp-gold: #ffffff;
+  --lp-gold-rgb: 255, 255, 255;
   --white:  #ffffff;
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-body:    'DM Sans', sans-serif;
+  --font-display: Helvetica, Arial, sans-serif;
+  --font-body: Helvetica, Arial, sans-serif;
   --radius: 10px;
   --shadow: 0 12px 48px rgba(26,39,68,0.22);
 }
@@ -33,7 +28,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: var(--font-body);
+  font-family: Helvetica, Arial, sans-serif;
   background: var(--navy);
   color: var(--navy);
   overflow-x: hidden;
@@ -124,8 +119,8 @@ body {
 }
 
 .lp-header__title {
-  font-family: var(--font-display);
-  font-size: 17px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 18.7px;
   font-weight: 700;
   color: var(--white);
   line-height: 1.2;
@@ -133,8 +128,8 @@ body {
 }
 
 .lp-header__sub {
-  font-size: 10.5px;
-  color: var(--gold);
+  font-size: 11.6px;
+  color: var(--lp-gold);
   text-transform: uppercase;
   letter-spacing: 1.4px;
   font-weight: 500;
@@ -148,8 +143,8 @@ body {
 }
 
 .lp-header__clock-time {
-  font-family: var(--font-display);
-  font-size: 17px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 18.7px;
   font-weight: 700;
   color: var(--white);
   line-height: 1.2;
@@ -158,8 +153,8 @@ body {
 }
 
 .lp-header__clock-date {
-  font-size: 10.5px;
-  color: var(--gold);
+  font-size: 11.6px;
+  color: var(--lp-gold);
   text-transform: uppercase;
   letter-spacing: 1.2px;
   font-weight: 500;
@@ -177,9 +172,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-body);
+  font-family: Helvetica, Arial, sans-serif;
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: 14.9px;
   text-transform: uppercase;
   letter-spacing: 0.7px;
   padding: 10px 22px;
@@ -194,8 +189,8 @@ body {
 .lp-btn:active { transform: translateY(0); }
 
 .lp-btn--gold {
-  background: var(--gold);
-  color: var(--navy);
+  background: var(--navy);
+  color: #fff;
   box-shadow: none;
 }
 .lp-btn--gold:hover { box-shadow: none; }
@@ -216,10 +211,10 @@ body {
 
 .lp-btn--outline-gold {
   background: transparent;
-  color: var(--gold);
-  border: 1.5px solid var(--gold);
+  color: var(--lp-gold);
+  border: 1.5px solid var(--lp-gold);
 }
-.lp-btn--outline-gold:hover { background: rgba(201,168,76,0.1); }
+.lp-btn--outline-gold:hover { background: rgba(var(--lp-gold-rgb), 0.1); }
 .lp-btn--outline-gold:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .lp-btn--full { width: 100%; justify-content: center; }
@@ -278,14 +273,14 @@ body {
 }
 
 .lp-login-modal__brand h2 {
-  font-family: var(--font-display);
-  font-size: 24px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 26.4px;
   color: var(--navy);
   margin-bottom: 6px;
 }
 
 .lp-login-modal__brand p {
-  font-size: 13px;
+  font-size: 14.3px;
   color: #777;
 }
 
@@ -302,7 +297,7 @@ body {
 }
 
 .lp-field label {
-  font-size: 12px;
+  font-size: 13.2px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -313,8 +308,8 @@ body {
   padding: 12px 14px;
   border: 2px solid #e0e0e0;
   border-radius: 7px;
-  font-size: 14.5px;
-  font-family: var(--font-body);
+  font-size: 16px;
+  font-family: Helvetica, Arial, sans-serif;
   background: #fafafa;
   color: var(--navy);
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -322,9 +317,9 @@ body {
 
 .lp-field input:focus {
   outline: none;
-  border-color: var(--gold);
+  border-color: var(--navy);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+  box-shadow: 0 0 0 3px rgba(var(--lp-gold-rgb), 0.12);
 }
 
 .lp-error {
@@ -332,7 +327,7 @@ body {
   background: #fff0f0;
   border: 1px solid rgba(229,57,53,0.25);
   border-radius: 5px;
-  font-size: 13px;
+  font-size: 14.3px;
   color: #c62828;
   font-weight: 500;
 }
@@ -342,7 +337,7 @@ body {
   background: #f0f9f0;
   border: 1px solid rgba(67,160,71,0.25);
   border-radius: 5px;
-  font-size: 13px;
+  font-size: 14.3px;
   color: #2e7d32;
   font-weight: 500;
   line-height: 1.5;
@@ -354,7 +349,7 @@ body {
   padding: 0;
   margin-top: -4px;
   align-self: center;
-  font-size: 13px;
+  font-size: 14.3px;
   font-weight: 600;
   color: var(--navy);
   cursor: pointer;
@@ -363,7 +358,7 @@ body {
 }
 
 .lp-link-btn:hover {
-  color: var(--gold);
+  color: var(--navy);
 }
 
 /* ============================================================
@@ -388,17 +383,17 @@ body {
 
 .lp-section-eyebrow {
   display: block;
-  font-size: 11.5px;
+  font-size: 12.7px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: var(--gold);
+  color: var(--navy);
   margin-bottom: 5px;
 }
 
 .lp-section-title {
-  font-family: var(--font-display);
-  font-size: 30px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 33px;
   font-weight: 700;
   color: var(--navy);
   line-height: 1.15;
@@ -411,7 +406,7 @@ body {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12px;
+  font-size: 13.2px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -433,8 +428,8 @@ body {
 }
 
 .lp-board-label__dot--next {
-  background: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201,168,76,0.25);
+  background: var(--lp-gold);
+  box-shadow: 0 0 0 3px rgba(var(--lp-gold-rgb), 0.25);
 }
 
 @keyframes lp-pulse {
@@ -459,24 +454,24 @@ body {
   align-items: center;
   gap: 8px;
   background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(201,168,76,0.4);
+  border: 1px solid rgba(var(--lp-gold-rgb), 0.4);
   border-radius: 8px;
   padding: 7px 12px;
-  color: var(--gold);
+  color: var(--navy);
 }
 
 .lp-route-select {
   background: transparent;
   border: none;
   outline: none;
-  font-family: var(--font-body);
-  font-size: 13px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 14.3px;
   font-weight: 600;
   color: var(--white);
   cursor: pointer;
   appearance: none;
   padding-right: 18px;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c9a84c' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a2744' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 0 center;
   background-size: 16px;
@@ -522,7 +517,7 @@ body {
 }
 
 .lp-carousel-dot--active {
-  background: var(--gold);
+  background: var(--lp-gold);
   transform: scale(1.3);
 }
 
@@ -531,7 +526,7 @@ body {
   padding: 52px;
   text-align: center;
   color: #999;
-  font-size: 14.5px;
+  font-size: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -542,7 +537,7 @@ body {
   width: 36px;
   height: 36px;
   border: 3px solid #e0e0e0;
-  border-top-color: var(--gold);
+  border-top-color: var(--lp-gold);
   border-radius: 50%;
   animation: lp-spin 0.75s linear infinite;
 }
@@ -555,7 +550,7 @@ body {
 .lp-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13.5px;
+  font-size: 14.9px;
 }
 
 .lp-table thead {
@@ -565,7 +560,7 @@ body {
 .lp-table th {
   padding: 13px 18px;
   text-align: left;
-  font-size: 10.5px;
+  font-size: 11.6px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.7px;
@@ -590,17 +585,17 @@ body {
 
 .lp-td--num {
   font-weight: 700;
-  color: var(--gold);
-  font-size: 13px;
+  color: var(--navy);
+  font-size: 14.3px;
 }
 
 .lp-plate {
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
-  color: var(--gold);
+  color: var(--navy);
   padding: 4px 12px;
   border-radius: 20px;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13.2px;
   letter-spacing: 0.5px;
   white-space: nowrap;
   display: inline-block;
@@ -609,7 +604,7 @@ body {
 .lp-status {
   padding: 4px 11px;
   border-radius: 20px;
-  font-size: 11.5px;
+  font-size: 12.7px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -622,11 +617,11 @@ body {
 
 .lp-td--time {
   font-weight: 700;
-  color: var(--gold);
+  color: var(--lp-gold);
 }
 
 .lp-na {
-  font-size: 12px;
+  font-size: 13.2px;
   color: #bbb;
   font-style: italic;
 }
@@ -635,7 +630,7 @@ body {
   padding: 12px 18px;
   background: #f7f8fa;
   border-top: 1px solid #eee;
-  font-size: 11px;
+  font-size: 12.1px;
   color: #aaa;
   text-align: right;
   text-transform: uppercase;
@@ -671,24 +666,24 @@ body {
 }
 
 .lp-footer__desc {
-  font-size: 13.5px;
+  font-size: 14.9px;
   line-height: 1.75;
   color: rgba(255,255,255,0.5);
   max-width: 440px;
 }
 
 .lp-footer__label {
-  font-size: 11px;
+  font-size: 12.1px;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: var(--gold);
+  color: var(--lp-gold);
   font-weight: 600;
   margin-bottom: 10px;
 }
 
 .lp-footer__address {
   font-style: normal;
-  font-size: 13.5px;
+  font-size: 14.9px;
   color: rgba(255,255,255,0.6);
   display: flex;
   align-items: flex-start;
@@ -696,11 +691,11 @@ body {
   line-height: 1.5;
 }
 
-.lp-footer__address svg { margin-top: 2px; flex-shrink: 0; color: var(--gold); }
+.lp-footer__address svg { margin-top: 2px; flex-shrink: 0; color: var(--lp-gold); }
 
 .lp-footer__sys-name {
-  font-family: var(--font-display);
-  font-size: 15px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 16.5px;
   color: var(--white);
   line-height: 1.5;
 }
@@ -709,7 +704,7 @@ body {
   border-top: 1px solid rgba(255,255,255,0.07);
   padding: 18px 26px;
   text-align: center;
-  font-size: 12px;
+  font-size: 13.2px;
   color: rgba(255,255,255,0.28);
   max-width: 1440px;
   margin: 0 auto;
@@ -741,9 +736,9 @@ body {
   .lp-login-modal { padding: 32px 22px; }
 
   .lp-table th,
-  .lp-table td { padding: 10px 12px; font-size: 12px; }
+  .lp-table td { padding: 10px 12px; font-size: 13.2px; }
 
-  .lp-section-title { font-size: 24px; }
+  .lp-section-title { font-size: 26.4px; }
 }
 
 /* ── Route group gap row ── */
@@ -776,7 +771,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: 13.2px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -787,13 +782,13 @@ body {
 /* Active queue variant — navy bg, gold text */
 .lp-route-label-badge--active {
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
-  color: var(--gold);
+  color: var(--lp-gold);
   box-shadow: 0 1px 6px rgba(26,39,68,0.15);
 }
 
 /* Next queue variant — gold-tinted, navy text */
 .lp-route-label-badge--next {
-  background: linear-gradient(135deg, rgba(201,168,76,0.15) 0%, rgba(226,190,110,0.2) 100%);
+  background: linear-gradient(135deg, rgba(var(--lp-gold-rgb), 0.15) 0%, rgba(226,190,110,0.2) 100%);
   color: #7a5c10;
-  border: 1px solid rgba(201,168,76,0.35);
+  border: 1px solid rgba(var(--lp-gold-rgb), 0.35);
 }

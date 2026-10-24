@@ -4,7 +4,7 @@ import { ButtonLabel, SupervisorPicker, useFeedback } from "../../../components/
 import { useSupervisors } from "../../../lib/useSupervisors";
 import CashierNameInput from "./CashierNameInput";
 import { useCashierName } from "./useCashierName";
-import { downloadRemittancePDF } from "./exportRemittancePDF";
+import { downloadRemittancePDF, phDay } from "./exportRemittancePDF";
 
 function formatCurrency(val) {
   return "₱" + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -49,9 +49,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
   const preparedBy = pickedPreparer || (currentUser?.role === "SUPERVISOR" ? currentUser.id : "");
   const keyedByName = currentUser ? `${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() || currentUser.username : "";
   const preparedByName = supervisors.find((s) => String(s.id) === String(preparedBy))?.name || "";
-  const [collections, setCollections] = useState([
-    { ticketFormNo: "", from: 0, to: 0, ticketsIssued: 0, amount: 0 },
-  ]);
   const [deposits, setDeposits] = useState(
     [
       { type: "bill", denomination: 1000, quantity: 0, depositAmount: 0 },
@@ -64,10 +61,11 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
     ]
   );
 
+  // Every collected, verified ticket of the day — including those a previous batch already remitted.
+  const [dayTickets, setDayTickets] = useState([]);
   const [ticketFormOptions, setTicketFormOptions] = useState([]);
-  const [todayTickets, setTodayTickets] = useState([]);
-  const [ticketsLoaded, setTicketsLoaded] = useState(false);
   const [ticketSeries, setTicketSeries] = useState([]);
+  const [ticketsLoaded, setTicketsLoaded] = useState(false);
   const [amending, setAmending] = useState(false);
 
   const getTodayDateString = (date) => {
@@ -87,14 +85,10 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
   // case a batch already exists for that day (e.g. an intentional duplicate).
   // A day is remitted once: the in-system batch already covering this date (outside "EXT-"
   // batches are filed separately). Legacy batches without covers_date count by the day issued.
-  const phDay = (iso) => new Date(new Date(iso).getTime() + 8 * 3600 * 1000).toISOString().slice(0, 10);
   const existing = existingBatches.find(
     (b) => !String(b.batch_code || "").startsWith("EXT-") &&
       (b.covers_date ? b.covers_date === dateIssued : phDay(b.issued_at) === dateIssued)
   );
-  const existingAmount = (name) =>
-    (existing?.collections || []).filter((c) => c.ticket_form_no === name).reduce((s, c) => s + Number(c.amount || 0), 0);
-
   const batchId = amending ? existing.batch_code : (() => {
     const [year, month, day] = dateIssued.split("-").map(Number);
     const dayOfYear =
@@ -113,62 +107,69 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
       .then(setTicketFormOptions)
       .catch(err => loadFailed("ticket forms", err));
 
+    apiService.request("/ticket-series/")
+      .then(data => setTicketSeries(Array.isArray(data) ? data : data?.results || []))
+      .catch(err => loadFailed("ticket series", err));
+
     apiService.getTickets({ start_date: dateIssued, end_date: dateIssued })
       .then(data => {
         const tickets = Array.isArray(data) ? data : [];
-        setTodayTickets(
+        setDayTickets(
           tickets.filter(t =>
             t.issued_at && getTodayDateString(new Date(t.issued_at)) === dateIssued &&
             t.status !== "CANCELLED" &&
-            t.is_verified === true &&
-            !t.remittance_batch
+            t.is_verified === true
           )
         );
       })
       .catch(err => loadFailed("tickets", err))
       .finally(() => setTicketsLoaded(true));
-
-    apiService.request("/ticket-series/")
-      .then(data => setTicketSeries(Array.isArray(data) ? data : []))
-      .catch(err => loadFailed("ticket series", err));
     // dateIssued is derived from the targetDate prop, which doesn't change across
-    // this modal's lifetime — safe to omit from deps, matching the existing
-    // fetch-once-on-mount pattern used for ticketForms/ticketSeries below.
+    // this modal's lifetime — safe to omit from deps (fetch-once-on-mount).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const computeRowForForm = (name) => {
-    const matchingSeries = ticketSeries.filter(
-      s => (s.ticket_form_label || s.ticket_form_name || "") === name
-    );
-    const matchingTickets = todayTickets.filter(
-      t => (t.series?.ticket_form_label || "") === name
-    );
-    const totalCollected = matchingTickets.reduce(
-      (sum, t) => sum + Number(t.collection_amount || 0), 0
-    ) + (amending ? existingAmount(name) : 0);
-    const ticketsIssuedToday = matchingTickets.length;
-    const beginningPcs = matchingSeries.reduce(
-      (sum, s) => sum + (s.beginning ?? ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0))), 0
-    );
-    const unitPrice = Number(matchingSeries[0]?.ticket_form_price || 0);
-    const remainingPcs = matchingSeries.reduce(
-      (sum, s) => sum + (s.remaining ?? ((parseInt(s.end_no) || 0) - (parseInt(s.start_no) || 0))), 0
-    );
+  // Tickets not yet in any batch; editing the day's batch also re-files the ones it already holds.
+  const todayTickets = dayTickets.filter((t) => !t.remittance_batch);
+  const batchTickets = amending ? dayTickets.filter((t) => !t.remittance_batch || t.remittance_batch === existing.id) : todayTickets;
 
-    return {
-      ticketFormNo: name,
-      from: beginningPcs * unitPrice,
-      to: remainingPcs * unitPrice,
-      ticketsIssued: ticketsIssuedToday,
-      amount: totalCollected,
-    };
-  };
-
-  useEffect(() => {
-    if (ticketFormOptions.length === 0) return;
-    setCollections(ticketFormOptions.map(tf => computeRowForForm(tf.name)));
-  }, [ticketFormOptions, ticketSeries, todayTickets, amending]);
+  // One row per ticket series in use, so two series of the same form are two rows. From is where the
+  // series stood when the day began (its first ticket collected today) and To where it stands now: the
+  // next unused number after the last ticket issued. A series nothing was collected from yet shows its
+  // next unused number in both.
+  const collected = {};
+  batchTickets.forEach((t) => {
+    if (!t.series) return;
+    const c = (collected[t.series.id] ||= { count: 0, amount: 0, from: Infinity, to: 0 });
+    const no = Number(t.id) || 0;
+    c.count += 1;
+    c.amount += Number(t.collection_amount || 0);
+    c.from = Math.min(c.from, no);
+    c.to = Math.max(c.to, no);
+  });
+  const seriesRows = ticketSeries
+    .filter((s) => s.remaining > 0 || collected[s.id])
+    .map((s) => {
+      const from = collected[s.id]?.from ?? (s.last_used_no ?? Number(s.start_no) - 1) + 1;
+      return {
+        ticketFormNo: s.ticket_form_label || "",
+        createdAt: new Date(s.created_at).getTime() || 0,
+        from,
+        to: collected[s.id] ? collected[s.id].to + 1 : from,
+        ticketsIssued: collected[s.id]?.count || 0,
+        amount: collected[s.id]?.amount || 0,
+      };
+    });
+  // Every ticket form configured in Settings is listed; one with no series in use gets an empty row.
+  const emptyRows = ticketFormOptions
+    .filter((f) => !seriesRows.some((r) => r.ticketFormNo === f.name))
+    .map((f) => ({ ticketFormNo: f.name, createdAt: 0, from: "", to: "", ticketsIssued: 0, amount: 0 }));
+  // Forms run smallest to largest denomination (the number in "Cash Tickets@N"); a form's series keep
+  // the order they were recorded (oldest first).
+  const collections = [...seriesRows, ...emptyRows].sort((a, b) =>
+    a.ticketFormNo.localeCompare(b.ticketFormNo, undefined, { numeric: true }) ||
+    a.createdAt - b.createdAt
+  );
 
   // Editing the day's remittance starts from what was already deposited; the cashier then adds the new cash.
   const startAmending = () => {
@@ -210,11 +211,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
     0
   );
 
-  const endingBalance = collections.reduce(
-    (sum, c) => sum + Number(c.to || 0),
-    0
-  );
-
   const [certified, setCertified] = useState(false);
   const cashier = useCashierName();
   const amountsMismatch = totalRemittances !== totalCollections;
@@ -250,7 +246,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
     // the PDF can still be exported from the batch's view screen.
     try {
       await downloadRemittancePDF(
-        { id: batchId, batch_code: batchId, prepared_by_name: preparedByName, issued_by_name: keyedByName, issued_at: amending ? existing.issued_at : new Date().toISOString(), collections, deposits },
+        { id: batchId, batch_code: batchId, prepared_by_name: preparedByName, issued_by_name: keyedByName, issued_at: amending ? existing.issued_at : new Date().toISOString(), covers_date: dateIssued, collections, deposits },
         cashierName,
       );
       notify.success({ title: amending ? "Remittance updated" : "Remittance batch saved", message: `${batchId} was ${amending ? "updated" : "recorded"} and its PDF downloaded.` });
@@ -293,7 +289,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
         {/* Header */}
         <div className="rem-modal-header">
           <div className="rem-modal-header-left">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
               <line x1="16" y1="13" x2="8" y2="13" />
@@ -337,8 +333,8 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
             <thead>
               <tr>
                 <th>Ticket Form No.</th>
-                <th>From</th>
-                <th>To</th>
+                <th>Series From</th>
+                <th>Series To</th>
                 <th>Amount</th>
               </tr>
             </thead>
@@ -379,9 +375,8 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
             <tfoot>
               <tr>
                 <td style={{ textAlign: "right" }}>Totals</td>
-                <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.from || 0), 0))}</td>
-                <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.to || 0), 0))}</td>
-                <td>{formatCurrency(collections.reduce((sum, c) => sum + Number(c.amount || 0), 0))}</td>
+                <td colSpan={2}></td>
+                <td>{formatCurrency(totalCollections)}</td>
               </tr>
             </tfoot>
           </table>
@@ -460,10 +455,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
             <div className="rem-summary-card">
               <div className="rem-summary-label">Total Remittances</div>
               <div className="rem-summary-value">{formatCurrency(totalRemittances)}</div>
-            </div>
-            <div className="rem-summary-card">
-              <div className="rem-summary-label">Ending Balance</div>
-              <div className="rem-summary-value">{formatCurrency(endingBalance)}</div>
             </div>
           </div>
 

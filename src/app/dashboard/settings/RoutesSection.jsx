@@ -1,66 +1,35 @@
 import React, { useState } from "react";
 import {
-  DataTable, Toolbar, SearchInput, StatusBadge, IconButton, Pagination, SectionHeader, PrimaryButton, SortSelect,
-  FilterMenu, FilterGroup, FilterOption, FilterChips, UnitInput, ArchiveIcon,
+  DataTable, Toolbar, SearchInput, IconButton, Pagination, SectionHeader, PrimaryButton, SortSelect, UnitInput, ArchiveIcon,
 } from "../../../components/ui/kit";
 
 const PAGE_SIZE = 10;
 // Mirrors DEFAULT_ESTIMATED_LOADING_MINUTES on the backend (views/records.py).
 const DEFAULT_LOADING_MINUTES = 5;
 
-const AVG_OPTIONS = [
-  { value: "any", label: "Any" },
-  { value: "faster", label: "Loading faster than default" },
-  { value: "slower", label: "Loading slower than default" },
-  { value: "default", label: "Still on system default" },
-];
-const AVG_CHIP_LABEL = { faster: "Loading faster than default", slower: "Loading slower than default", default: "Still on system default" };
-
 const SORTS = [
   { value: "route-asc", label: "Sort: Route A–Z" },
   { value: "route-desc", label: "Sort: Route Z–A" },
 ];
-
-const effectiveDefault = (route) => route.estimated_loading_minutes ?? DEFAULT_LOADING_MINUTES;
-// Positive: recent average is slower than the configured default.
-const avgDelta = (route) => (route.avg_loading_minutes == null ? null : route.avg_loading_minutes - effectiveDefault(route));
-
-const matchesAvgFilter = (route, mode) => {
-  if (mode === "any") return true;
-  if (mode === "default") return route.estimated_loading_minutes == null;
-  const d = avgDelta(route);
-  if (d == null) return false;
-  return mode === "faster" ? d < 0 : d > 0;
-};
 
 // Presentational only: data, drafts, search state and handlers come from settings.jsx.
 // Filter, sort and page state is local view state and never touches the API.
 function RoutesSection({
   routes, loading, rowStates, search, onSearch, onAdd, estimateInputs, onEstimateChange, onSaveEstimate, onRevertEstimate, onArchive,
 }) {
-  const [avgMode, setAvgMode] = useState("any");
   const [sort, setSort] = useState("route-asc");
   const [page, setPage] = useState(1);
 
   const resetPage = (fn) => (...args) => { fn(...args); setPage(1); };
-  const setAvgModeP = resetPage(setAvgMode);
-
-  const activeCount = avgMode === "any" ? 0 : 1;
-  const clearAll = () => { setAvgMode("any"); setPage(1); };
 
   const q = search.trim().toLowerCase();
   const matches = routes
     .filter((r) => !q || r.full_name?.toLowerCase().includes(q))
-    .filter((r) => matchesAvgFilter(r, avgMode))
     .sort((a, b) => (sort === "route-asc" ? 1 : -1) * a.origin.localeCompare(b.origin));
 
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
   const current = Math.min(page, pageCount);
   const rows = matches.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
-
-  const chips = [
-    ...(avgMode === "any" ? [] : [{ key: "avg", label: AVG_CHIP_LABEL[avgMode], onRemove: () => setAvgModeP("any") }]),
-  ];
 
   const columns = [
     {
@@ -104,31 +73,6 @@ function RoutesSection({
       },
     },
     {
-      key: "avg",
-      header: "Recent average",
-      render: (r) => {
-        if (r.avg_loading_minutes == null) return <span className="ui-muted">No recent departures</span>;
-        const delta = avgDelta(r);
-        const suggested = Math.round(r.avg_loading_minutes);
-        const currentMinutes = estimateInputs[r.id] ?? r.estimated_loading_minutes;
-        return (
-          <div className="ui-avg">
-            <span className="ui-avg-value">{r.avg_loading_minutes} min</span>
-            {Math.abs(delta) >= 0.05 && (
-              <StatusBadge tone={delta < 0 ? "info" : "warning"} dot={false}>
-                {Math.abs(delta).toFixed(1)} {delta < 0 ? "faster" : "slower"}
-              </StatusBadge>
-            )}
-            {String(currentMinutes) !== String(suggested) && (
-              <button type="button" className="ui-pager-btn" onClick={() => onEstimateChange(r.id, String(suggested))}>
-                Use {suggested}
-              </button>
-            )}
-          </div>
-        );
-      },
-    },
-    {
       key: "actions",
       header: "Actions",
       align: "right",
@@ -148,27 +92,17 @@ function RoutesSection({
       />
       <DataTable
         toolbar={
-          <>
-            <Toolbar>
-              <SearchInput value={search} onChange={resetPage(onSearch)} placeholder="Search by origin or destination" />
-              <FilterMenu activeCount={activeCount} onClear={clearAll}>
-                <FilterGroup title="Recent average vs default">
-                  {AVG_OPTIONS.map((o) => (
-                    <FilterOption key={o.value} type="radio" name="route-avg" checked={avgMode === o.value} onChange={() => setAvgModeP(o.value)} label={o.label} />
-                  ))}
-                </FilterGroup>
-              </FilterMenu>
-              <SortSelect value={sort} onChange={setSort} options={SORTS} label="Sort routes" />
-            </Toolbar>
-            <FilterChips chips={chips} onClearAll={clearAll} />
-          </>
+          <Toolbar>
+            <SearchInput value={search} onChange={resetPage(onSearch)} placeholder="Search by origin or destination" />
+            <SortSelect value={sort} onChange={setSort} options={SORTS} label="Sort routes" />
+          </Toolbar>
         }
         columns={columns}
         rows={rows}
         loading={loading}
         rowState={(r) => rowStates[r.id]}
         rowKey={(r) => r.id}
-        emptyMessage={routes.length === 0 ? "No routes configured" : "No routes match these filters"}
+        emptyMessage={routes.length === 0 ? "No routes configured" : "No routes match your search"}
         footer={
           <>
             <span>Showing {rows.length} of {matches.length} routes</span>

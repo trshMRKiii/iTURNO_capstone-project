@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
+import { mixText } from "../../../../lib/mixText";
 
 const MODES = [
-  { type: "QUEUE", title: "Queue", sub: "Turno", note: "Wait for your turn in line" },
-  { type: "ROAM", title: "Roaming", sub: "Payasyas", note: "Pay and go, no waiting in line" },
+  { type: "QUEUE", title: "Queue", sub: "Turno" },
+  { type: "ROAM", title: "Roaming", sub: "Payasyas" },
 ];
 
 const peso = (amount) => (amount ? `₱${Number(amount).toFixed(2)}` : null);
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+// Which paper the desk hands over, only worth a line when the fare is mixed.
+const mixLine = (r) => (mixText(r.breakdown) ? [`Your tickets: ${mixText(r.breakdown)}`] : []);
 
 function VehicleHead({ vehicle }) {
   return (
@@ -16,61 +20,67 @@ function VehicleHead({ vehicle }) {
   );
 }
 
-export function ModePanel({ vehicle, onPick, onCancel }) {
+function Footer({ seconds, onCancel, cancelLabel = "Cancel" }) {
   return (
-    <div className="kiosk-panel">
+    <div className="kiosk-foot">
+      <button type="button" className="kiosk-ghost" onClick={onCancel}>{cancelLabel}</button>
+      <span className="kiosk-countdown">Returning to scan in {seconds}s</span>
+    </div>
+  );
+}
+
+// Plate, route and the registered operator, then the two big tiles. `blocked` greys the
+// tiles out for a vehicle that can't check in (expired papers).
+export function ModePanel({ vehicle, driverName, swap, swapDriver, blocked, heading, onPick, onSwap, onCancel, seconds }) {
+  return (
+    <div className="kiosk-panel kiosk-panel--left">
       <VehicleHead vehicle={vehicle} />
-      <h2 className="kiosk-title">How are you using the terminal today?</h2>
+      <div className={`kiosk-driver${blocked ? " kiosk-driver--blocked" : ""}${swap ? " kiosk-driver--swap" : ""}${swapDriver?.error ? " kiosk-driver--blocked" : ""}`}>
+        <div className="kiosk-driver-text">
+          <small>{swap ? (swapDriver?.id ? "Driver QR scanned ✓" : swapDriver ? "QR not accepted" : "Swapping driver") : "Driver · registered operator"}</small>
+          <strong>{swap ? (swapDriver?.id ? swapDriver.name : "Show your own driver QR") : driverName}</strong>
+          {swap && <span>{swapDriver?.id ? "Now tap Queue or Roaming below." : swapDriver?.error || "Hold your QR to the camera, then pick Queue or Roaming."}</span>}
+        </div>
+        {!blocked && (
+          <button type="button" className={`kiosk-ghost kiosk-ghost--sm${swap ? " kiosk-ghost--on" : ""}`} onClick={onSwap}>
+            {swap ? "Keep this driver" : "Swap driver"}
+          </button>
+        )}
+      </div>
+      <p className={`kiosk-prompt${blocked ? " kiosk-prompt--error" : ""}`}>{swap && !swapDriver?.id ? "Scan first, then tap one" : heading}</p>
       <div className="kiosk-modes">
         {MODES.map((m) => (
-          <button key={m.type} type="button" className={`kiosk-mode kiosk-mode--${m.type.toLowerCase()}`} onClick={() => onPick(m.type)}>
+          <button
+            key={m.type}
+            type="button"
+            disabled={blocked}
+            className={`kiosk-mode kiosk-mode--${m.type.toLowerCase()}`}
+            onClick={() => onPick(m.type)}
+          >
             <span className="kiosk-mode-title">{m.title}</span>
             <em>{m.sub}</em>
-            <span className="kiosk-mode-note">{m.note}</span>
           </button>
         ))}
       </div>
-      <button type="button" className="kiosk-link" onClick={onCancel}>Cancel</button>
+      <Footer seconds={seconds} onCancel={onCancel} />
     </div>
   );
 }
 
-const WHO = [
-  { type: "operator", title: "Operator", sub: "Registered driver", note: "Check in as this vehicle's driver" },
-  { type: "swap", title: "Scan driver QR", sub: "Swap driver", note: "A different driver? Show your own QR code" },
-];
-
-export function WhoPanel({ vehicle, onPick, onBack }) {
+export function SwapPanel({ vehicle, mode, onBack, seconds }) {
   return (
-    <div className="kiosk-panel">
-      <VehicleHead vehicle={vehicle} />
-      <h2 className="kiosk-title">Who is driving today?</h2>
-      <div className="kiosk-modes">
-        {WHO.map((w) => (
-          <button key={w.type} type="button" className={`kiosk-mode kiosk-mode--${w.type === "swap" ? "roam" : "queue"}`} onClick={() => onPick(w.type)}>
-            <span className="kiosk-mode-title">{w.title}</span>
-            <em>{w.sub}</em>
-            <span className="kiosk-mode-note">{w.note}</span>
-          </button>
-        ))}
-      </div>
-      <button type="button" className="kiosk-link" onClick={onBack}>← Back</button>
-    </div>
-  );
-}
-
-export function SwapPanel({ vehicle, onBack }) {
-  return (
-    <div className="kiosk-panel">
+    <div className="kiosk-panel kiosk-panel--left">
       <VehicleHead vehicle={vehicle} />
       <h2 className="kiosk-title">Show your driver QR</h2>
-      <p className="kiosk-line">Hold your own QR code up to the camera to take over this vehicle.</p>
-      <button type="button" className="kiosk-link" onClick={onBack}>← Back</button>
+      <p className="kiosk-sub">
+        Hold your own QR code up to the camera to take over this vehicle for {mode === "QUEUE" ? "the queue" : "roaming"}.
+      </p>
+      <Footer seconds={seconds} onCancel={onBack} cancelLabel="← Back" />
     </div>
   );
 }
 
-export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity }) {
+export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity, seconds }) {
   const [query, setQuery] = useState("");
   const [letter, setLetter] = useState("");
   const [picked, setPicked] = useState(null);
@@ -82,12 +92,12 @@ export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity
 
   if (picked) {
     return (
-      <div className="kiosk-panel">
+      <div className="kiosk-panel kiosk-panel--left">
         <VehicleHead vehicle={vehicle} />
         <h2 className="kiosk-title">Is this you?</h2>
         <div className="kiosk-confirm-name">{picked.name}</div>
         <div className="kiosk-actions">
-          <button type="button" className="kiosk-btn kiosk-btn--ghost" onClick={() => setPicked(null)}>No, go back</button>
+          <button type="button" className="kiosk-ghost" onClick={() => setPicked(null)}>No, go back</button>
           <button type="button" className="kiosk-btn" onClick={() => onPick(picked)}>
             Yes, {mode === "QUEUE" ? "join the queue" : "continue"}
           </button>
@@ -97,9 +107,10 @@ export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity
   }
 
   return (
-    <div className="kiosk-panel kiosk-panel--wide">
-      <VehicleHead vehicle={vehicle} />
-      <h2 className="kiosk-title">Find your name <span className="kiosk-tag">{mode === "QUEUE" ? "Queue" : "Roaming"}</span></h2>
+    <div className="kiosk-panel kiosk-panel--left">
+      <h2 className="kiosk-title">
+        Find your name <span className="kiosk-tag">{mode === "QUEUE" ? "Queue" : "Roaming"}</span>
+      </h2>
       <input
         className="kiosk-search"
         placeholder="Type your last name…"
@@ -129,47 +140,79 @@ export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity
           ))
         )}
       </div>
-      <button type="button" className="kiosk-link" onClick={onBack}>← Back</button>
+      <Footer seconds={seconds} onCancel={onBack} cancelLabel="← Back" />
     </div>
   );
 }
 
 // Everything the server can answer with once a visit exists, reduced to one screen.
 const RESULTS = {
-  CHECKED_IN: (r) => ({
-    tone: "ok",
-    title: r.mode === "QUEUE" ? "You're in the queue" : "You're checked in to roam",
-    big: r.mode === "QUEUE" ? r.queue_code : null,
-    lines: [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} to ${r.checked_in_by}, then scan your QR again to leave.`],
-  }),
+  CHECKED_IN: (r) =>
+    r.mode === "QUEUE"
+      ? {
+          tone: "ok",
+          title: "You're in the queue",
+          big: r.queue_code,
+          lines: [r.position > 1 ? `${plural(r.position - 1, "vehicle")} ahead of you` : "You're next in line", `Pay ${peso(r.vehicle.amount) || "the terminal fee"} at the check-out desk when you leave`, ...mixLine(r)],
+        }
+      : {
+          tone: "roam",
+          title: "You're checked in to roam",
+          big: "ROAMING",
+          lines: [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} to ${r.checked_in_by} to get your ticket`, ...mixLine(r), "Scan your QR again when you leave"],
+        },
   WAIT_TURN: (r) => ({
     tone: "info",
     title: "Wait for your turn",
     big: `#${r.position}`,
     lines: ["Scan your QR again when you reach the front of the line."],
+    action: { label: "Roam instead", hint: "Cut the line: pay at the check-out desk and leave right away" },
   }),
-  DEPARTED: (r) => ({
-    tone: "ok",
-    title: "Checked out — safe trip!",
-    big: r.tickets?.length ? r.tickets.join(", ") : null,
-    lines: [r.tickets?.length ? "Your ticket number" : null],
-  }),
+  DEPARTED: () => ({ tone: "info", title: "Check out recorded", pill: "Safe trip! The next vehicle can scan now." }),
   BLOCKED: (r) => ({ tone: "error", title: "Can't check in", lines: [r.message] }),
   ERROR: (r) => ({ tone: "error", title: "Something went wrong", lines: [r.message] }),
   UNKNOWN: () => ({ tone: "error", title: "QR code not recognized", lines: ["Please try again or see the dispatcher."] }),
 };
 
-export function ResultPanel({ result, onDone }) {
+export function ResultPanel({ result, onDone, onAction, seconds }) {
   const view = (RESULTS[result.state] || RESULTS.ERROR)(result);
   return (
     <div className={`kiosk-panel kiosk-result kiosk-result--${view.tone}`}>
       {result.vehicle && <VehicleHead vehicle={result.vehicle} />}
       <h2 className="kiosk-title">{view.title}</h2>
       {view.big && <div className="kiosk-big">{view.big}</div>}
-      {view.lines.filter(Boolean).map((line) => (
+      {view.lines?.map((line) => (
         <p key={line} className="kiosk-line">{line}</p>
       ))}
-      <button type="button" className="kiosk-link" onClick={onDone}>Done</button>
+      {view.pill && <div className="kiosk-pill">{view.pill}</div>}
+      {view.action && (
+        <button type="button" className="kiosk-switch" onClick={onAction} title={view.action.hint}>
+          {view.action.label}
+        </button>
+      )}
+      <Footer seconds={seconds} onCancel={onDone} cancelLabel="Done" />
+    </div>
+  );
+}
+
+const longDate = (iso) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+// Left-card list for the expired screen: each lapsed paper with its date.
+export function ExpiredList({ items }) {
+  return (
+    <div className="kiosk-expired">
+      <span className="kiosk-expired-badge">⚠ EXPIRED</span>
+      {items.map((item) => (
+        <div key={item.label} className="kiosk-expired-row">
+          <strong>{item.label}</strong>
+          <span>
+            <small>EXPIRED</small>
+            <b>{longDate(item.date)}</b>
+            <em>{plural(item.days_ago, "day")} ago</em>
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

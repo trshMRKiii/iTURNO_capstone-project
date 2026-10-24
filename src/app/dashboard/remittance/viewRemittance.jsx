@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ButtonLabel, useFeedback } from "../../../components/ui/kit";
-import { downloadRemittancePDF, officerName } from "./exportRemittancePDF";
+import { accountabilityRows, batchDay, downloadRemittancePDF, loadSeries, normalizeCollection, officerName } from "./exportRemittancePDF";
 import { useCashierName } from "./useCashierName";
 
 function formatCurrency(val) {
@@ -18,14 +18,6 @@ function formatDate(val) {
   const d = new Date(val);
   if (Number.isNaN(d.getTime())) return val;
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-}
-
-function getCollectionFields(c) {
-  const ticketFormNo = c.ticket_form_no || c.ticketFormNo || "";
-  const from = Number(c.from_no || c.from || 0);
-  const amount = Number(c.amount || 0);
-  const to = from - amount;
-  return { ticketFormNo, from, to, amount };
 }
 
 function getDepositFields(d) {
@@ -52,10 +44,16 @@ function BlankRows({ count, cols }) {
   );
 }
 
+// Qty and From/To ticket numbers of one balance in C. (blank when nothing is left/issued).
+const Balance = ({ b }) =>
+  b?.qty > 0 ? <><td>{b.qty}</td><td>{b.from}</td><td>{b.to}</td></> : <><td></td><td></td><td></td></>;
+
 export default function ViewRemittance({ batch, onClose }) {
   const { notify } = useFeedback();
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [series, setSeries] = useState([]);
   const cashier = useCashierName(batch?.id);
+  useEffect(() => { loadSeries().then(setSeries); }, []);
 
   if (!batch) return null;
 
@@ -77,13 +75,14 @@ export default function ViewRemittance({ batch, onClose }) {
     await downloadRemittancePDF(batch, cashier.name);
   });
 
-  const collections = (batch.collections || []).map(getCollectionFields);
+  const collections = (batch.collections || []).map(normalizeCollection);
   const deposits = (batch.deposits || []).map(getDepositFields);
   const totalCollections = collections.reduce((s, c) => s + c.amount, 0);
   const totalDeposits = deposits.reduce((s, d) => s + d.depositAmount, 0);
 
-  const totalFrom = collections.reduce((s, c) => s + c.from, 0);
-  const totalTo = collections.reduce((s, c) => s + c.to, 0);
+  const accountability = accountabilityRows(collections, series, batchDay(batch));
+  const qtyTotal = (key) => accountability.reduce((s, r) => s + (r[key]?.qty || 0), 0) || "";
+  const beginningValue = accountability.reduce((s, r) => s + (r.beginningValue || 0), 0);
 
   return (
     <div className="rem-overlay" onClick={onClose}>
@@ -91,7 +90,7 @@ export default function ViewRemittance({ batch, onClose }) {
         {/* Header */}
         <div className="rem-modal-header">
           <div className="rem-modal-header-left">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
@@ -147,7 +146,7 @@ export default function ViewRemittance({ batch, onClose }) {
             <thead>
               <tr>
                 <th rowSpan={2}>Type (Form No.)</th>
-                <th colSpan={2} style={{ textAlign: "center" }}>Cash Tickets</th>
+                <th colSpan={2} style={{ textAlign: "center" }}>Ticket Series</th>
                 <th rowSpan={2} style={{ textAlign: "right" }}>Amount</th>
               </tr>
               <tr>
@@ -158,9 +157,9 @@ export default function ViewRemittance({ batch, onClose }) {
             <tbody>
               {collections.map((c, i) => (
                 <tr key={i}>
-                  <td>{c.ticketFormNo || "—"}</td>
-                  <td style={{ textAlign: "right" }}>{formatAmount(c.from)}</td>
-                  <td style={{ textAlign: "right" }}>{formatAmount(c.to)}</td>
+                  <td>{c.name || "—"}</td>
+                  <td style={{ textAlign: "right" }}>{c.from || ""}</td>
+                  <td style={{ textAlign: "right" }}>{c.to || ""}</td>
                   <td style={{ textAlign: "right" }}>{formatAmount(c.amount)}</td>
                 </tr>
               ))}
@@ -169,8 +168,7 @@ export default function ViewRemittance({ batch, onClose }) {
             <tfoot>
               <tr>
                 <td><strong>TOTAL</strong></td>
-                <td style={{ textAlign: "right" }}><strong>{formatAmount(totalFrom)}</strong></td>
-                <td style={{ textAlign: "right" }}><strong>{formatAmount(totalTo)}</strong></td>
+                <td colSpan={2}></td>
                 <td style={{ textAlign: "right" }}><strong>{formatAmount(totalCollections)}</strong></td>
               </tr>
             </tfoot>
@@ -249,13 +247,13 @@ export default function ViewRemittance({ batch, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                {collections.map((c, i) => (
+                {accountability.map((r, i) => (
                   <tr key={i}>
-                    <td>{c.ticketFormNo || "—"}</td>
-                    <td></td><td>{formatAmount(c.from)}</td><td></td>
-                    <td></td><td></td><td></td>
-                    <td></td><td>{formatAmount(c.amount)}</td><td></td>
-                    <td></td><td>{formatAmount(c.to)}</td><td></td>
+                    <td>{r.name || "—"}</td>
+                    <Balance b={r.beginning} />
+                    <Balance b={r.received} />
+                    <Balance b={r.issued} />
+                    <Balance b={r.ending} />
                   </tr>
                 ))}
                 <BlankRows count={2} cols={13} />
@@ -263,10 +261,10 @@ export default function ViewRemittance({ batch, onClose }) {
               <tfoot>
                 <tr>
                   <td><strong>TOTAL</strong></td>
-                  <td></td><td style={{ textAlign: "right" }}><strong>{formatAmount(totalFrom)}</strong></td><td></td>
-                  <td>-</td><td></td><td></td>
-                  <td></td><td style={{ textAlign: "right" }}><strong>{formatAmount(totalCollections)}</strong></td><td></td>
-                  <td></td><td style={{ textAlign: "right" }}><strong>{formatAmount(totalTo)}</strong></td><td></td>
+                  <td style={{ textAlign: "right" }}><strong>{qtyTotal("beginning")}</strong></td><td></td><td></td>
+                  <td style={{ textAlign: "right" }}><strong>{qtyTotal("received") || "-"}</strong></td><td></td><td></td>
+                  <td style={{ textAlign: "right" }}><strong>{qtyTotal("issued")}</strong></td><td></td><td></td>
+                  <td style={{ textAlign: "right" }}><strong>{qtyTotal("ending")}</strong></td><td></td><td></td>
                 </tr>
               </tfoot>
             </table>
@@ -277,11 +275,11 @@ export default function ViewRemittance({ batch, onClose }) {
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
             <table className="rem-report-table rem-report-table--summary">
               <tbody>
-                <tr><td>Beginning Balance</td><td style={{ textAlign: "right" }}>{formatAmount(totalFrom)}</td></tr>
+                <tr><td>Beginning Balance</td><td style={{ textAlign: "right" }}>{beginningValue ? formatAmount(beginningValue) : ""}</td></tr>
                 <tr><td>Add: Collections</td><td></td></tr>
-                <tr><td style={{ paddingLeft: 20 }}>Cash</td><td></td></tr>
+                <tr><td style={{ paddingLeft: 20 }}>Cash</td><td style={{ textAlign: "right" }}>{totalDeposits ? formatAmount(totalDeposits) : ""}</td></tr>
                 <tr><td style={{ paddingLeft: 20 }}>Checks</td><td></td></tr>
-                <tr><td>Total</td><td></td></tr>
+                <tr><td>Total</td><td style={{ textAlign: "right" }}>{totalDeposits ? formatAmount(totalDeposits) : ""}</td></tr>
                 <tr><td>Less: Remittance/Deposits to Cashier/<br />&nbsp;&nbsp;&nbsp;Treasurer/Depository Bank</td><td></td></tr>
                 <tr className="rem-report-row--bold"><td>Balance</td><td></td></tr>
               </tbody>

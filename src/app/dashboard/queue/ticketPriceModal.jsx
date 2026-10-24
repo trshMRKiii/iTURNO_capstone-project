@@ -22,7 +22,7 @@ const TicketPriceModal = ({
       <div className="ticket-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ticket-modal-header">
           <div className="ticket-modal-header-left">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
             </svg>
             <h2 className="ticket-modal-title">Update Ticket Price</h2>

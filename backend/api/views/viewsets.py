@@ -457,7 +457,7 @@ def _consume_series_fifo(ticket_form_id, quantity, series_id=None):
     """
     qs = TicketSeries.objects.select_for_update().filter(
         ticket_form_id=ticket_form_id, requisition__is_archived=False,
-    )
+    ).exclude(requisition__status='PENDING')  # unvalidated stock can't be issued
     if series_id:
         qs = qs.filter(id=series_id)
     series_list = list(qs.order_by('requisition_id', 'id'))
@@ -518,23 +518,46 @@ def _resolve_stock_choice(request):
     return request.data.get('ticket_form_id'), None
 
 
-def _check_terminal_price(vehicle, price, quantity):
-    """Total collected (ticket price x quantity) must equal the vehicle type's terminal
-    price. A vehicle with no type has no price to check against, so it's refused
-    outright rather than letting any amount through."""
+def _check_terminal_price(vehicle, total):
+    """Total collected must equal the vehicle type's terminal price. A vehicle with no
+    type has no price to check against, so it's refused outright rather than letting
+    any amount through."""
     puv_type = vehicle.transportation_id
     if not puv_type:
         raise ValidationError({
             "vehicle_id": f"{vehicle.plate_number} has no vehicle type set — assign one in the Vehicle Registry before issuing tickets."
         })
     terminal_price = puv_type.terminal_price
-    if terminal_price and price * quantity != terminal_price:
+    if terminal_price and total != terminal_price:
         raise ValidationError({
             "quantity": (
-                f"Total collection amount (₱{price * quantity:.2f}) must match "
+                f"Total collection amount (₱{total:.2f}) must match "
                 f"the {puv_type.name} terminal price of ₱{terminal_price:.2f}."
             )
         })
+
+
+def _check_plan(vehicle, plan):
+    """A plan is [(ticket_form_id, quantity, series_id or None), ...]: one row per
+    denomination handed out. Every form must exist and the rows must add up to the
+    vehicle type's terminal price. Returns {form_id: TicketForm}."""
+    form_ids = {form_id for form_id, _, _ in plan}
+    forms = TicketForm.objects.in_bulk(form_ids)
+    if not plan or len(forms) != len(form_ids):
+        raise ValidationError({"ticket_form_id": "Ticket form not found."})
+    _check_terminal_price(vehicle, sum((forms[form_id].price or 0) * quantity for form_id, quantity, _ in plan))
+    return forms
+
+
+def _draw_plan(vehicle, plan):
+    """Checks the plan, then draws every row's ticket numbers FIFO. Call inside
+    transaction.atomic(). Returns [(series, ticket_id, price)]."""
+    forms = _check_plan(vehicle, plan)
+    return [
+        (series, ticket_id, forms[form_id].price or 0)
+        for form_id, quantity, series_id in plan
+        for series, ticket_id in _consume_series_fifo(form_id, quantity, series_id)
+    ]
 
 
 def _checkout_personnel():
@@ -545,8 +568,8 @@ def _checkout_personnel():
     return name
 
 
-def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, series_id=None):
-    """Shared core of dispatch_ticket and convert_to_roam: draws `quantity` physical
+def _finalize_queued_vehicle(vehicle, plan, mode, request):
+    """Shared core of dispatch_ticket and convert_to_roam: draws the plan's physical
     ticket numbers FIFO, closes out the vehicle's open QUEUED placeholder, and
     frees up the loading zone for whoever's next in line. `mode` is 'QUEUE' for a
     normal front-of-line dispatch or 'UNLOAD' for a mid-queue roam conversion —
@@ -555,10 +578,6 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
     Returns the list of newly-created (already COLLECTED) Ticket rows.
     """
     checked_out_by_name = _checkout_personnel()
-    try:
-        ticket_form = TicketForm.objects.get(id=ticket_form_id)
-    except TicketForm.DoesNotExist:
-        raise ValidationError({"ticket_form_id": "Ticket form not found."})
 
     with transaction.atomic():
         placeholder = Ticket.objects.select_for_update().filter(
@@ -567,10 +586,7 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
         if not placeholder:
             raise ValidationError({"vehicle_id": "No open ticket found for this vehicle."})
 
-        price = ticket_form.price or 0
-        _check_terminal_price(vehicle, price, quantity)
-
-        units = _consume_series_fifo(ticket_form.id, quantity, series_id)
+        units = _draw_plan(vehicle, plan)
 
         dispatched_at = timezone.now()
         issuance_group = placeholder.issuance_group or uuid.uuid4().hex
@@ -597,13 +613,14 @@ def _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, mode, request, s
                 is_verified=True,
                 collection_amount=price,
                 dispatched_at=dispatched_at,
+                checked_out_at=dispatched_at,
                 loading_started_at=loading_started_at,
                 checked_in_at=checked_in_at,
                 checked_in_by_name=checked_in_by_name,
                 checked_out_by_name=checked_out_by_name,
                 issuance_group=issuance_group,
             )
-            for series, ticket_id in units
+            for series, ticket_id, price in units
         ]
 
         vehicle.status = 'AVAILABLE'
@@ -637,17 +654,16 @@ def _check_can_issue(vehicle, driver):
         raise ValidationError({"driver_id": "Selected driver's IWP has expired."})
 
 
-def _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request, series_id=None):
+def _issue_roam_tickets(vehicle, driver, plan, request, depart=True):
     """Roam core: the toll is paid on the spot, so tickets are born COLLECTED. Draws
     numbers through the same FIFO allocator dispatch uses, so the two paths can't
-    hand out the same number."""
-    checked_out_by_name = _checkout_personnel()
+    hand out the same number. `depart=False` is a kiosk roam numbered at check-in: it is
+    paid but still inside, and leaves on its next scan (see kiosk_scan)."""
+    checked_out_by_name = _checkout_personnel() if depart else ''
     _check_can_issue(vehicle, driver)
-    price = ticket_form.price or 0
-    _check_terminal_price(vehicle, price, quantity)
 
     with transaction.atomic():
-        units = _consume_series_fifo(ticket_form.id, quantity, series_id)
+        units = _draw_plan(vehicle, plan)
 
         dispatched_at = timezone.now()
         # A kiosk roam visit has been open since its scan; a front-desk roam is instant.
@@ -673,17 +689,19 @@ def _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request, series_
                 is_verified=True,
                 collection_amount=price,
                 dispatched_at=dispatched_at,
+                checked_out_at=dispatched_at if depart else None,
                 checked_in_at=checked_in_at,
                 checked_in_by_name=checked_in_by_name,
                 checked_out_by_name=checked_out_by_name,
                 issuance_group=issuance_group,
             )
-            for series, ticket_id in units
+            for series, ticket_id, price in units
         ]
 
         vehicle.active_driver = driver
         vehicle.save(update_fields=['active_driver', 'updated_at'])
-        KioskSession.objects.filter(vehicle=vehicle, status__in=KioskSession.OPEN_STATUSES).update(status='DONE')
+        if depart:
+            KioskSession.objects.filter(vehicle=vehicle, status__in=KioskSession.OPEN_STATUSES).update(status='DONE')
 
     return new_tickets
 
@@ -800,7 +818,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         except Vehicle.DoesNotExist:
             raise ValidationError({"vehicle_id": "Vehicle not found."})
 
-        new_tickets = _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, 'QUEUE', request, series_id)
+        new_tickets = _finalize_queued_vehicle(vehicle, [(ticket_form_id, quantity, series_id)], 'QUEUE', request)
         return Response(
             TicketSerializer(new_tickets, many=True, context={'request': request}).data
         )
@@ -829,7 +847,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         except Vehicle.DoesNotExist:
             raise ValidationError({"vehicle_id": "Vehicle not found."})
 
-        new_tickets = _finalize_queued_vehicle(vehicle, ticket_form_id, quantity, 'UNLOAD', request, series_id)
+        new_tickets = _finalize_queued_vehicle(vehicle, [(ticket_form_id, quantity, series_id)], 'UNLOAD', request)
         return Response(
             TicketSerializer(new_tickets, many=True, context={'request': request}).data
         )
@@ -842,6 +860,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         client (and promote_queue_front) sorts the line the same way."""
         route_id = request.data.get('route_id')
         vehicle_ids = request.data.get('vehicle_ids')
+        reason = str(request.data.get('reason') or '').strip()
         if not route_id or not isinstance(vehicle_ids, list) or not vehicle_ids:
             raise ValidationError({"vehicle_ids": "route_id and a non-empty vehicle_ids list are required."})
 
@@ -849,12 +868,29 @@ class TicketViewSet(viewsets.ModelViewSet):
             current = list(
                 Ticket.objects.select_for_update()
                 .filter(route_id=route_id, mode='QUEUE', status='QUEUED')
+                .order_by('queue_rank', 'issued_at')
             )
             current_by_vehicle = {t.vehicle_id: t for t in current}
             if set(vehicle_ids) != set(current_by_vehicle.keys()):
                 raise ValidationError({
                     "vehicle_ids": "This route's queue changed since it was loaded — refresh and try again."
                 })
+
+            # Changing who sits in the loading bay (#1) needs a stated reason, on the record.
+            bay_changed = current[0].vehicle_id != vehicle_ids[0]
+            if bay_changed and not reason:
+                raise ValidationError({"reason": "A reason is required to swap the vehicle in the loading bay."})
+            if bay_changed:
+                current[0].bay_swap_reason = reason[:255]
+                current[0].save(update_fields=['bay_swap_reason', 'updated_at'])
+                record_audit_log(
+                    user=request.user,
+                    action='UPDATE',
+                    model_name='Ticket',
+                    object_id=current[0].id,
+                    object_repr=f"Loading-bay swap: {current[0].vehicle} replaced by {current_by_vehicle[vehicle_ids[0]].vehicle}",
+                    changes={'reason': reason},
+                )
 
             for rank, vehicle_id in enumerate(vehicle_ids):
                 ticket = current_by_vehicle[vehicle_id]
@@ -867,6 +903,40 @@ class TicketViewSet(viewsets.ModelViewSet):
                 promote_queue_front(route)
 
         return Response({"status": "ok"})
+
+    @action(detail=False, methods=['post'], url_path='extend-loading')
+    def extend_loading(self, request):
+        """Give the vehicle in a route's loading bay (#1) more time before its
+        estimated departure. Only the front ticket carries an estimate, so the
+        extension is added to its extra_loading_minutes."""
+        route_id = request.data.get('route_id')
+        try:
+            minutes = int(request.data.get('minutes'))
+        except (TypeError, ValueError):
+            minutes = 0
+        if not route_id or minutes not in (5, 10, 15):
+            raise ValidationError({"minutes": "route_id and minutes (5, 10 or 15) are required."})
+
+        with transaction.atomic():
+            front = (
+                Ticket.objects.select_for_update()
+                .filter(route_id=route_id, mode='QUEUE', status='QUEUED')
+                .order_by('queue_rank', 'issued_at')
+                .first()
+            )
+            if not front:
+                raise ValidationError({"route_id": "No vehicle is queued on this route."})
+            front.extra_loading_minutes += minutes
+            front.save(update_fields=['extra_loading_minutes', 'updated_at'])
+            record_audit_log(
+                user=request.user,
+                action='UPDATE',
+                model_name='Ticket',
+                object_id=front.id,
+                object_repr=f"Loading time extended +{minutes} min: {front.vehicle}",
+                changes={'extra_loading_minutes': front.extra_loading_minutes},
+            )
+        return Response({"extra_loading_minutes": front.extra_loading_minutes})
 
     @action(detail=False, methods=['post'], url_path='roam')
     def roam_ticket(self, request):
@@ -901,7 +971,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         except TicketForm.DoesNotExist:
             raise ValidationError({"ticket_form_id": "Ticket form not found."})
 
-        new_tickets = _issue_roam_tickets(vehicle, driver, ticket_form, quantity, request)
+        new_tickets = _issue_roam_tickets(vehicle, driver, [(ticket_form.id, quantity, None)], request)
         return Response(
             TicketSerializer(new_tickets, many=True, context={'request': request}).data
         )
@@ -1037,8 +1107,21 @@ class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        requisition = serializer.save(issued_by_name=self.request.user.display_name)
+        # Starts unvalidated unless a supervisor is the one entering it; otherwise a supervisor
+        # validates it before its series can be used.
+        status = 'APPROVED' if self.request.user.role == 'SUPERVISOR' else 'PENDING'
+        requisition = serializer.save(
+            issued_by_name=self.request.user.display_name, issued_by_role=self.request.user.role, status=status)
         self._audit('CREATE', requisition, self._safe_changes())
+
+    def perform_update(self, serializer):
+        status = serializer.validated_data.get('status')
+        if status is not None and status != serializer.instance.status:
+            if self.request.user.role != 'SUPERVISOR':
+                raise PermissionDenied('Only a supervisor can validate a requisition.')
+            if status != 'APPROVED':
+                raise ValidationError({'status': 'A requisition can only be validated.'})
+        return super().perform_update(serializer)
 
 
 class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
@@ -1068,11 +1151,18 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
         )
 
     def perform_update(self, serializer):
-        """Fix a mis-keyed series in place. Only allowed while nothing has used the range;
-        series_no and the amounts are rebuilt from the corrected numbers and form price."""
+        """Fix a mis-keyed series in place. Once the range has been used only End No. may change
+        (not below the last used number); series_no and the amounts are rebuilt from the
+        corrected numbers and form price."""
         with transaction.atomic():
-            if self._in_use(serializer.instance):
-                raise ValidationError("This series already has issued tickets or a paper range, so it can't be edited.")
+            instance = serializer.instance
+            if self._in_use(instance):
+                data = serializer.validated_data
+                if int(data.get('start_no', instance.start_no)) != int(instance.start_no):
+                    raise ValidationError({"start_no": "Start No. can't be changed once tickets have been issued from this series."})
+                last_used = serializer.get_last_used_no(instance)
+                if last_used is not None and int(data.get('end_no', instance.end_no)) < last_used:
+                    raise ValidationError({"end_no": f"End No. can't be lower than {last_used}, the last number already used."})
             series = serializer.save()
             series.series_no = f"{series.start_no}-{series.end_no}"
             series.total_value = series.ticket_form.price * (int(series.end_no) - int(series.start_no) + 1)
