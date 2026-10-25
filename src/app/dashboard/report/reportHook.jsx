@@ -32,8 +32,8 @@ const toDateStr = (d) =>
 // Period chips on the report filter bar. "custom" has no range of its own —
 // it keeps whatever dates are already set and reveals the date inputs.
 export const PERIODS = [
+  { key: "7d", label: "Last 7 days" },
   { key: "month", label: "This month" },
-  { key: "30d", label: "Last 30 days" },
   { key: "year", label: "This year" },
   { key: "custom", label: "Custom" },
 ];
@@ -41,7 +41,7 @@ export const PERIODS = [
 export const getPeriodRange = (key) => {
   const now = new Date();
   if (key === "month") return { startDate: toDateStr(new Date(now.getFullYear(), now.getMonth(), 1)), endDate: getToday() };
-  if (key === "30d") return { startDate: toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)), endDate: getToday() };
+  if (key === "7d") return { startDate: toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)), endDate: getToday() };
   if (key === "year") return { startDate: getYearStart(), endDate: getToday() };
   return null;
 };

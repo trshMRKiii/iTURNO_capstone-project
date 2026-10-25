@@ -2,11 +2,10 @@ import time
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.conf import settings
-from django.db import connections, transaction
-from django.db.models import F
+from django.db import connections
 from django.utils import timezone
 
-from ..models import Ticket, TicketPrice, AuditLog, Vehicle, Route, User, KioskSession
+from ..models import Ticket, TicketPrice, AuditLog, User, KioskSession
 from ..sync.pause import sync_enabled
 
 _SUPABASE_PROBE_TTL = 10
@@ -95,53 +94,17 @@ def filter_collected(start_date=None, end_date=None):
     return qs
 
 
-def expire_stale_queue_tickets():
-    """Auto-cancel ISSUED tickets left over from a previous day and free their vehicle.
+def expire_stale_kiosk_sessions():
+    """A kiosk visit left unfinished overnight (e.g. a roam never paid for) dies with the day.
 
-    A vehicle checked into the queue but never dispatched before the terminal closes
-    otherwise stays stuck as QUEUED forever, blocking its route's queue position. This
-    is called lazily from the queue-facing list endpoints so the first request after
-    PH midnight self-heals it — no scheduler needed.
+    Called lazily from the queue-facing endpoints, so the first request after PH
+    midnight cleans up — no scheduler needed.
     """
     now_ph = timezone.now() + timedelta(hours=8)
     today_start = parse_date_start(now_ph.strftime('%Y-%m-%d'))
-
-    # A kiosk visit left unfinished overnight (e.g. a roam never paid for) dies with the day.
     KioskSession.objects.filter(
         status__in=KioskSession.OPEN_STATUSES, created_at__lt=today_start,
     ).update(status='CANCELLED')
-
-    with transaction.atomic():
-        stale = list(
-            Ticket.objects.select_for_update()
-            .filter(status='QUEUED', issued_at__lt=today_start)
-        )
-        if not stale:
-            return
-
-        vehicle_ids = set()
-        routes = set()
-        now = timezone.now()
-        for ticket in stale:
-            ticket.status = 'CANCELLED'
-            ticket.updated_at = now  # bulk_update bypasses auto_now, so set it explicitly
-            vehicle_ids.add(ticket.vehicle_id)
-            if ticket.route_id:
-                routes.add(ticket.route_id)
-
-        Ticket.objects.bulk_update(stale, ['status', 'updated_at'])
-
-        # The driver checked in for that stale shift never got dispatched, so
-        # the vehicle reverts to its registered owner rather than staying
-        # pinned to whoever was checked in when the day ended.
-        Vehicle.objects.filter(id__in=vehicle_ids, status='QUEUED').update(
-            status='AVAILABLE', active_driver=F('owner_driver'), updated_at=timezone.now()
-        )
-
-        # Whoever was behind an auto-cancelled front ticket just became first
-        # in line for their route.
-        for route in Route.objects.filter(id__in=routes):
-            promote_queue_front(route)
 
 
 def promote_queue_front(route):

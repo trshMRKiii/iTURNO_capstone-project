@@ -415,10 +415,6 @@
   background: rgba(59, 130, 246, 0.12);
   color: #1d4ed8;
 }
-.col-verified--cancelled {
-  background: rgba(239, 68, 68, 0.12);
-  color: #991b1b;
-}
 
 .col-override-btn {
   padding: 10px 14px;

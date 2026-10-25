@@ -46,7 +46,7 @@ function DashboardSkeleton() {
 export default function Dashboard() {
   const periodFilter = usePeriodFilter("today");
   const { period, fromDate, toDate, today } = periodFilter;
-  const { stats, busiest, activity, error } = useDashboard(periodFilter);
+  const { stats, busiest, busiestIsDefault, activity, error } = useDashboard(periodFilter);
   // The route picked in Route performance; Collections by hour narrows to it.
   const [route, setRoute] = useState(null);
 
@@ -83,7 +83,7 @@ export default function Dashboard() {
           <div className="dash-cols">
             <div className="dash-col">
               <HourlyChart stats={stats} rangeLabel={rangeLabel} comparedTo={comparedTo} route={route} onClearRoute={() => setRoute(null)} />
-              <BusiestTimes busiest={busiest} />
+              <BusiestTimes busiest={busiest} rangeLabel={busiestIsDefault ? "Last 4 weeks" : rangeLabel} />
             </div>
             <div className="dash-col">
               <RoutePerformance

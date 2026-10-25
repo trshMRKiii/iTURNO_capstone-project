@@ -232,18 +232,10 @@ function Collection() {
                             <td>
                               <span
                                 className={`col-verified ${
-                                  ticket.status === "CANCELLED"
-                                    ? "col-verified--cancelled"
-                                    : ticket.status === "QUEUED"
-                                    ? "col-verified--queued"
-                                    : "col-verified--yes"
+                                  ticket.status === "QUEUED" ? "col-verified--queued" : "col-verified--yes"
                                 }`}
                               >
-                                {ticket.status === "CANCELLED"
-                                  ? "Cancelled"
-                                  : ticket.status === "QUEUED"
-                                  ? "Queued"
-                                  : "Collected"}
+                                {ticket.status === "QUEUED" ? "Queued" : "Collected"}
                               </span>
                             </td>
                           </tr>

@@ -8,11 +8,15 @@ const LEGEND_SHADES = [8, 35, 65, 100];
 const shade = (value, peak) => Math.round(8 + 92 * (value / peak));
 
 // ["2026-09-22", "2026-09-29"] -> "Sep 22, Sep 29" — the days a cell's average is taken over.
+const MAX_LISTED_DAYS = 6;
+const shortDay = (iso) => new Date(`${iso}T00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const dayList = (isoDates = []) =>
-  isoDates.map((iso) => new Date(`${iso}T00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })).join(", ");
+  isoDates.length > MAX_LISTED_DAYS
+    ? `${isoDates.length} days, ${shortDay(isoDates[0])} – ${shortDay(isoDates[isoDates.length - 1])}`
+    : isoDates.map(shortDay).join(", ");
 
 // `busiest` is null while loading and false if it failed to load.
-export default function BusiestTimes({ busiest }) {
+export default function BusiestTimes({ busiest, rangeLabel }) {
   const grid = busiest?.grid;
   const hours = grid ? [...Array(24).keys()].filter((h) => grid.some((row) => row[h] > 0)) : [];
   const [from, to] = hourWindow(hours);
@@ -29,7 +33,7 @@ export default function BusiestTimes({ busiest }) {
   if (busiest === null) {
     body = <Skel h={200} />;
   } else if (!peak) {
-    body = <div className="dash-empty">{busiest ? "No check-ins recorded in the last four weeks yet." : "Couldn't load busiest times."}</div>;
+    body = <div className="dash-empty">{busiest ? "No check-ins recorded in this period." : "Couldn't load busiest times."}</div>;
   } else {
     body = (
       <>
@@ -79,7 +83,7 @@ export default function BusiestTimes({ busiest }) {
             </div>
           )}
         </div>
-        <span className="dash-card-note">Avg check-ins per hour · last {busiest?.weeks ?? 4} weeks</span>
+        <span className="dash-card-note">Avg check-ins per hour · {rangeLabel}</span>
       </div>
       {body}
     </section>

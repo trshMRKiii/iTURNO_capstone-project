@@ -11,9 +11,8 @@ NO_ROUTE = 'No route'
 
 
 def _tickets(params):
-    """Cancelled tickets never carried a passenger load, so they're skipped. The date
-    range filters created_at, same as TicketViewSet, so the numbers match the logs."""
-    qs = Ticket.objects.exclude(status='CANCELLED')
+    """The date range filters created_at, same as TicketViewSet, so the numbers match the logs."""
+    qs = Ticket.objects.all()
     try:
         if params.get('start_date'):
             qs = qs.filter(created_at__gte=parse_date_start(params['start_date']))
@@ -62,18 +61,26 @@ def _by_driver(qs, *group, order=('-total', 'driver__last_name', 'driver__first_
 
 
 def _plates(qs):
-    plates = defaultdict(list)
-    pairs = qs.values_list('route__origin', 'driver_id', 'vehicle__plate_number').distinct().order_by('vehicle__plate_number')
-    for route, driver_id, plate in pairs:
-        plates[(route, driver_id)].append(plate)
-    return plates
+    """Per (route, driver): the one vehicle registered to that route they ran most, so every row shows a
+    single plate. Counts still cover all the driver's tickets on the route."""
+    plates = {}
+    rows = (
+        qs.values_list('route__origin', 'driver_id', 'vehicle_id', 'vehicle__plate_number', 'vehicle__route__origin')
+        .annotate(n=Count('pk'))
+        .order_by('n', 'vehicle__plate_number')  # ascending, so the busiest vehicle overwrites last
+    )
+    for route, driver_id, vehicle_id, plate, home, _ in rows:
+        if home != route:  # only a vehicle registered to this route
+            continue
+        plates[(route, driver_id)] = [{'id': vehicle_id, 'plate': plate}]
+    return defaultdict(list, plates)
 
 
 def _driver_row(r, plates):
     return {
         'route': r['route__origin'] or NO_ROUTE,
         'driver': f"{r['driver__last_name']}, {r['driver__first_name']}".strip(),
-        'plates': plates[(r['route__origin'], r['driver_id'])],
+        'vehicles': plates[(r['route__origin'], r['driver_id'])],
         'queue': r['queue'],
         'roaming': r['roaming'],
         'total': r['total'],

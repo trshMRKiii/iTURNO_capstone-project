@@ -168,6 +168,24 @@
 .rpt-btn-export--blue  { background: #1d4ed8; }
 .rpt-btn-export--amber { background: #b45309; }
 
+/* Compact outlined row-action button (e.g. "View" in Route Analytics) */
+.rpt-btn-view {
+  padding: 5px 14px;
+  border: 1px solid #1a2744;
+  border-radius: 8px;
+  background: transparent;
+  color: #1a2744;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.rpt-route-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.rpt-btn-view:hover { background: #1a2744; color: #fff; }
+.dark .rpt-btn-view { border-color: var(--gold); color: var(--gold); }
+.dark .rpt-btn-view:hover { background: var(--gold); color: #1a2744; }
+
 /* Spinner */
 .rpt-spinner {
   width: 13px;
@@ -180,6 +198,13 @@
 }
 
 @keyframes rpt-spin { to { transform: rotate(360deg); } }
+
+/* Progress ring inside export buttons */
+.rpt-ring { flex-shrink: 0; transform: rotate(-90deg); }
+.rpt-ring circle { fill: none; stroke-width: 2.5; }
+.rpt-ring-track { stroke: rgba(255,255,255,0.3); }
+.rpt-ring-fill { stroke: #fff; stroke-linecap: round; transition: stroke-dashoffset 0.25s ease; }
+.rpt-ring--indeterminate { animation: rpt-spin 0.8s linear infinite; }
 
 /* ── Summary Cards ── */
 .rpt-summary-row {

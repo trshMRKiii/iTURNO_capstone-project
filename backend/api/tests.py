@@ -363,15 +363,6 @@ class DailyTransactionLogTests(TestCase):
         self.assertEqual((rows[1][6], rows[1][7], rows[1][9]), ('ABC123', 'Cruz, Juan', '20'))
         self.assertTrue(rows[1][1])  # time out filled
 
-    def test_cancel_closes_open_visit_and_roam_is_one_finished_row(self):
-        from django.utils import timezone
-        t = self._ticket('Q-abc', status='QUEUED')
-        t.status = 'CANCELLED'
-        t.save()
-        self._ticket('2001', mode='UNLOAD', status='COLLECTED', collection_amount=10, dispatched_at=timezone.now())
-        rows = self._rows()
-        self.assertEqual([(r[2], r[4]) for r in rows[1:]], [('CANCELLED', ''), ('COLLECTED', '2001')])
-
     def test_new_day_wipes_file_but_untouched_file_keeps_old_rows(self):
         import os, time
         self._ticket('T1')
@@ -1114,3 +1105,14 @@ class DashboardTests(TestCase):
         self.assertEqual(sum(map(sum, data['grid'])), 1.25)
         self.assertEqual(len(data['dates'][1]), 4)          # four Tuesdays behind that average
         self.assertEqual(sum(map(len, data['dates'])), 28)
+
+    def test_busiest_follows_the_period_filter(self):
+        from datetime import timedelta, timezone as dt_timezone
+        ticket = self._ticket(None)
+        Ticket.objects.filter(pk=ticket.pk).update(checked_in_at=self._at(0, 1, 30))   # today, 9:30 Manila
+        today = self._at(0, 1, 30).astimezone(dt_timezone(timedelta(hours=8))).date().isoformat()
+
+        data = self._get(f'/api/dashboard/busiest/?start_date={today}&end_date={today}')
+
+        self.assertEqual(sum(map(len, data['dates'])), 1)       # a single day: today is included
+        self.assertEqual(sum(map(sum, data['grid'])), 1.0)

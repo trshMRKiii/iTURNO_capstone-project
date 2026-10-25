@@ -172,12 +172,19 @@ def dashboard_stats(request):
 
 @api_view(['GET'])
 def dashboard_busiest(request):
-    """Average vehicle check-ins per weekday x hour over the last four full weeks (today
-    excluded, so every weekday appears exactly four times). Not tied to the dashboard's period
-    filter. Every ticket is one check-in, at checked_in_at (issued_at on older rows)."""
+    """Average vehicle check-ins per weekday x hour. With ?start_date&end_date (the dashboard's
+    period filter, "to" clamped to today) it averages over every day in that range; without
+    them, over the last four full weeks (today excluded, so every weekday appears exactly four
+    times). Every ticket is one check-in, at checked_in_at (issued_at on older rows)."""
     today = (timezone.now() + timedelta(hours=8)).date()
-    start = parse_date_start((today - timedelta(weeks=HEATMAP_WEEKS)).isoformat())
-    end = parse_date_end((today - timedelta(days=1)).isoformat())
+    try:
+        first = datetime.strptime(request.query_params['start_date'], '%Y-%m-%d').date()
+        last = min(datetime.strptime(request.query_params['end_date'], '%Y-%m-%d').date(), today)
+        first = min(first, last)
+    except (KeyError, ValueError):
+        first, last = today - timedelta(weeks=HEATMAP_WEEKS), today - timedelta(days=1)
+    start = parse_date_start(first.isoformat())
+    end = parse_date_end(last.isoformat())
     arrivals = (
         Ticket.objects.annotate(arrived_at=Coalesce('checked_in_at', 'issued_at'))
         .filter(arrived_at__gte=start, arrived_at__lte=end)
@@ -189,11 +196,12 @@ def dashboard_busiest(request):
         counts[local.weekday()][local.hour] += 1
     # The dates each weekday row averages over, oldest first, so a cell can say which days it covers.
     dates = [[] for _ in range(7)]
-    for back in range(HEATMAP_WEEKS * 7, 0, -1):
-        day = today - timedelta(days=back)
+    for offset in range((last - first).days + 1):
+        day = first + timedelta(days=offset)
         dates[day.weekday()].append(day.isoformat())
     return Response({
-        'weeks': HEATMAP_WEEKS,
-        'grid': [[round(n / HEATMAP_WEEKS, 2) for n in row] for row in counts],
+        'start_date': first.isoformat(),
+        'end_date': last.isoformat(),
+        'grid': [[round(n / max(len(dates[d]), 1), 2) for n in row] for d, row in enumerate(counts)],
         'dates': dates,
     })

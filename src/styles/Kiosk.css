@@ -18,6 +18,8 @@
 }
 /* One card at a time: the camera while waiting for a scan, the transaction panel afterwards. */
 .kiosk-stage--scan, .kiosk-stage--panel { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); }
+.kiosk-stage--scan { position: relative; }
+.kiosk-swap-cancel { position: absolute; top: 16px; right: 16px; z-index: 2; background: rgba(10, 18, 40, 0.85); }
 .kiosk-stage--panel .kiosk-card { position: absolute; left: -9999px; width: 320px; height: 240px; pointer-events: none; }
 
 /* Left: the one camera element for the whole session. */
@@ -85,7 +87,6 @@
 .kiosk-driver-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .kiosk-driver-text small { font-size: calc(var(--u) * 2.1); font-weight: 600; opacity: 0.85; }
 .kiosk-driver-text strong { font-size: calc(var(--u) * 2.8); }
-.kiosk-driver--swap { border-color: #60a5fa; background: rgba(37, 99, 235, 0.22); animation: kiosk-pulse 1.8s ease-in-out infinite; }
 .kiosk-driver-text span { font-size: calc(var(--u) * 1.6); opacity: 0.8; }
 .kiosk-prompt { margin: 0; font-weight: 600; opacity: 0.8; }
 .kiosk-prompt--error { color: #fca5a5; opacity: 1; }

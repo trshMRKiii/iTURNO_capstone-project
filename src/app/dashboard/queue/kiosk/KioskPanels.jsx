@@ -31,23 +31,20 @@ function Footer({ seconds, onCancel, cancelLabel = "Cancel" }) {
 
 // Plate, route and the registered operator, then the two big tiles. `blocked` greys the
 // tiles out for a vehicle that can't check in (expired papers).
-export function ModePanel({ vehicle, driverName, swap, swapDriver, blocked, heading, onPick, onSwap, onCancel, seconds }) {
+export function ModePanel({ vehicle, driverName, swapDriver, blocked, heading, onPick, onSwap, onCancel, seconds }) {
   return (
     <div className="kiosk-panel kiosk-panel--left">
       <VehicleHead vehicle={vehicle} />
-      <div className={`kiosk-driver${blocked ? " kiosk-driver--blocked" : ""}${swap ? " kiosk-driver--swap" : ""}${swapDriver?.error ? " kiosk-driver--blocked" : ""}`}>
+      <div className={`kiosk-driver${blocked ? " kiosk-driver--blocked" : ""}`}>
         <div className="kiosk-driver-text">
-          <small>{swap ? (swapDriver?.id ? "Driver QR scanned ✓" : swapDriver ? "QR not accepted" : "Swapping driver") : "Driver · registered operator"}</small>
-          <strong>{swap ? (swapDriver?.id ? swapDriver.name : "Show your own driver QR") : driverName}</strong>
-          {swap && <span>{swapDriver?.id ? "Now tap Queue or Roaming below." : swapDriver?.error || "Hold your QR to the camera, then pick Queue or Roaming."}</span>}
+          <small>{swapDriver?.id ? "Driver · scanned QR" : "Driver · registered operator"}</small>
+          <strong>{swapDriver?.id ? swapDriver.name : driverName}</strong>
         </div>
         {!blocked && (
-          <button type="button" className={`kiosk-ghost kiosk-ghost--sm${swap ? " kiosk-ghost--on" : ""}`} onClick={onSwap}>
-            {swap ? "Keep this driver" : "Swap driver"}
-          </button>
+          <button type="button" className="kiosk-ghost kiosk-ghost--sm" onClick={onSwap}>Swap driver</button>
         )}
       </div>
-      <p className={`kiosk-prompt${blocked ? " kiosk-prompt--error" : ""}`}>{swap && !swapDriver?.id ? "Scan first, then tap one" : heading}</p>
+      <p className={`kiosk-prompt${blocked ? " kiosk-prompt--error" : ""}`}>{heading}</p>
       <div className="kiosk-modes">
         {MODES.map((m) => (
           <button
@@ -63,19 +60,6 @@ export function ModePanel({ vehicle, driverName, swap, swapDriver, blocked, head
         ))}
       </div>
       <Footer seconds={seconds} onCancel={onCancel} />
-    </div>
-  );
-}
-
-export function SwapPanel({ vehicle, mode, onBack, seconds }) {
-  return (
-    <div className="kiosk-panel kiosk-panel--left">
-      <VehicleHead vehicle={vehicle} />
-      <h2 className="kiosk-title">Show your driver QR</h2>
-      <p className="kiosk-sub">
-        Hold your own QR code up to the camera to take over this vehicle for {mode === "QUEUE" ? "the queue" : "roaming"}.
-      </p>
-      <Footer seconds={seconds} onCancel={onBack} cancelLabel="← Back" />
     </div>
   );
 }

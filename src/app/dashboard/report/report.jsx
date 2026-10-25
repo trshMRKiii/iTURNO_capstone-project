@@ -28,9 +28,12 @@ const PAGE_SIZE = 30;
 const EMPTY_PAGE_META = { count: 0, totalPages: 1 };
 
 // Shapes a raw Ticket record into the flat row QueueLog/export expect.
-// ticket_id mirrors getTicketDisplayId() (queue/useQueue.jsx) so cancelled queue
+// ticket_id mirrors getTicketDisplayId() (queue/useQueue.jsx) so open queue
 // tickets show their friendly bay code (e.g. "NA-2") instead of the raw
 // placeholder id they keep until a real ticket number is assigned at dispatch.
+// Unpaginated ticket lists come back oldest-first; the on-screen logs are newest-first.
+const newestFirst = (rows, key) => [...rows].sort((a, b) => new Date(b[key] || 0) - new Date(a[key] || 0));
+
 const mapTicketToLogRow = (t) => ({
   id: t.id,
   timestamp: t.created_at,
@@ -46,8 +49,8 @@ const mapTicketToLogRow = (t) => ({
 
 export default function Report() {
   const { notify } = useFeedback();
-  const [period, setPeriod] = useState("month");
-  const [filters, setFilters] = useState(() => getPeriodRange("month"));
+  const [period, setPeriod] = useState("7d");
+  const [filters, setFilters] = useState(() => getPeriodRange("7d"));
   const [queueData, setQueueData] = useState([]);
   const [queueMeta, setQueueMeta] = useState(EMPTY_PAGE_META);
 
@@ -209,24 +212,42 @@ export default function Report() {
   // so CSV/PDF stay complete even though the on-screen table only loads one page.
   // `search` is optional: the on-screen search box passes it so the server narrows
   // the set instead of shipping every ticket; exports omit it and filter locally.
-  const fetchQueueExportRows = useCallback(async (search = "") => {
-    const qs = buildParams();
-    const res = await authFetch(
-      `/tickets/?mode=QUEUE${search ? `&search=${encodeURIComponent(search)}` : ""}${qs ? `&${qs}` : ""}`,
-    );
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : data.results || [];
-    return list.map(mapTicketToLogRow);
-  }, [buildParams]);
+  // Pulls every page (200 rows max each, a few in parallel) so the export button can show
+  // real progress instead of waiting on one huge response.
+  const fetchAllPages = useCallback(async (path, onProgress) => {
+    const get = async (page) => (await authFetch(`${path}&page=${page}&page_size=200`)).json();
+    const first = await get(1);
+    if (Array.isArray(first)) return first;
+    const total = first.total_pages || 1;
+    const pages = [first.results || []];
+    onProgress?.(1 / total);
+    for (let next = 2; next <= total; next += 4) {
+      const batch = await Promise.all(
+        Array.from({ length: Math.min(4, total - next + 1) }, (_, i) => get(next + i).then((d) => d.results || [])),
+      );
+      pages.push(...batch);
+      onProgress?.(pages.length / total);
+    }
+    return pages.flat();
+  }, []);
 
-  const fetchRoamingExportRows = useCallback(async (search = "") => {
+  const fetchQueueExportRows = useCallback(async (search = "", onProgress) => {
     const qs = buildParams();
-    const res = await authFetch(
-      `/tickets/?mode=UNLOAD${search ? `&search=${encodeURIComponent(search)}` : ""}${qs ? `&${qs}` : ""}`,
+    const list = await fetchAllPages(
+      `/tickets/?mode=QUEUE${search ? `&search=${encodeURIComponent(search)}` : ""}${qs ? `&${qs}` : ""}`,
+      onProgress,
     );
-    const data = await res.json();
-    return Array.isArray(data) ? data : data.results || [];
-  }, [buildParams]);
+    return newestFirst(list.map(mapTicketToLogRow), "timestamp");
+  }, [buildParams, fetchAllPages]);
+
+  const fetchRoamingExportRows = useCallback(async (search = "", onProgress) => {
+    const qs = buildParams();
+    const list = await fetchAllPages(
+      `/tickets/?mode=UNLOAD${search ? `&search=${encodeURIComponent(search)}` : ""}${qs ? `&${qs}` : ""}`,
+      onProgress,
+    );
+    return newestFirst(list, "issued_at");
+  }, [buildParams, fetchAllPages]);
 
   const fetchAuditExportRows = useCallback(async () => {
     const qs = buildParams();
@@ -241,7 +262,11 @@ export default function Report() {
       `/requisitions/?is_archived=false${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
-    return Array.isArray(data) ? data : data.results || [];
+    const list = Array.isArray(data) ? data : data.results || [];
+    // Unpaginated list comes back oldest-first; the on-screen table is newest-first.
+    return [...list].sort(
+      (a, b) => String(b.date_requested || "").localeCompare(String(a.date_requested || "")) || (b.id > a.id ? 1 : b.id < a.id ? -1 : 0),
+    );
   }, [buildParams]);
 
   const fetchRemittanceExportRows = useCallback(async () => {
@@ -250,7 +275,8 @@ export default function Report() {
       `/report/remittance/?is_archived=false${qs ? `&${qs}` : ""}`,
     );
     const data = await res.json();
-    return Array.isArray(data) ? data : data.results || [];
+    const list = Array.isArray(data) ? data : data.results || [];
+    return [...list].sort((a, b) => String(b.issued_at || "").localeCompare(String(a.issued_at || "")));
   }, [buildParams]);
 
   // Filters apply live: any change to the date range refetches every table.
@@ -284,7 +310,7 @@ export default function Report() {
     });
   };
 
-  const handleClearFilter = () => handlePeriodChange("month");
+  const handleClearFilter = () => handlePeriodChange("7d");
 
   const buildRequisitionExportRow = (r) => ({
     "Date Requested": r.date_requested ? r.date_requested.slice(0, 10) : "—",
@@ -312,7 +338,6 @@ export default function Report() {
     "Issued By": nameWithRole(b.issued_by_name, b.issued_by_role) || "—",
     Collections: b.collections ? b.collections.length : 0,
     "Total Amount": b.total_amount,
-    Status: b.status,
   });
 
   const handleExportRemittancePDF = async (search = "") => {
@@ -332,27 +357,57 @@ export default function Report() {
     "Dispatched By": l.dispatched_by,
   });
 
-  const handleExportQueuePDF = async (search = "") => {
-    const rows = await fetchQueueExportRows(search);
+  const handleExportQueuePDF = async (search = "", onProgress) => {
+    const rows = await fetchQueueExportRows(search, onProgress);
     exportTable(rows.filter((l) => matchesQueueRow(l, search)).map(buildLogExportRow), "Terminal Queue Log");
   };
 
   const buildRoamingExportRow = (t) => ({
-    "Ticket ID": String(t.id).replace(/^TICKET-/i, ""),
     Timestamp: t.issued_at ? new Date(t.issued_at).toLocaleString() : "—",
-    Vehicle: t.vehicle?.plate_number || "",
+    "Ticket ID": String(t.id).replace(/^TICKET-/i, ""),
     Driver: t.driver?.name || "",
+    Vehicle: t.vehicle?.plate_number || "",
+    Route: t.route_name || "",
     "Issued By": t.checked_in_by_name || "",
     "Dispatched By": t.checked_out_by_name || "",
-    Verified: t.status === "CANCELLED" ? "Cancelled" : t.is_verified ? "Verified" : "Pending",
+    Verified: t.is_verified ? "Verified" : "Pending",
   });
 
-  const handleExportRoamingPDF = async (search = "") => {
-    const rows = await fetchRoamingExportRows(search);
+  const handleExportRoamingPDF = async (search = "", onProgress) => {
+    const rows = await fetchRoamingExportRows(search, onProgress);
     exportTable(rows.filter((t) => matchesRoamingRow(t, search)).map(buildRoamingExportRow), "Roaming Logs");
   };
 
-  const handleExportRouteAnalyticsPDF = (rows, title = "Route Analytics") => exportTable(rows, title);
+  // One combined, newest-first table matching the "All" tab (queue + roaming).
+  const handleExportAllPDF = async (search = "", onProgress = () => {}) => {
+    const [queue, roaming] = await Promise.all([
+      fetchQueueExportRows(search, (p) => onProgress(p * 0.5)),
+      fetchRoamingExportRows(search, (p) => onProgress(0.5 + p * 0.5)),
+    ]);
+    const rows = [
+      ...queue.filter((l) => matchesQueueRow(l, search)).map((l) => ({ ts: l.timestamp, type: "Queue", l })),
+      ...roaming.filter((t) => matchesRoamingRow(t, search)).map((t) => ({ ts: t.issued_at, type: "Roaming", l: {
+        ticket_id: String(t.id).replace(/^TICKET-/i, ""),
+        driver: t.driver?.name,
+        vehicle: t.vehicle?.plate_number,
+        route: t.route_name,
+        issued_by: t.checked_in_by_name,
+        dispatched_by: t.checked_out_by_name,
+      } })),
+    ].sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
+    exportTable(rows.map(({ ts, type, l }) => ({
+      Timestamp: ts ? new Date(ts).toLocaleString() : "—",
+      "Ticket ID": l.ticket_id,
+      Type: type,
+      Driver: l.driver || "",
+      Vehicle: l.vehicle || "",
+      Route: l.route || "",
+      "Issued By": l.issued_by || "—",
+      "Dispatched By": l.dispatched_by || "—",
+    })), "Queue and Roaming Logs");
+  };
+
+  const handleExportRouteAnalyticsPDF =(rows, title = "Route Analytics") => exportTable(rows, title);
 
   // Tallied server-side: the summary, one route's drivers (paged) or the export rows,
   // depending on `extra`, so the browser never downloads every ticket.
@@ -466,6 +521,7 @@ export default function Report() {
         queueData={queueData}
         queueMeta={queueMeta}
         onQueueFetchPage={fetchQueueRaw}
+        onExportAllPDF={handleExportAllPDF}
         onExportQueuePDF={handleExportQueuePDF}
         roamingData={roamingData}
         roamingMeta={roamingMeta}

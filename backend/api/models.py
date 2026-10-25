@@ -199,8 +199,7 @@ class Vehicle(models.Model):
     # records form, stable across shifts.
     owner_driver = models.ForeignKey('Driver', null=True, blank=True, on_delete=models.SET_NULL, related_name='owned_vehicles')
     # Who's actually driving right now — set by check-in/roam/dispatch, and
-    # reverted to owner_driver when a stale queue ticket expires at day's end
-    # (see expire_stale_queue_tickets in views/helpers.py).
+    # reverted to owner_driver when the vehicle leaves the queue.
     active_driver = models.ForeignKey('Driver', null=True, blank=True, on_delete=models.SET_NULL, related_name='vehicles')
 
     is_archived = models.BooleanField(default=False, db_index=True)
@@ -221,7 +220,7 @@ class Vehicle(models.Model):
         return self.plate_number
 
 class Ticket(models.Model):
-    STATUS_CHOICES = [('QUEUED', 'Queued'), ('COLLECTED', 'Collected'), ('CANCELLED', 'Cancelled')]
+    STATUS_CHOICES = [('QUEUED', 'Queued'), ('COLLECTED', 'Collected')]
     MODE_CHOICES = [('UNLOAD', 'Unload'), ('QUEUE', 'Queue')]
 
     id = models.CharField(max_length=50, primary_key=True)

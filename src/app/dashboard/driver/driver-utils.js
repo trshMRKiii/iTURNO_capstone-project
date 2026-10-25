@@ -23,6 +23,16 @@ export const getExpiryStatus = (exp) => {
   return exp < today ? "expired" : "valid";
 };
 
+// Whole days left before a still-valid expiry within `withinDays` (default a month); null otherwise.
+export const daysUntilExpiry = (exp, withinDays = 30) => {
+  if (getExpiryStatus(exp) !== "valid") return null;
+  const today = new Date().toLocaleDateString("en-CA");
+  const days = Math.round((new Date(exp) - new Date(today)) / 86400000);
+  return days <= withinDays ? days : null;
+};
+
+export const expiryLabel = (days) => (days === 0 ? "Expires today" : `Expires in ${days}d`);
+
 export const getIwpStatus = (driver) => getExpiryStatus(driver?.iwp_expiration_date);
 
 // Driver photos come back as a backend-relative path (or a full URL); null when none.
@@ -88,6 +98,8 @@ export const normalizeDriverForm = (driver = {}) => ({
   qr_code: driver.qr_code || "",
   status: driver.status || "ACTIVE",
   is_archived: driver.is_archived ?? false,
+  created_at: driver.created_at || null,
+  updated_at: driver.updated_at || null,
   photo: driver.photo || null,
   name: getDriverDisplayName(driver),
   code: driver.code || driver.iwp_number || "",

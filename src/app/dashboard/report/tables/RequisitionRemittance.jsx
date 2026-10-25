@@ -3,6 +3,7 @@ import { DataTable } from "../../../../components/ui/dataTable";
 import { nameWithRole } from "../../../../lib/roles";
 import { peso } from "../reportHook";
 import Pager from "./Pager";
+import ExportPdfButton from "./ExportPdfButton";
 import ViewRemittance from "../../remittance/viewRemittance";
 import { downloadRemittancePDF } from "../../remittance/exportRemittancePDF";
 import { getBatchCashierName } from "../../remittance/useCashierName";
@@ -11,8 +12,8 @@ import { EyeIcon, DownloadIcon } from "../../../../components/ui/kit/icons";
 import RowMenu from "../../registry/RowMenu";
 import { matchesRequisitionRow, matchesRemittanceRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
 
-const REQUISITION_COLUMNS = ["Date Requested", "Requested By", "Recorded By", "Ticket Series", "Total Value"];
-const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Prepared By", "Recorded By", "Total Amount", "Actions"];
+const REQUISITION_COLUMNS = ["Date Requested", "Requested By (Supervisor)", "Recorded By", "Ticket Series", "Total Value"];
+const REMITTANCE_COLUMNS = ["Batch ID", "Issued At", "Prepared By (Supervisor)", "Recorded By", "Total Amount", "Actions"];
 // Rows per page on the card.
 const PREVIEW_SIZE = 5;
 
@@ -176,17 +177,11 @@ export default function RequisitionRemittance({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button
-            className="rpt-btn-export rpt-btn-export--navy"
+          <ExportPdfButton
             title={search ? "Export only rows matching your search" : "Export all records in range"}
-            onClick={() => (isRequisition ? onExportRequisitionsPDF(search) : onExportRemittancePDF(search))}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            {search ? "Export Matches (PDF)" : "Export PDF"}
-          </button>
+            label={search ? "Export Matches (PDF)" : "Export PDF"}
+            onExport={() => (isRequisition ? onExportRequisitionsPDF(search) : onExportRemittancePDF(search))}
+          />
         </div>
       </div>
 

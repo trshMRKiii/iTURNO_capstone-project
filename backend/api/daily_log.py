@@ -1,6 +1,6 @@
 """Plain-CSV keeper of today's ticket transactions, for when the system is down.
 
-Every vehicle visit (check-in through dispatch or cancellation) is one row in
+Every vehicle visit (check-in through dispatch) is one row in
 backend/daily_transactions.csv, kept up to date the moment it changes, so staff
 can still open the file and tally for remittance without waiting for the app
 or database. The
@@ -78,7 +78,7 @@ def _fold(rows, ticket, now):
     """Merge one ticket event into the day's rows: one row per vehicle visit.
 
     A queue check-in opens a row (status QUEUED, no ticket number yet); dispatch
-    or cancellation closes that same row instead of adding another. Roam/unload
+    closes that same row instead of adding another. Roam/unload
     tickets are born closed, so they get a finished row straight away.
     """
     plate = ticket.vehicle.plate_number

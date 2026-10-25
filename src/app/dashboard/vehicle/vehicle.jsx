@@ -13,7 +13,8 @@ import {
 } from "./vehicleHook";
 import TicketHistoryModal from "../registry/TicketHistoryModal";
 import RowMenu from "../registry/RowMenu";
-import { getExpiryStatus } from "../driver/driver-utils";
+import { useTableSort, SortHead } from "../registry/useTableSort";
+import { getExpiryStatus, daysUntilExpiry, expiryLabel } from "../driver/driver-utils";
 import { exportVehiclesPDF } from "../registry/registryExport";
 
 import React, { useState } from "react";
@@ -23,6 +24,19 @@ import "../../../styles/Vehicle.css";
 import "../../../styles/FormModal.css";
 import { useCanModifyFleet } from "../../../lib/useCanModifyFleet";
 import { SkeletonRows, HistoryIcon, ArchiveIcon, EditIcon } from "../../../components/ui/kit";
+
+const SORT_GETTERS = {
+  Route: (v) => v.route_detail?.full_name,
+  Transportation: (v) => v.transportation_name,
+  "Franchise #": (v) => v.franchise_number,
+  "Operator Name": (v) => v.owner_driver_name,
+  "Franchise Status": (v) =>
+    v.status === "AVAILABLE" && getExpiryStatus(v.franchise_expiration_date) === "expired"
+      ? "Franchise Expired"
+      : v.status === "AVAILABLE" && daysUntilExpiry(v.franchise_expiration_date) !== null
+        ? "Expiring Soon"
+        : STATUS_LABEL[v.status] || v.status,
+};
 
 function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd, exposeExportQR, exposeExportPDF }) {
   const {
@@ -156,10 +170,15 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
 
   React.useEffect(() => {
     if (exposeExportQR) exposeExportQR(exportQR);
-    if (exposeExportPDF) exposeExportPDF(() => exportVehiclesPDF(filteredVehicles));
+    if (exposeExportPDF) exposeExportPDF(() => exportVehiclesPDF(sortedVehicles));
   });
 
+  const [filters, setFilters] = useState({ Route: "", Transportation: "", "Franchise Status": "" });
+  const filterOptions = Object.fromEntries(
+    Object.keys(filters).map((k) => [k, [...new Set(vehicles.map(SORT_GETTERS[k]).filter(Boolean))].sort()]),
+  );
   const filteredVehicles = vehicles.filter((v) => {
+    if (Object.entries(filters).some(([k, val]) => val && SORT_GETTERS[k](v) !== val)) return false;
     const q = searchTerm.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -173,16 +192,17 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
     );
   });
 
+  const { sorted: sortedVehicles, sort, onSort } = useTableSort(filteredVehicles, SORT_GETTERS);
   const totalPages = Math.max(1, Math.ceil(filteredVehicles.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
-  const paginatedVehicles = filteredVehicles.slice(
+  const paginatedVehicles = sortedVehicles.slice(
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filters]);
 
   return (
     <div className="veh-page">
@@ -255,6 +275,29 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
         </div>
       )}
 
+      <div className="veh-filters">
+        {Object.keys(filters).map((k) => (
+          <select
+            key={k}
+            className="veh-filter"
+            aria-label={`Filter by ${k}`}
+            value={filters[k]}
+            onChange={(e) => setFilters({ ...filters, [k]: e.target.value })}
+          >
+            <option value="">All {k === "Franchise Status" ? "statuses" : k === "Route" ? "routes" : "transport types"}</option>
+            {filterOptions[k].map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ))}
+        {Object.values(filters).some(Boolean) && (
+          <button
+            className="veh-filter-clear"
+            onClick={() => setFilters({ Route: "", Transportation: "", "Franchise Status": "" })}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
       {/* Table card */}
       <div className="veh-card">
         <div className="veh-table-wrap">
@@ -266,12 +309,11 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                   "Route",
                   "Transportation",
                   "Franchise #",
-                  
                   "Operator Name",
                   "Franchise Status",
                   "Actions",
                 ].map((h) => (
-                  <th key={h}>{h}</th>
+                  <SortHead key={h} label={h} sortable={!!SORT_GETTERS[h]} sort={sort} onSort={onSort} />
                 ))}
               </tr>
             </thead>
@@ -334,6 +376,10 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                     <td>
                       {vehicle.status === "AVAILABLE" && getExpiryStatus(vehicle.franchise_expiration_date) === "expired" ? (
                         <span className="veh-status veh-status--expired">Franchise Expired</span>
+                      ) : vehicle.status === "AVAILABLE" && daysUntilExpiry(vehicle.franchise_expiration_date) !== null ? (
+                        <span className="veh-status veh-status--warn" title={`Franchise expires ${vehicle.franchise_expiration_date}`}>
+                          {expiryLabel(daysUntilExpiry(vehicle.franchise_expiration_date))}
+                        </span>
                       ) : (
                         <span
                           className={`veh-status ${STATUS_COLOR[vehicle.status] || "veh-status--default"}`}

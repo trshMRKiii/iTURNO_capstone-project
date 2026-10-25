@@ -5,12 +5,26 @@ import { useDriver } from "./useDriver";
 import DriverFormModal from "./DriverFormModal";
 import TicketHistoryModal from "../registry/TicketHistoryModal";
 import RowMenu from "../registry/RowMenu";
-import { getDriverCode, getDriverDisplayName, getIwpStatus } from "./driver-utils";
+import { useTableSort, SortHead } from "../registry/useTableSort";
+import { getDriverCode, getDriverDisplayName, getIwpStatus, daysUntilExpiry, expiryLabel } from "./driver-utils";
 import { useFeedback, SkeletonRows, HistoryIcon, ArchiveIcon, EditIcon } from "../../../components/ui/kit";
 import { exportDriversPDF } from "../registry/registryExport";
 import "../../../styles/Driver.css";
 import "../../../styles/FormModal.css";
 import { useCanModifyFleet } from "../../../lib/useCanModifyFleet";
+
+const SORT_GETTERS = {
+  "Full Name": getDriverDisplayName,
+  IWP: (d) => d.iwp_number || getDriverCode(d),
+  "IWP Status": (d) =>
+    d.status !== "ACTIVE"
+      ? "Inactive"
+      : getIwpStatus(d) === "expired"
+        ? "IWP Expired"
+        : daysUntilExpiry(d.iwp_expiration_date) !== null
+          ? "Expiring Soon"
+          : "Active",
+};
 
 function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd, exposeExportQR, exposeExportPDF }) {
   const {
@@ -42,7 +56,10 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
   React.useEffect(() => {
     if (exposeAdd) exposeAdd(handleAdd);
   }, [exposeAdd, handleAdd]);
+  const [statusFilter, setStatusFilter] = useState("");
+  const statusOptions = [...new Set(drivers.map(SORT_GETTERS["IWP Status"]))].sort();
   const filteredDrivers = drivers.filter((d) => {
+    if (statusFilter && SORT_GETTERS["IWP Status"](d) !== statusFilter) return false;
     const q = searchTerm.toLowerCase().trim();
     if (!q) return true;
 
@@ -62,16 +79,17 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
     return haystack.includes(q);
   });
 
+  const { sorted: sortedDrivers, sort, onSort } = useTableSort(filteredDrivers, SORT_GETTERS);
   const totalPages = Math.max(1, Math.ceil(filteredDrivers.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
-  const paginatedDrivers = filteredDrivers.slice(
+  const paginatedDrivers = sortedDrivers.slice(
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter]);
 
   const exportQR = () => {
     const toExport = filteredDrivers.filter((d) => d.qr_code);
@@ -138,7 +156,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
 
   React.useEffect(() => {
     if (exposeExportQR) exposeExportQR(exportQR);
-    if (exposeExportPDF) exposeExportPDF(() => exportDriversPDF(filteredDrivers));
+    if (exposeExportPDF) exposeExportPDF(() => exportDriversPDF(sortedDrivers));
   });
 
   return (
@@ -214,17 +232,30 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
         </div>
       )}
 
+      <div className="veh-filters">
+        <select
+          className="veh-filter"
+          aria-label="Filter by IWP Status"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="">All statuses</option>
+          {statusOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        {statusFilter && (
+          <button className="veh-filter-clear" onClick={() => setStatusFilter("")}>Clear filters</button>
+        )}
+      </div>
+
       {/* Table card */}
       <div className="drv-card">
         <div className="drv-table-wrap">
           <table className="drv-table">
             <thead>
               <tr>
-                {["Full Name", "Contact No.", "Address", "IWP", "IWP Status", "Actions"].map(
-                  (h) => (
-                    <th key={h}>{h}</th>
-                  ),
-                )}
+                {["Full Name", "Contact No.", "Address", "IWP", "IWP Status", "Actions"].map((h) => (
+                  <SortHead key={h} label={h} sortable={!!SORT_GETTERS[h]} sort={sort} onSort={onSort} />
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -271,6 +302,10 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
                       <div className="drv-status-group">
                         {driver.status === "ACTIVE" && getIwpStatus(driver) === "expired" ? (
                           <span className="drv-status drv-status--expired">IWP Expired</span>
+                        ) : driver.status === "ACTIVE" && daysUntilExpiry(driver.iwp_expiration_date) !== null ? (
+                          <span className="drv-status drv-status--warn" title={`IWP expires ${driver.iwp_expiration_date}`}>
+                            {expiryLabel(daysUntilExpiry(driver.iwp_expiration_date))}
+                          </span>
                         ) : (
                           <span
                             className={`drv-status ${driver.status === "ACTIVE" ? "drv-status--active" : "drv-status--inactive"}`}

@@ -117,7 +117,6 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
         setDayTickets(
           tickets.filter(t =>
             t.issued_at && getTodayDateString(new Date(t.issued_at)) === dateIssued &&
-            t.status !== "CANCELLED" &&
             t.is_verified === true
           )
         );

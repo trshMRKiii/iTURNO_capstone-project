@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { SegmentedControl } from "../../../components/ui/kit";
 import { formatWait, peso, plural } from "./format";
 
 const COLLAPSED_ROWS = 2;
@@ -13,10 +12,6 @@ const STOCK_LOW_MAX_PCS = 1000;
 const STOCK_LOW_TOTAL = 30000;
 
 const FORM_COLORS = ["var(--series-queued)","#e8b94a", "#3b82f6", "#22c55e", "#ef4444"];
-const QUEUE_VIEWS = [
-  { key: "empty", label: "Empty" },
-  { key: "queue", label: "With queue" },
-];
 const SPLIT = [
   { key: "queued", label: "Queued" },
   { key: "roamed", label: "Roamed" },
@@ -112,54 +107,27 @@ export function CollectionsCard({ stats, rangeLabel }) {
 }
 
 export function QueueCard({ routes }) {
-  const [view, setView] = useState("queue");
-
   const waiting = routes.filter((r) => r.count > 0).sort((a, b) => b.waiting_minutes - a.waiting_minutes);
-  const idle = routes.filter((r) => r.count === 0).sort((a, b) => a.name.localeCompare(b.name));
   const vehicles = waiting.reduce((sum, r) => sum + r.count, 0);
-  const list = view === "queue" ? waiting : idle;
 
   return (
-    <OverviewCard
-      label="Currently Queued"
-      action={
-        <div className="ov-seg">
-          <SegmentedControl
-            label="Routes to show"
-            options={QUEUE_VIEWS}
-            value={view}
-            onChange={setView}
-          />
-        </div>
-      }
-    >
+    <OverviewCard label="Currently Queued">
       <div className="ov-value">
         {vehicles}
         <span className="ov-unit">{vehicles === 1 ? "vehicle" : "vehicles"} in line</span>
       </div>
       <QuickList
-        key={view}
-        title={view === "queue" ? "In queue" : "Idle routes"}
-        items={list}
+        title="In queue"
+        items={waiting}
         listClass="ov-queue"
-        emptyText={
-          view === "queue"
-            ? "No vehicles waiting right now. New check-ins appear here on their own."
-            : "Every route has vehicles waiting."
-        }
+        emptyText="No vehicles waiting right now. New check-ins appear here on their own."
         renderRow={(r) => (
           <li className="ov-queue-row" key={r.name}>
             <div className="ov-queue-info">
               <span className="ov-queue-name">{r.name}</span>
               <span className="ov-queue-sub">
-                {r.count > 0 ? (
-                  <>
-                    <strong>{r.next_plate}</strong> · waiting{" "}
-                    <span className={r.waiting_minutes >= LONG_WAIT_MIN ? "is-long" : ""}>{formatWait(r.waiting_minutes)}</span>
-                  </>
-                ) : (
-                  "No vehicles waiting"
-                )}
+                <strong>{r.next_plate}</strong> · waiting{" "}
+                <span className={r.waiting_minutes >= LONG_WAIT_MIN ? "is-long" : ""}>{formatWait(r.waiting_minutes)}</span>
               </span>
             </div>
             <span className="ov-count">{r.count}</span>

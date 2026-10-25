@@ -1,12 +1,17 @@
-import { Fragment, useState, useEffect, useRef, useMemo } from "react";
+import { Fragment, Suspense, lazy, useState, useEffect, useRef, useMemo } from "react";
 import { DataTable, SortTh } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
+import ExportPdfButton from "./ExportPdfButton";
+
+// Loaded on the first "View" click, so the report page doesn't pay for it up front.
+const TicketHistoryModal = lazy(() => import("../../registry/TicketHistoryModal"));
 
 const COLUMNS = ["Route", "Queue", "Roaming", "Total", "Drivers"];
 const CENTERED = ["Queue", "Roaming", "Total", "Drivers"];
-const SUB_COLUMNS = ["Driver", "Vehicle", "Queue", "Roaming", "Total"];
+const SUB_COLUMNS = ["Driver", "Vehicle", "Queue", "Roaming", "Total", "Action"];
 const DRIVER_PAGE_SIZE = 10;
 const ALL = "__all__";
+const NO_ROUTE = "No route"; // matches the backend's label for tickets without a route
 // Column label -> field, shared by the route table (sorted here) and the driver table (sorted by the server).
 const ROUTE_SORT = { Route: "route", Queue: "queue", Roaming: "roaming", Total: "total", Drivers: "drivers" };
 const DRIVER_SORT = { Driver: "driver", Queue: "queue", Roaming: "roaming", Total: "total" };
@@ -27,7 +32,7 @@ const Count = ({ n, color }) =>
 
 // One route's drivers, a page at a time. Remounted (via key) whenever the report's range
 // or search changes, so the page number resets with it.
-function RouteDrivers({ route, search, onFetch }) {
+function RouteDrivers({ route, search, onFetch, onView }) {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState(DEFAULT_SORT);
   const [data, setData] = useState(null);
@@ -73,13 +78,29 @@ function RouteDrivers({ route, search, onFetch }) {
               <tr key={d.driver} className="rpt-tr">
                 <td className="rpt-td">{d.driver}</td>
                 <td className="rpt-td">
-                  {d.plates.length
-                    ? d.plates.map((p) => <span key={p} className="rpt-plate rpt-route-plate">{p}</span>)
+                  {d.vehicles.length
+                    ? d.vehicles.map((v) => <span key={v.id} className="rpt-plate rpt-route-plate">{v.plate}</span>)
                     : <span className="rpt-na">—</span>}
                 </td>
                 <td className="rpt-td rpt-center"><Count n={d.queue} color="#2563eb" /></td>
                 <td className="rpt-td rpt-center"><Count n={d.roaming} color="#7c3aed" /></td>
                 <td className="rpt-td rpt-center rpt-bold">{d.total}</td>
+                <td className="rpt-td rpt-center">
+                  {d.vehicles.length ? (
+                    <div className="rpt-route-actions">
+                      {d.vehicles.map((v) => (
+                        <button
+                          key={v.id}
+                          className="rpt-btn-view"
+                          title={`Ticket history — ${v.plate}`}
+                          onClick={() => onView({ id: v.id, plate_number: v.plate })}
+                        >
+                          View{d.vehicles.length > 1 ? ` ${v.plate}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  ) : <span className="rpt-na">—</span>}
+                </td>
               </tr>
             ))
           )}
@@ -108,6 +129,7 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
   const [picked, setPicked] = useState(null); // null until chosen → the busiest route
   const [openRoute, setOpenRoute] = useState(null); // accordion, used while viewing "All routes"
   const [sort, setSort] = useState(DEFAULT_SORT);
+  const [historyVehicle, setHistoryVehicle] = useState(null);
   const generation = useRef(0);
   const term = search.trim();
 
@@ -154,7 +176,7 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
       ordered.map((r) => ({
         Route: r.route,
         Driver: r.driver,
-        Vehicle: r.plates.join(", "),
+        Vehicle: r.vehicles.map((v) => v.plate).join(", "),
         Queue: r.queue,
         Roaming: r.roaming,
         Total: r.total,
@@ -189,7 +211,7 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
         {expanded && (
           <tr className={rowClass}>
             <td className={`${cellClass} rpt-route-detail`} colSpan={COLUMNS.length}>
-              <RouteDrivers key={`${summary.gen}|${r.route}`} route={r.route} search={summary.search} onFetch={onFetch} />
+              <RouteDrivers key={`${summary.gen}|${r.route}`} route={r.route} search={summary.search} onFetch={onFetch} onView={(v) => setHistoryVehicle({ ...v, route: r.route })} />
             </td>
           </tr>
         )}
@@ -232,17 +254,11 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
               Summary PDF
             </button>
           )}
-          <button
-            className="rpt-btn-export rpt-btn-export--navy"
+          <ExportPdfButton
             disabled={!routes.length}
-            onClick={handleExport}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            {single ? "Export PDF" : "Detailed PDF"}
-          </button>
+            label={single ? "Export PDF" : "Detailed PDF"}
+            onExport={handleExport}
+          />
         </div>
       </div>
 
@@ -254,6 +270,12 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
         sort={sort}
         onSort={(column) => setSort(nextSort(sort, column))}
       />
+
+      {historyVehicle && (
+        <Suspense fallback={null}>
+          <TicketHistoryModal vehicle={historyVehicle} route={historyVehicle.route === NO_ROUTE ? undefined : historyVehicle.route} onClose={() => setHistoryVehicle(null)} />
+        </Suspense>
+      )}
     </div>
   );
 }

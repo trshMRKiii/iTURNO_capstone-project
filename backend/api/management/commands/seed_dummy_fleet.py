@@ -18,9 +18,8 @@ whenever a form's current series runs out a new requisition + series follows
 Each day gets between --daily-min and --daily-max physical Ticket rows (the
 app's own "check-out" count, see checkout_count in views/reports.py). Tickets
 land in the buckets the Queue page groups them in: mostly COLLECTED (queue wait
-centered on the vehicle's route loading-time estimate), a few CANCELLED
-(spread over the whole history), and mode=UNLOAD ("roam") tickets collected on
-the spot. Days are Philippine days (UTC+8, like every report in the app) and
+centered on the vehicle's route loading-time estimate) and mode=UNLOAD ("roam")
+tickets collected on the spot. Days are Philippine days (UTC+8, like every report in the app) and
 history runs through yesterday, so nothing is dated in the future; each day has
 a remittance batch whose tickets are linked to it (Ticket.remittance_batch).
 
@@ -174,10 +173,6 @@ class Command(BaseCommand):
         parser.add_argument("--daily-min", type=int, default=130, help="Minimum physical Ticket rows (check-outs) per day.")
         parser.add_argument("--daily-max", type=int, default=210, help="Maximum physical Ticket rows (check-outs) per day.")
         parser.add_argument(
-            "--cancelled-rate", type=float, default=0.02,
-            help="Fraction of tickets, spread across the whole history, that end up CANCELLED instead of COLLECTED.",
-        )
-        parser.add_argument(
             "--keep-fleet", action="store_true",
             help="Leave existing Driver/Vehicle rows alone; only wipe and regenerate tickets/requisitions/series.",
         )
@@ -188,7 +183,6 @@ class Command(BaseCommand):
         months = options["months"]
         daily_min = options["daily_min"]
         daily_max = options["daily_max"]
-        cancelled_rate = options["cancelled_rate"]
         keep_fleet = options["keep_fleet"]
         if options["seed"] is not None:
             random.seed(options["seed"])
@@ -197,7 +191,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             ctx = self._setup(dry_run, keep_fleet)
             if ctx is not None and not dry_run:
-                ticket_stats = self._generate_history(ctx, months, daily_min, daily_max, cancelled_rate)
+                ticket_stats = self._generate_history(ctx, months, daily_min, daily_max)
             if dry_run:
                 transaction.set_rollback(True)
 
@@ -361,7 +355,7 @@ class Command(BaseCommand):
             "route_count": len(routes),
         }
 
-    def _generate_history(self, ctx, months, daily_min, daily_max, cancelled_rate):
+    def _generate_history(self, ctx, months, daily_min, daily_max):
         # Every COLLECTED transaction must total exactly the configured terminal
         # price (see dispatch_ticket / roam check-in's price*quantity ==
         # terminal_price guard in views/viewsets.py) -- so a form only ever gets
@@ -378,7 +372,7 @@ class Command(BaseCommand):
         day = start_day
         while day <= last_day:
             with transaction.atomic():
-                self._generate_day(day, daily_min, daily_max, cancelled_rate, form_quantities,
+                self._generate_day(day, daily_min, daily_max, form_quantities,
                                    available_vehicles, ctx, ticket_stats)
             day += timedelta(days=1)
 
@@ -426,7 +420,7 @@ class Command(BaseCommand):
         ctx["series_count"] += 1
         return series
 
-    def _generate_day(self, day, daily_min, daily_max, cancelled_rate, form_quantities,
+    def _generate_day(self, day, daily_min, daily_max, form_quantities,
                        available_vehicles, ctx, ticket_stats):
         ticket_forms, staff_users = ctx["ticket_forms"], ctx["staff_users"]
         # daily-min/daily-max count physical Ticket rows -- what the app itself
@@ -466,12 +460,8 @@ class Command(BaseCommand):
                 wait_minutes = 0
             issued_at = dispatched_at - timedelta(minutes=wait_minutes)
 
-            status = "CANCELLED" if random.random() < cancelled_rate else "COLLECTED"
-            if status == "COLLECTED":
-                form = random.choice(ticket_forms)
-                quantity = form_quantities.get(form.id, 1)
-            else:
-                form, quantity = None, 1
+            form = random.choice(ticket_forms)
+            quantity = form_quantities.get(form.id, 1)
 
             if row_count + quantity > daily_max:
                 break  # would blow the hard cap -- stop issuing for the day
@@ -482,7 +472,6 @@ class Command(BaseCommand):
                 "on_duty": random.choice(staff_users),
                 "issued_at": issued_at,
                 "dispatched_at": dispatched_at,
-                "status": status,
                 "form": form,
                 "quantity": quantity,
             })
@@ -494,32 +483,9 @@ class Command(BaseCommand):
 
         for t in txns:
             vehicle, mode, on_duty = t["vehicle"], t["mode"], t["on_duty"]
-            issued_at, status = t["issued_at"], t["status"]
+            issued_at = t["issued_at"]
             active_user_name = f"{on_duty.first_name} {on_duty.last_name}".strip() or on_duty.username
             issuance_group = uuid.uuid4().hex
-
-            if status == "CANCELLED":
-                # Cancelled before a ticket_form/quantity was ever chosen (that
-                # only happens at dispatch/roam check-in), so no series number
-                # is consumed -- a price-less placeholder.
-                ticket = Ticket(
-                    id=f"CANCELLED-{uuid.uuid4().hex[:12]}",
-                    vehicle=vehicle,
-                    driver_id=vehicle.active_driver_id,
-                    active_user=on_duty,
-                    active_user_name=active_user_name,
-                    route=vehicle.route,
-                    mode=mode,
-                    status="CANCELLED",
-                    is_verified=False,
-                    issued_at=issued_at,
-                    dispatched_at=None,
-                    issuance_group=issuance_group,
-                )
-                ticket._issued_at_fix = issued_at
-                ticket._created_at_fix = issued_at
-                day_tickets.append(ticket)
-                continue
 
             # COLLECTED -- issued as a group of whatever quantity of this form
             # hits the terminal price exactly, all sharing one issuance_group.

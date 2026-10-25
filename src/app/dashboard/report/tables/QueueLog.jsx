@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback } from "react";
 import { DataTable } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
+import ExportPdfButton from "./ExportPdfButton";
 import { matchesQueueRow, matchesRoamingRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
-const QUEUE_COLUMNS = ["Timestamp", "Ticket ID", "Issued By", "Driver", "Vehicle", "Route", "Dispatched By"];
-const ROAMING_COLUMNS = ["Ticket ID", "Timestamp", "Vehicle", "Driver", "Issued By", "Dispatched By"];
+const QUEUE_COLUMNS = ["Timestamp", "Ticket ID", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
+const ROAMING_COLUMNS = ["Timestamp", "Ticket ID", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
 const ALL_COLUMNS = ["Timestamp", "Ticket ID", "Type", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
 
 const withQueueType = (l) => ({ ...l, type: "Queue" });
@@ -39,6 +40,7 @@ export default function QueueLog({
   queueMeta,
   onQueueFetchPage,
   onQueueFetchAll,
+  onExportAllPDF,
   onExportQueuePDF,
   roamingData,
   roamingMeta,
@@ -138,10 +140,10 @@ export default function QueueLog({
     <tr key={`${l.id}-${idx}`} className={rowClass}>
       <td className={`${cellClass} rpt-mono rpt-muted`}>{l.timestamp ? new Date(l.timestamp).toLocaleString() : "—"}</td>
       <td className={`${cellClass} rpt-mono`}>{l.ticket_id}</td>
-      <td className={cellClass}>{l.issued_by}</td>
       <td className={cellClass}>{l.driver}</td>
       <td className={cellClass}><span className="rpt-plate">{l.vehicle}</span></td>
       <td className={cellClass}>{l.route}</td>
+      <td className={cellClass}>{l.issued_by}</td>
       <td className={cellClass}>{l.dispatched_by}</td>
     </tr>
   );
@@ -168,8 +170,9 @@ export default function QueueLog({
 
   const renderRoamingRow = (t, idx, { rowClass, cellClass }) => (
     <tr key={t.id} className={rowClass}>
-      <td className={`${cellClass} rpt-mono`}>{String(t.id).replace(/^TICKET-/i, "")}</td>
       <td className={`${cellClass} rpt-mono rpt-muted`}>{t.issued_at ? new Date(t.issued_at).toLocaleString() : "—"}</td>
+      <td className={`${cellClass} rpt-mono`}>{String(t.id).replace(/^TICKET-/i, "")}</td>
+      <td className={cellClass}>{t.driver?.name || <span className="rpt-na">—</span>}</td>
       <td className={cellClass}>
         {t.vehicle?.plate_number ? (
           <span className="rpt-plate">{t.vehicle.plate_number}</span>
@@ -177,8 +180,8 @@ export default function QueueLog({
           <span className="rpt-na">—</span>
         )}
       </td>
-      <td className={cellClass}>{t.driver?.name || <span className="rpt-na">—</span>}</td>
-      <td className={cellClass}>{t.checked_in_by_name || <span className="rpt-na">—</span>}</td>
+      <td className={cellClass}>{t.route_name || <span className="rpt-na">—</span>}</td>
+      <td className={cellClass}>{t.checked_in_by_name ||<span className="rpt-na">—</span>}</td>
       <td className={cellClass}>{t.checked_out_by_name || <span className="rpt-na">—</span>}</td>
     </tr>
   );
@@ -186,10 +189,8 @@ export default function QueueLog({
   const columns = isAll ? ALL_COLUMNS : isQueue ? QUEUE_COLUMNS : ROAMING_COLUMNS;
   const rowRenderer = isAll ? renderAllRow : isQueue ? renderQueueRow : renderRoamingRow;
 
-  const handleExport = async () => {
-    if (isAll || isQueue) await onExportQueuePDF(search);
-    if (isAll || !isQueue) await onExportRoamingPDF(search);
-  };
+  const handleExport = (onProgress) =>
+    (isAll ? onExportAllPDF : isQueue ? onExportQueuePDF : onExportRoamingPDF)(search, onProgress);
 
   return (
     <div className="rpt-card rpt-section">
@@ -203,17 +204,11 @@ export default function QueueLog({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button
-            className="rpt-btn-export rpt-btn-export--navy"
+          <ExportPdfButton
             title={search ? "Export only rows matching your search" : "Export all records in range"}
-            onClick={handleExport}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            {search ? "Export Matches (PDF)" : "Export PDF"}
-          </button>
+            label={search ? "Export Matches (PDF)" : "Export PDF"}
+            onExport={handleExport}
+          />
         </div>
       </div>
 

@@ -22,7 +22,7 @@ from ..sync.account_emails import flush_account_emails, queue_account_email
 from ..sync.fleet_access import flush_fleet_access
 from ..sync.settings_outbox import flush_settings, next_offline_pk, park, park_delete
 from ..sms import send_sms_async, queue_next_message
-from .helpers import record_audit_log, expire_stale_queue_tickets, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
+from .helpers import record_audit_log, expire_stale_kiosk_sessions, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
 from .remittance_export import remittance_xlsx_response
 
 
@@ -420,7 +420,7 @@ class VehicleViewSet(AuditLogMixin, viewsets.ModelViewSet):
         return qs
 
     def list(self, request, *args, **kwargs):
-        expire_stale_queue_tickets()
+        expire_stale_kiosk_sessions()
         return super().list(request, *args, **kwargs)
 
     def perform_update(self, serializer):
@@ -727,6 +727,9 @@ class TicketViewSet(viewsets.ModelViewSet):
         driver_id = self.request.query_params.get('driver_id')
         if driver_id:
             qs = qs.filter(driver_id=driver_id)
+        route_origin = self.request.query_params.get('route_origin')
+        if route_origin:
+            qs = qs.filter(route__origin=route_origin)
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date:
@@ -743,8 +746,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         if search:
             # Matches the Ticket ID / Vehicle / Driver / Issued By columns actually
             # shown in the Collection Log table (src/app/dashboard/collection),
-            # plus the same fuzzy status-substring shortcut the old client-side
-            # filter had (typing "cancel" finds cancelled tickets, etc).
+            # plus a status-word shortcut ("collected").
             condition = (
                 Q(id__icontains=search)
                 | Q(vehicle__plate_number__icontains=search)
@@ -755,14 +757,10 @@ class TicketViewSet(viewsets.ModelViewSet):
                 | Q(route__origin__icontains=search)
             )
             lowered = search.lower()
-            # Prefix match (not "is search a substring of the word", which was backwards
-            # and made any short substring of "cancelled" like "an"/"el" pull in every
-            # cancelled ticket) — min length 3 so it only kicks in once the term is
-            # unambiguously heading toward one of these two words.
-            if len(lowered) >= 3 and 'cancelled'.startswith(lowered):
-                condition |= Q(status='CANCELLED')
+            # Prefix match, min length 3, so a short substring like "an" can't pull in
+            # every collected ticket.
             if len(lowered) >= 3 and 'collected'.startswith(lowered):
-                condition |= ~Q(status='CANCELLED')
+                condition |= Q(status='COLLECTED')
             qs = qs.filter(condition)
         return qs
 
@@ -775,7 +773,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             serializer.save()
 
     def list(self, request, *args, **kwargs):
-        expire_stale_queue_tickets()
+        expire_stale_kiosk_sessions()
 
         # Backfilled batches share one created_at, so break ties newest-ticket-first —
         # by id length then id, since ids are numeric strings ("9" must sort below "14503").
@@ -978,18 +976,7 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         was_verified = serializer.instance.is_verified
-        was_queued = serializer.instance.status == 'QUEUED'
-        route = serializer.instance.route
         ticket = serializer.save()
-
-        # A cancelled front-of-line ticket frees up the loading zone for
-        # whoever's next — same promotion that happens on dispatch.
-        if was_queued and ticket.status == 'CANCELLED':
-            KioskSession.objects.filter(
-                vehicle=ticket.vehicle, status__in=KioskSession.OPEN_STATUSES,
-            ).update(status='CANCELLED')
-            if route:
-                promote_queue_front(route)
 
         # Ticket issuance/status changes already appear in the Terminal Queue Log —
         # the audit trail only needs to capture who verified/collected a ticket.

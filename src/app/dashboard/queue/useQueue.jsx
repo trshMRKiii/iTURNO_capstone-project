@@ -8,7 +8,6 @@ import { getExpiryStatus, getIwpStatus } from "../driver/driver-utils";
 export const statusColor = {
   QUEUED: "queue-status--queued",
   COLLECTED: "queue-status--collected",
-  CANCELLED: "queue-status--cancelled",
 };
 
 // ─── Helper Functions ────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from ..models import User, Ticket, Vehicle, Route, RemittanceBatch, Collection, Deposit, AuditLog
 from ..serializers import TicketSerializer, RemittanceBatchSerializer, AuditLogSerializer
-from .helpers import parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_queue_tickets, paginate_request
+from .helpers import parse_iso_datetime, record_audit_log, parse_date_start, parse_date_end, expire_stale_kiosk_sessions, paginate_request
 
 
 @api_view(['GET'])
@@ -18,6 +18,14 @@ def audit_logs(request):
     show_all = request.query_params.get('all', 'false').lower() == 'true'
 
     logs = AuditLog.objects.select_related('user').order_by('-created_at')
+
+    # One record's history (registry "Profile" tab): also returns the submitted fields.
+    object_id = request.query_params.get('object_id')
+    if object_id:
+        logs = logs.filter(model_name=request.query_params.get('model_name', ''), object_id=object_id)
+        rows = list(logs)
+        data = [{**row, 'changes': log.changes} for row, log in zip(AuditLogSerializer(rows, many=True).data, rows)]
+        return Response({'logs': data, 'total': len(rows)})
 
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
@@ -56,7 +64,7 @@ DEFAULT_ESTIMATED_LOADING_MINUTES = 5
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def public_queue(request):
-    expire_stale_queue_tickets()
+    expire_stale_kiosk_sessions()
     vehicles_with_queued_tickets = Vehicle.objects.filter(
         tickets__status='QUEUED',
         is_archived=False

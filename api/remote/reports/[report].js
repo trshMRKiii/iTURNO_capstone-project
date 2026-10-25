@@ -346,8 +346,7 @@ async function routeAnalytics(req, res, supabase) {
   const term = (req.query.search || "").trim().toLowerCase();
   const tickets = await fetchAll(() => {
     let q = supabase.from("api_ticket")
-      .select("mode,driver_id,route:api_route(origin),driver:api_driver(first_name,last_name),vehicle:api_vehicle(plate_number)")
-      .neq("status", "CANCELLED");
+      .select("mode,driver_id,route:api_route(origin),driver:api_driver(first_name,last_name),vehicle:api_vehicle(id,plate_number)");
     if (start_date) q = q.gte("created_at", phRangeStart(start_date).toISOString());
     if (end_date) q = q.lte("created_at", phRangeEnd(end_date).toISOString());
     return q;
@@ -363,16 +362,20 @@ async function routeAnalytics(req, res, supabase) {
     if (!routes.has(routeName)) routes.set(routeName, { route: routeName, queue: 0, roaming: 0, drivers: new Map() });
     const r = routes.get(routeName);
     r[kind] += 1;
-    if (!r.drivers.has(t.driver_id)) r.drivers.set(t.driver_id, { route: routeName, driver: name, plates: new Set(), queue: 0, roaming: 0 });
+    if (!r.drivers.has(t.driver_id)) r.drivers.set(t.driver_id, { route: routeName, driver: name, vehicles: new Map(), queue: 0, roaming: 0 });
     const d = r.drivers.get(t.driver_id);
     d[kind] += 1;
-    if (plate) d.plates.add(plate);
+    if (plate) d.vehicles.set(t.vehicle.id, plate);
   }
 
   const sign = req.query.dir === "asc" ? 1 : -1;
   const sortKey = ["queue", "roaming", "total"].includes(req.query.sort) ? req.query.sort : req.query.sort === "driver" ? "driver" : "total";
   const driversOf = (r, sorted = false) => [...r.drivers.values()]
-    .map((d) => ({ ...d, plates: [...d.plates].sort(), total: d.queue + d.roaming }))
+    .map((d) => ({
+      ...d,
+      vehicles: [...d.vehicles].map(([id, plate]) => ({ id, plate })).sort((a, b) => a.plate.localeCompare(b.plate)),
+      total: d.queue + d.roaming,
+    }))
     .sort((a, b) => (sorted ? sign * (sortKey === "driver" ? a.driver.localeCompare(b.driver) : a[sortKey] - b[sortKey]) : 0)
       || b.total - a.total || a.driver.localeCompare(b.driver));
 

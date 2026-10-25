@@ -1,7 +1,6 @@
 import React from "react";
 
 const statusColor = {
-  CANCELLED: "ticket-status--cancelled",
   COLLECTED: "ticket-status--collected",
 };
 

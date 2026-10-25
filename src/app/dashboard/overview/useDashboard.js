@@ -3,14 +3,21 @@ import { apiService } from "../../../lib/api-service";
 
 const REFRESH_MS = 60_000;
 const ACTIVITY_LIMIT = 60;
+const DAY_MS = 86_400_000;
+// Under a week, some weekdays would have no data (or a single day), so the grid keeps its four-week view.
+const MIN_HEATMAP_DAYS = 7;
+// Per-ticket queue churn (loading-time extensions, edits) is noise here; it stays in the audit log.
+const HIDDEN_MODELS = new Set(["Ticket"]);
 
-// Stats follow the period filter; the busiest-times grid is a fixed four-week view, and
-// the activity feed ignores the filter too. Everything but the grid refreshes every minute
-// so the queue waits, the "as of" time and the relative timestamps stay live.
+// Stats and the busiest-times grid follow the period filter (a period under a week shows the
+// grid's last four weeks); the activity feed ignores it.
+// Everything but the grid refreshes every minute so the queue waits, the "as of" time and
+// the relative timestamps stay live.
 // `stats` is null until the current period has loaded (a refresh keeps showing the old
 // numbers until the new ones land); `busiest` is null while loading and false if it failed.
 export function useDashboard({ fromDate, toDate }) {
   const period = `${fromDate}|${toDate}`;
+  const shortPeriod = (new Date(toDate) - new Date(fromDate)) / DAY_MS + 1 < MIN_HEATMAP_DAYS;
   const [loaded, setLoaded] = useState({ period: "", stats: null });
   const [failedPeriod, setFailedPeriod] = useState("");
   const [busiest, setBusiest] = useState(null);
@@ -39,13 +46,20 @@ export function useDashboard({ fromDate, toDate }) {
 
   // Secondary panels: a failure in either shouldn't take the dashboard down.
   useEffect(() => {
-    apiService.getDashboardBusiest().then(setBusiest).catch(() => setBusiest(false));
-  }, []);
+    let current = true;
+    apiService
+      .getDashboardBusiest(shortPeriod ? {} : { start_date: fromDate, end_date: toDate })
+      .then((data) => current && setBusiest(data))
+      .catch(() => current && setBusiest(false));
+    return () => {
+      current = false;
+    };
+  }, [fromDate, toDate, shortPeriod]);
 
   useEffect(() => {
     apiService
       .getAuditLogs({ page: 1, page_size: ACTIVITY_LIMIT })
-      .then((data) => setActivity(data.logs || data.results || []))
+      .then((data) => setActivity((data.logs || data.results || []).filter((l) => !HIDDEN_MODELS.has(l.model_name))))
       .catch(() => {});
   }, [tick]);
 
@@ -53,6 +67,7 @@ export function useDashboard({ fromDate, toDate }) {
     stats: loaded.period === period ? loaded.stats : null,
     error: failedPeriod === period ? "Failed to load dashboard data." : "",
     busiest,
+    busiestIsDefault: shortPeriod,
     activity,
   };
 }

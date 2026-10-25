@@ -29,7 +29,7 @@ def _plan(series_id, from_no, to_no):
     """Sorts the numbers from_no..to_no of one series into what the paper remittance covered:
     system tickets that can be marked remitted, and numbers nobody has used yet, which can
     only have been handed out on paper. Numbers already taken by another ticket (remitted,
-    still queued, cancelled) or an earlier paper range are left alone. Writes nothing."""
+    still queued) or an earlier paper range are left alone. Writes nothing."""
     series = TicketSeries.objects.select_related('ticket_form').filter(pk=series_id).first()
     if not series:
         raise ValidationError("Choose a ticket series.")

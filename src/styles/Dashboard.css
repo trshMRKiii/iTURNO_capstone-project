@@ -301,9 +301,6 @@
 .ov-more svg.is-open { transform: rotate(180deg); }
 
 /* Empty / With queue switch, filled when selected */
-.ov-seg { margin-left: auto; }
-.ov-seg .ui-seg-btn--active { background: var(--navy); color: #fff; }
-.dark .ov-seg .ui-seg-btn--active { background: var(--gold); color: var(--navy); }
 
 .ov-queue {
   list-style: none;

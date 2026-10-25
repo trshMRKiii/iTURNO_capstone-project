@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from ..models import DeskDuty, Driver, KioskSession, Ticket, TicketForm, TicketSeries, User, Vehicle, WipMode
 from ..serializers import TicketSerializer
-from .helpers import expire_stale_queue_tickets, promote_queue_front
+from .helpers import expire_stale_kiosk_sessions, promote_queue_front
 from .viewsets import _check_can_issue, _check_plan, _consume_series_fifo, _finalize_queued_vehicle, _issue_roam_tickets
 
 # Self-service QR kiosk, two steps. The driver checks in (scan -> mode -> own name): a roam
@@ -273,7 +273,7 @@ def _switch_out(session, request):
 def kiosk_scan(request):
     """A QR was scanned: tells the kiosk what to show (check-in choices, pay-first notice,
     wait-your-turn, or the checkout result — a paid visit at the front is checked out here)."""
-    expire_stale_queue_tickets()
+    expire_stale_kiosk_sessions()
     vehicle = _find_vehicle(request.data.get('text'))
     if vehicle is None:
         return Response({'state': 'UNKNOWN'})
@@ -310,7 +310,7 @@ def kiosk_scan(request):
 @api_view(['POST'])
 def kiosk_driver(request):
     """Names the driver behind a scanned driver QR so the kiosk can show who is swapping in."""
-    expire_stale_queue_tickets()
+    expire_stale_kiosk_sessions()
     try:
         driver = _find_driver({'driver_qr': request.data.get('text')})
     except ValidationError as exc:
@@ -475,9 +475,7 @@ def kiosk_switch_roam(request):
         return _reply('ERROR', vehicle, session, message=PAUSED_MESSAGE)
     try:
         with transaction.atomic():
-            Ticket.objects.filter(vehicle=vehicle, mode='QUEUE', status='QUEUED').update(
-                status='CANCELLED', updated_at=timezone.now(),
-            )
+            Ticket.objects.filter(vehicle=vehicle, mode='QUEUE', status='QUEUED').delete()
             Vehicle.objects.filter(id=vehicle.id, status='QUEUED').update(status='AVAILABLE', updated_at=timezone.now())
             session.mode = 'ROAM'
             session.save(update_fields=['mode', 'updated_at'])

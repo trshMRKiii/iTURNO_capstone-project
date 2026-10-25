@@ -529,8 +529,9 @@ export const apiService = {
     return this.get(`/dashboard/stats/${qs ? `?${qs}` : ""}`);
   },
 
-  getDashboardBusiest() {
-    return this.get("/dashboard/busiest/");
+  getDashboardBusiest(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.get(`/dashboard/busiest/${qs ? `?${qs}` : ""}`);
   },
 
   getReportChart() {

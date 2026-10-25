@@ -19,6 +19,11 @@ function formatDate(val) {
 
 const fmt = (n) => Number(n || 0).toLocaleString();
 const serial = (n) => String(n ?? "");
+// Number the next ticket will take: one past the last used, or the start if none yet.
+const nextNo = (ts) => {
+  const next = ts.last_used_no != null ? Number(ts.last_used_no) + 1 : Number(ts.start_no);
+  return next > Number(ts.end_no) ? "Fully used" : serial(next);
+};
 const count = (n, word) => `${fmt(n)} ${word}${n === 1 ? "" : "s"}`;
 
 // Does this series contain the ticket number being searched for?
@@ -210,7 +215,7 @@ function Requisition() {
                     <div className="rq-cols rq-cols--series rq-series-head">
                       <SortHead id="range" sort={sort} onSort={onSort}>Series range</SortHead>
                       <SortHead id="received" sort={sort} onSort={onSort}>Received</SortHead>
-                      <span>Last issued no.</span>
+                      <span>Next to issue</span>
                       <SortHead id="remaining" sort={sort} onSort={onSort}>Remaining</SortHead>
                       <SortHead id="amount" sort={sort} onSort={onSort} className="rq-num">Amount</SortHead>
                       <span className="rq-num">Actions</span>
@@ -228,7 +233,7 @@ function Requisition() {
                             </small>
                           </span>
                           <span>{formatDate(ts.created_at)}</span>
-                          <span className="rq-mono">{ts.last_used_no != null ? serial(ts.last_used_no) : "None yet"}</span>
+                          <span className="rq-mono">{nextNo(ts)}</span>
                           <span>
                             <span className="rq-remaining"><strong>{fmt(ts.remaining)}</strong> of {fmt(total)}</span>
                             <span className="rq-bar"><span style={{ width: `${pct}%` }} /></span>

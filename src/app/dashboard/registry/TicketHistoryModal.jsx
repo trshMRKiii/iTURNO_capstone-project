@@ -2,94 +2,91 @@ import React, { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../../lib/api-service";
 import { SkeletonList } from "../../../components/ui/kit";
 import PeriodFilter from "../../../components/ui/PeriodFilter";
-import { usePeriodFilter, inPeriod } from "../../../lib/period";
+import { usePeriodFilter } from "../../../lib/period";
+import ProfileDetails from "./ProfileDetails";
+import Pager from "../report/tables/Pager";
 import { exportTablePDF } from "../report/exportPDF";
 import { getDriverDisplayName } from "../driver/driver-utils";
 import "../../../styles/Vehicle.css";
 
-const MAX_RECORDS = 20;
+const PAGE_SIZE = 10;
 
 // Status badge shown only in the All view, to tell the modes apart.
 const BADGES = {
   QUEUE: { label: "Queue", color: "#3b82f6" },
   UNLOAD: { label: "Roaming", color: "#8b5cf6" },
-  CANCELLED: { label: "Cancelled", color: "#ef4444" },
 };
-const badgeOf = (t) => BADGES[t.status === "CANCELLED" ? "CANCELLED" : t.mode] || BADGES.QUEUE;
+const badgeOf = (t) => BADGES[t.mode] || BADGES.QUEUE;
 
-// Cancelled is its own view (any mode); Queue/Roaming show the non-cancelled
-// tickets of that check-in mode so no ticket appears under two views.
 const VIEWS = [
-  { key: "ALL", label: "All", match: () => true },
-  { key: "QUEUE", label: "Queue", match: (t) => t.mode === "QUEUE" && t.status !== "CANCELLED" },
-  { key: "UNLOAD", label: "Roaming", match: (t) => t.mode === "UNLOAD" && t.status !== "CANCELLED" },
-  { key: "CANCELLED", label: "Cancelled", match: (t) => t.status === "CANCELLED" },
+  { key: "ALL", label: "All", params: {} },
+  { key: "QUEUE", label: "Queue", params: { mode: "QUEUE" } },
+  { key: "UNLOAD", label: "Roaming", params: { mode: "UNLOAD" } },
 ];
+const PROFILE = "PROFILE"; // details + change history instead of tickets (not shown for route views)
 
 // Check-in / check-out stamps and the stay between them. Dispatch creates a fresh
 // ticket, so checked_in_at carries the real arrival; older rows fall back to issued_at.
-// A cancelled visit has no check-out, so its stay runs until it was cancelled.
 const visitOf = (t) => {
-  const cancelled = t.status === "CANCELLED";
   const inAt = t.checked_in_at || t.issued_at;
   const open = t.status === "QUEUED" && !t.dispatched_at; // still waiting in line
-  const end = cancelled ? t.updated_at : t.dispatched_at || (open ? new Date() : null);
+  const end = t.dispatched_at || (open ? new Date() : null);
   const mins = inAt && end ? Math.max(0, Math.round((new Date(end) - new Date(inAt)) / 60000)) : null;
   let stay = "—";
   if (mins !== null) {
     const h = Math.floor(mins / 60);
     stay = mins < 1 ? "< 1 min" : h ? `${h}h ${mins % 60}m` : `${mins} min`;
   }
-  return { inAt, outAt: cancelled ? null : t.dispatched_at, stay: open ? `${stay} so far` : stay, open };
+  return { inAt, outAt: t.dispatched_at, stay: open ? `${stay} so far` : stay, open };
 };
 
 // Ticket history for one vehicle or one driver; the other party gets a column.
-function TicketHistoryModal({ vehicle, driver, onClose }) {
+// Tickets load a page at a time from the server (same as the queue / roaming logs).
+function TicketHistoryModal({ vehicle, driver, route, onClose }) {
   const isDriver = !!driver;
   const subject = isDriver ? driver : vehicle;
-  const [tickets, setTickets] = useState([]);
+  const [data, setData] = useState({ results: [], count: 0, total_pages: 1 });
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("ALL");
+  const [page, setPage] = useState(1);
   const periodFilter = usePeriodFilter("all");
   const { fromDate, toDate } = periodFilter;
   const [search, setSearch] = useState("");
+  const [term, setTerm] = useState("");
 
   useEffect(() => {
-    if (!subject) return;
+    const t = setTimeout(() => setTerm(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Every filter the server understands, minus paging, so export can reuse it.
+  const filters = useMemo(
+    () => ({
+      ...(isDriver ? { driver_id: subject?.id } : { vehicle_id: subject?.id }),
+      ...(route && { route_origin: route }),
+      ...VIEWS.find((v) => v.key === view)?.params,
+      ...(fromDate && { start_date: fromDate, end_date: toDate }),
+      ...(term && { search: term }),
+    }),
+    [subject, isDriver, route, view, fromDate, toDate, term]
+  );
+
+  useEffect(() => setPage(1), [filters]);
+
+  useEffect(() => {
+    if (!subject || view === PROFILE) return;
+    let cancelled = false;
     setLoading(true);
-    apiService.getTickets(isDriver ? { driver_id: subject.id } : { vehicle_id: subject.id })
-      .then((ticketData) => {
-        const own = isDriver ? (t) => t.driver?.id === subject.id : (t) => t.vehicle?.id === subject.id;
-        setTickets(
-          (ticketData || [])
-            .filter(own)
-            .sort((a, b) => new Date(b.issued_at) - new Date(a.issued_at))
-        );
-      })
-      .catch(() => setTickets([]))
-      .finally(() => setLoading(false));
-  }, [subject, isDriver]);
+    apiService.getTickets({ ...filters, page, page_size: PAGE_SIZE })
+      .then((d) => !cancelled && setData(d))
+      .catch(() => !cancelled && setData({ results: [], count: 0, total_pages: 1 }))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [subject, filters, page, view]);
 
-  const viewTickets = useMemo(() => {
-    const match = VIEWS.find((v) => v.key === view).match;
-    return tickets.filter((t) => match(t) && inPeriod(t.issued_at, fromDate, toDate));
-  }, [tickets, view, fromDate, toDate]);
-
-  // Everything matching view + period + search; the on-screen table shows only the latest MAX_RECORDS.
-  const matches = useMemo(() => {
-    let list = viewTickets;
-    if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      list = list.filter(
-        (t) =>
-          (t.id || "").toLowerCase().includes(q) ||
-          (isDriver ? t.vehicle?.plate_number || "" : t.driver?.name || "").toLowerCase().includes(q) ||
-          (t.collection_amount?.toString() || "").includes(q)
-      );
-    }
-    return list;
-  }, [viewTickets, search, isDriver]);
-  const filtered = matches.slice(0, MAX_RECORDS);
+  const filtered = data.results;
 
   if (!subject) return null;
 
@@ -107,12 +104,13 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
 
   const peso = (n) => (n ? `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2 })}` : "—");
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    const all = await apiService.getTickets(filters).then((d) => d.results || d).catch(() => []);
     const viewLabel = VIEWS.find((v) => v.key === view).label;
     const range = fromDate ? ` · ${fromDate === toDate ? fromDate : `${fromDate} to ${toDate}`}` : "";
     const name = isDriver ? getDriverDisplayName(driver) : vehicle.plate_number;
     exportTablePDF(
-      matches.map((t) => {
+      all.map((t) => {
         const { inAt, outAt, stay, open } = visitOf(t);
         return {
           "Ticket ID": t.id,
@@ -154,7 +152,7 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
 
         {/* Filters */}
         <div className="veh-ledger-filters">
-          <div className="veh-search-wrap" style={{ width: 200 }}>
+          {view !== PROFILE && <div className="veh-search-wrap" style={{ width: 200 }}>
             <svg className="veh-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
             </svg>
@@ -164,9 +162,9 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
+          </div>}
           <div className="veh-seg">
-            {VIEWS.map(({ key, label }) => (
+            {[...VIEWS, ...(route ? [] : [{ key: PROFILE, label: "Profile" }])].map(({ key, label }) => (
               <button
                 key={key}
                 className={`veh-seg-btn ${view === key ? "veh-seg-btn--active" : ""}`}
@@ -176,10 +174,13 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
               </button>
             ))}
           </div>
-          <PeriodFilter filter={periodFilter} includeAll />
+          {view !== PROFILE && <PeriodFilter filter={periodFilter} includeAll />}
         </div>
 
         {/* Body */}
+        {view === PROFILE ? (
+          <ProfileDetails model={isDriver ? "Driver" : "Vehicle"} subject={subject} />
+        ) : (
         <div className="veh-ledger-body">
           {loading ? (
             <SkeletonList rows={4} h={40} />
@@ -195,7 +196,7 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
             <>
               {/* Summary bar */}
               <div className="veh-ledger-summary">
-                <span>{filtered.length} ticket{filtered.length !== 1 ? "s" : ""}</span>
+                <span>{data.count} ticket{data.count !== 1 ? "s" : ""}</span>
                 <button className="veh-btn veh-btn--history" onClick={handleExportPDF} title="Export all matching tickets as PDF">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -252,14 +253,17 @@ function TicketHistoryModal({ vehicle, driver, onClose }) {
                 </table>
               </div>
 
-              {viewTickets.length > MAX_RECORDS && !search.trim() && (
-                <p className="veh-field-hint" style={{ textAlign: "center", padding: "10px 0 4px" }}>
-                  Showing latest {MAX_RECORDS} of {viewTickets.length} tickets
-                </p>
-              )}
+              <Pager
+                page={page}
+                totalPages={data.total_pages || 1}
+                count={data.count || 0}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPage}
+              />
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );

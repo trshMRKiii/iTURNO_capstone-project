@@ -275,7 +275,8 @@
 .drv-status--active   { background: rgba(34,197,94,0.12);  color: #15803d; }
 .drv-status--inactive { background: var(--bg-page); color: var(--text-secondary); border: 1px solid var(--border); }
 .drv-status--expired  { background: rgba(239,68,68,0.12); color: #b91c1c; }
-.drv-status--duty     { background: rgba(59,130,246,0.12); color: #1d4ed8; }
+.drv-status--warn     { background: rgba(245,158,11,0.15); color: #b45309; }
+.drv-status--duty    { background: rgba(59,130,246,0.12); color: #1d4ed8; }
 
 /* Action buttons */
 .drv-actions {
