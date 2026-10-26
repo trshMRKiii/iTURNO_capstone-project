@@ -4,6 +4,7 @@ import { useQueueSocket } from "../../../lib/useQueueSocket";
 import { Dialog, SkeletonList } from "../../../components/ui/kit";
 import { ticketsNeeded } from "../queue/useQueue";
 import KioskRoamStrip from "./KioskRoamStrip";
+import SwapDriverDialog from "./SwapDriverDialog";
 import "../../../styles/Dispatch.css";
 
 const NO_ROUTE = "No Route Assigned";
@@ -30,6 +31,7 @@ function Dispatch({ seriesId, ticketFee }) {
   const [roamSessions, setRoamSessions] = useState([]);
   const [now, setNow] = useState(Date.now());
   const [baySwap, setBaySwap] = useState(null);
+  const [driverSwap, setDriverSwap] = useState(null);
   const [reason, setReason] = useState("");
   const [reasonOpenId, setReasonOpenId] = useState(null);
   const [reasonPos, setReasonPos] = useState({});
@@ -91,6 +93,9 @@ function Dispatch({ seriesId, ticketFee }) {
     }
     return map;
   }, [tickets]);
+
+  // Drivers already in line can't take over another vehicle.
+  const busyDriverIds = useMemo(() => new Set(tickets.map((t) => t.driver?.id).filter(Boolean)), [tickets]);
 
   const getDriverName = (vehicle) =>
     vehicle.active_driver_name || ticketByVehicleId.get(vehicle.id)?.driver?.name || "—";
@@ -296,7 +301,16 @@ function Dispatch({ seriesId, ticketFee }) {
                                 </span>
                               )}
                             </td>
-                            <td>{getDriverName(vehicle)}</td>
+                            <td>
+                              {getDriverName(vehicle)}
+                              <button
+                                type="button"
+                                className="dispatch-driver-swap"
+                                onClick={() => setDriverSwap({ vehicle, ticket: ticketByVehicleId.get(vehicle.id) })}
+                              >
+                                Swap driver
+                              </button>
+                            </td>
                             <td>
                               {pos === 0 ? (() => {
                                 const eta = departureAt(vehicle);
@@ -361,6 +375,15 @@ function Dispatch({ seriesId, ticketFee }) {
           )}
         </div>
       </div>
+
+      {driverSwap && (
+        <SwapDriverDialog
+          target={driverSwap}
+          busyDriverIds={busyDriverIds}
+          onClose={() => setDriverSwap(null)}
+          onSwapped={() => fetchData(true)}
+        />
+      )}
 
       <Dialog
         open={!!baySwap}

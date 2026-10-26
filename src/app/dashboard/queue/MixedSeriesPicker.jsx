@@ -44,6 +44,8 @@ function MixedSeriesPicker({ mix, denominations, target = 0, title = "Mixed cash
               value={s.qty}
               aria-label={`${labelOf(s)} quantity`}
               onChange={(e) => mix.setQty(i, e.target.value)}
+              onFocus={(e) => e.target.select()}
+              onBlur={() => mix.commitQty?.(i)}
             />
           </label>
           <button

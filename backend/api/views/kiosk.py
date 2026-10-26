@@ -54,18 +54,6 @@ def _find_vehicle(text):
     return vehicle
 
 
-def _find_driver(data):
-    """The picked driver (operator list) or the one whose own QR was scanned (swap driver)."""
-    drivers = Driver.objects.filter(is_archived=False)
-    qr = (data.get('driver_qr') or '').strip()
-    if not qr:
-        return drivers.get(id=data.get('driver_id'))
-    driver = drivers.filter(Q(qr_code=qr) | Q(iwp_number=qr)).first()
-    if driver is None:
-        raise ValidationError({"driver_qr": "Driver QR not recognized — try again or see the dispatcher."})
-    return driver
-
-
 def _queue_ticket(vehicle):
     return Ticket.objects.filter(vehicle=vehicle, mode='QUEUE', status='QUEUED').select_related('driver').first()
 
@@ -230,10 +218,15 @@ def _rows(session):
 
 def _driver_choices(vehicle):
     busy = _busy_driver_ids()
-    mine = {vehicle.active_driver_id, vehicle.owner_driver_id}
+    # `last` is the vehicle's last driver (kept on every check-in/swap), else its registered owner;
+    # `suggested` is everyone with history on this vehicle, which is who Swap driver offers.
+    last = vehicle.active_driver_id or vehicle.owner_driver_id
+    history = set(Ticket.objects.filter(vehicle=vehicle).values_list('driver_id', flat=True)) | {
+        vehicle.active_driver_id, vehicle.owner_driver_id,
+    }
     drivers = Driver.objects.filter(status='ACTIVE', is_archived=False).exclude(id__in=busy).order_by('last_name', 'first_name')
-    choices = [{'id': d.id, 'name': _driver_name(d), 'suggested': d.id in mine} for d in drivers]
-    return sorted(choices, key=lambda c: not c['suggested'])
+    choices = [{'id': d.id, 'name': _driver_name(d), 'last': d.id == last, 'suggested': d.id in history} for d in drivers]
+    return sorted(choices, key=lambda c: (not c['last'], not c['suggested']))
 
 
 def _check_out(session, request):
@@ -308,21 +301,6 @@ def kiosk_scan(request):
 
 
 @api_view(['POST'])
-def kiosk_driver(request):
-    """Names the driver behind a scanned driver QR so the kiosk can show who is swapping in."""
-    expire_stale_kiosk_sessions()
-    try:
-        driver = _find_driver({'driver_qr': request.data.get('text')})
-    except ValidationError as exc:
-        return Response({'state': 'ERROR', 'message': _error_text(exc)})
-    if driver.iwp_expired:
-        return Response({'state': 'ERROR', 'message': "This driver's IWP has expired — please renew it first."})
-    if driver.id in _busy_driver_ids():
-        return Response({'state': 'ERROR', 'message': "This driver is already checked in on another vehicle."})
-    return Response({'state': 'DRIVER', 'driver': {'id': driver.id, 'name': _driver_name(driver)}})
-
-
-@api_view(['POST'])
 def kiosk_check_in(request):
     """Driver picked a mode and their own name. Queue joins the line right away; roam only
     opens a pending visit. They pay the check-in Personnel now, which fixes the ticket series
@@ -340,7 +318,7 @@ def kiosk_check_in(request):
             vehicle = Vehicle.objects.select_for_update().select_related('route', 'transportation_id').get(
                 id=request.data.get('vehicle_id'), is_archived=False,
             )
-            driver = _find_driver(request.data)
+            driver = Driver.objects.get(id=request.data.get('driver_id'), is_archived=False)
             if _open_session(vehicle):
                 raise ValidationError({"vehicle_id": "This vehicle is already checked in."})
             if driver.id in _busy_driver_ids():

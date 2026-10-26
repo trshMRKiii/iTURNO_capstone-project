@@ -15,10 +15,13 @@ const toScreen = (reply, text) =>
     ? { type: "mode", text, vehicle: reply.vehicle, drivers: reply.drivers }
     : { type: "result", text, ...reply };
 
-// The Operator button covers the vehicle's own drivers; with none registered, everyone free.
-export const operatorsOf = (drivers) => (drivers.some((d) => d.suggested) ? drivers.filter((d) => d.suggested) : drivers);
+// The vehicle's last driver; with none on record, everyone free.
+export const operatorsOf = (drivers) => (drivers.some((d) => d.last) ? drivers.filter((d) => d.last) : drivers);
 
-// Self-service flow: scan -> (new visit) tap Queue/Roam -> registered operator (or swap-driver QR) -> result.
+// Swap driver offers only drivers who have driven this vehicle before.
+export const historyOf = (drivers) => (drivers.some((d) => d.suggested) ? drivers.filter((d) => d.suggested) : drivers);
+
+// Self-service flow: scan -> (new visit) tap Queue/Roam -> last driver (or Swap driver by name) -> result.
 // A scan for an existing visit goes straight to a result (pay first / wait / checked out).
 export function useKiosk() {
   const [screen, setScreen] = useState(IDLE);
@@ -61,41 +64,25 @@ export function useKiosk() {
     }
   }, []);
 
-  // Names the scanned driver QR on the card so the driver sees it worked (or why it didn't).
-  const lookUpDriver = useCallback(async (text) => {
-    try {
-      const reply = await apiService.post("/kiosk/driver/", { text });
-      const ok = reply.state === "DRIVER";
-      const swapDriver = ok ? { ...reply.driver, qr: text } : { qr: text, error: reply.message };
-      setScreen((s) => (s.type === "mode" ? { ...s, swapDriver, swap: !ok } : s));
-    } catch (err) {
-      setScreen((s) => (s.type === "mode" ? { ...s, swapDriver: { qr: text, error: err.status ? err.message : UNREACHABLE } } : s));
-    }
-  }, []);
-
   // The camera never stops, so a QR held in view must not re-trigger the screen it just caused.
   const scan = useCallback(
     (text) => {
       const current = screenRef.current;
       if (current.type === "result" && current.text === text) return;
-      if (current.type === "mode") {
-        if (current.swapDriver?.qr === text) return;
-        // With Swap driver on, the next QR is the incoming driver's, not a new vehicle.
-        if (current.swap) lookUpDriver(text);
-        return;
-      }
+      if (current.type === "mode") return;
       call("/kiosk/scan/", { text }, text);
     },
-    [call, lookUpDriver],
+    [call],
   );
 
-  const backToMode = () => setScreen((s) => ({ ...s, type: "mode", mode: undefined }));
-  const startSwap = () => setScreen((s) => ({ ...s, swap: true }));
-  // Cancelling keeps a driver already scanned, drops a failed attempt.
-  const cancelSwap = () => setScreen((s) => ({ ...s, swap: false, swapDriver: s.swapDriver?.id ? s.swapDriver : undefined }));
+  const backToMode = () => setScreen((s) => ({ ...s, type: "mode", mode: undefined, swapping: false }));
+  // Swap driver opens the full name list; the pick comes back to the mode screen, and the
+  // check-in then saves them as the vehicle's last driver.
+  const startSwap = () => setScreen((s) => ({ ...s, type: "driver", mode: undefined, swapping: true }));
+  const pickSwap = (swapDriver) => setScreen((s) => ({ ...s, type: "mode", swapping: false, swapDriver }));
   const checkIn = (driver, mode = screen.mode) =>
     call("/kiosk/check-in/", { vehicle_id: screen.vehicle.id, driver_id: driver.id, mode }, screen.text);
-  // The tap picks the mode; a scanned swap driver or a lone registered operator is checked in
+  // The tap picks the mode; a swapped-in driver or a lone last driver is checked in
   // straight away, otherwise the driver is found by name.
   const chooseMode = (mode) => {
     if (screen.swapDriver?.id) return checkIn(screen.swapDriver, mode);
@@ -108,7 +95,7 @@ export function useKiosk() {
     scan,
     chooseMode,
     startSwap,
-    cancelSwap,
+    pickSwap,
     backToMode,
     checkIn,
     secondsLeft,

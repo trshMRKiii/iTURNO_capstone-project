@@ -36,7 +36,9 @@ function TicketRecipes({ prices, denominations, allSeries, forms, recipes, onSav
       if (next) setRows((r) => [...r, { form: next.ticket_form, qty: 1 }]);
     },
     set: (i, id) => patchRow(i, { form: denominations.find((d) => String(d.id) === String(id)).ticket_form }),
-    setQty: (i, qty) => patchRow(i, { qty: Math.min(items[i].pcs, Math.max(1, Math.floor(Number(qty)) || 1)) }),
+    // Blank is allowed while typing so the field can be cleared; blur snaps it back to a valid count.
+    setQty: (i, qty) => patchRow(i, { qty: qty === "" ? "" : Math.min(items[i].pcs, Math.max(1, Math.floor(Number(qty)) || 1)) }),
+    commitQty: (i) => patchRow(i, { qty: items[i].qty || 1 }),
     remove: (i) => setRows((r) => r.filter((_, j) => j !== i)),
   };
 
@@ -65,7 +67,7 @@ function TicketRecipes({ prices, denominations, allSeries, forms, recipes, onSav
         <button
           type="button"
           className="queue-change-series-btn queue-recipe-save"
-          disabled={items.length === 0 || Math.abs(total - editing) > 0.005}
+          disabled={items.length === 0 || items.some((s) => !s.qty) || Math.abs(total - editing) > 0.005}
           onClick={() => save({ ...recipes, [keyOf(editing)]: rows })}
         >
           Save mix

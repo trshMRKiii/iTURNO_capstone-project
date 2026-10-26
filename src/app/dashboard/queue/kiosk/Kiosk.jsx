@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQrScanner, SCANNER_STATUS_LABEL } from "../useQrScanner";
-import { useKiosk, operatorsOf } from "./useKiosk";
+import { useKiosk, operatorsOf, historyOf } from "./useKiosk";
 import { ModePanel, DriverPanel, ResultPanel, ExpiredList } from "./KioskPanels";
 import sfcLogo from "../../../../pictures/sfc-nobg-logo.png";
 import "../../../../styles/Kiosk.css";
 
 const ERROR_STATES = ["EXPIRED", "BLOCKED", "ERROR", "UNKNOWN"];
 
-// A lone registered operator is named on the card; otherwise the name is picked after the tap.
+// A lone last driver is named on the card; otherwise the name is picked after the tap.
 const operatorName = (drivers) => {
   const operators = operatorsOf(drivers);
   return operators.length === 1 ? operators[0].name : "Choose on the next step";
@@ -20,9 +20,7 @@ function cardOf(screen) {
     case "idle":
       return { tone: "idle", caption: "Scan your vehicle QR — hold it inside the frame" };
     case "mode":
-      return screen.swap
-        ? { tone: "go", caption: screen.swapDriver?.error || "Hold your driver QR inside the frame" }
-        : { tone: "go", caption: "Now tap Queue or Roaming →" };
+      return { tone: "go", caption: "Now tap Queue or Roaming →" };
     case "driver":
       return { tone: "go", caption: "Now find your name →" };
     case "result":
@@ -51,10 +49,9 @@ function KioskScreen() {
   const { tone, caption } = cardOf(screen);
   const seconds = kiosk.secondsLeft;
   const expired = screen.type === "result" && screen.state === "EXPIRED";
-  // scan = camera fills the screen (idle, or scanning a swap driver), panel = the transaction fills it
+  // scan = camera fills the screen (idle), panel = the transaction fills it
   // (camera keeps scanning off-screen); the camera shares the screen only with the expired list.
-  const swapping = screen.type === "mode" && screen.swap;
-  const layout = screen.type === "idle" || swapping ? "scan" : expired ? null : "panel";
+  const layout = screen.type === "idle" ? "scan" : expired ? null : "panel";
 
   return (
     <div className="kiosk">
@@ -85,11 +82,7 @@ function KioskScreen() {
           {caption && <div className="kiosk-caption">{caption}</div>}
         </section>
 
-        {swapping && (
-          <button type="button" className="kiosk-ghost kiosk-swap-cancel" onClick={kiosk.cancelSwap}>Cancel</button>
-        )}
-
-        {screen.type !== "idle" && !swapping && <section className="kiosk-side">
+        {screen.type !== "idle" && <section className="kiosk-side">
           {screen.type === "busy" && <div className="kiosk-panel kiosk-busy">Please wait…</div>}
           {screen.type === "mode" && (
             <ModePanel
@@ -107,8 +100,9 @@ function KioskScreen() {
             <DriverPanel
               vehicle={screen.vehicle}
               mode={screen.mode}
-              drivers={operatorsOf(screen.drivers)}
-              onPick={kiosk.checkIn}
+              drivers={screen.swapping ? historyOf(screen.drivers) : operatorsOf(screen.drivers)}
+              swapping={screen.swapping}
+              onPick={screen.swapping ? kiosk.pickSwap : kiosk.checkIn}
               onBack={kiosk.backToMode}
               onActivity={kiosk.touch}
               seconds={seconds}

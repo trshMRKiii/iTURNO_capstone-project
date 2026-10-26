@@ -821,19 +821,12 @@ class KioskTests(TestCase):
         self.assertGreaterEqual(ticket.dispatched_at, ticket.checked_in_at)
         self.assertEqual(self._scan('QR-A')['state'], 'CHECK_IN')  # visit is over
 
-    def test_swap_driver_checks_in_by_scanning_their_own_qr(self):
+    def test_swapped_in_driver_becomes_the_suggested_one_next_visit(self):
         self._on_duty()
-        self.d2.qr_code = self.d2.iwp_number = 'IWP-D2'
-        self.d2.save()
-
-        def by_qr(qr):
-            return self.client.post('/api/kiosk/check-in/', {
-                'vehicle_id': self.a.id, 'driver_qr': qr, 'mode': 'ROAM',
-            }, format='json').data
-
-        self.assertEqual(by_qr('IWP-NOPE')['state'], 'ERROR')
-        done = by_qr('IWP-D2')
-        self.assertEqual((done['state'], done['driver']), ('CHECKED_IN', 'Diaz, Ben'))
+        suggested = lambda: [d['name'] for d in self._scan('QR-A')['drivers'] if d['last']]
+        self.assertEqual(self._check_in(self.a, self.d2, 'QUEUE')['driver'], 'Diaz, Ben')
+        self.assertEqual(self._scan('QR-A')['state'], 'DEPARTED')
+        self.assertEqual(suggested(), ['Diaz, Ben'])
 
     def test_kiosk_check_in_needs_personnel_and_series_on_duty(self):
         self.assertEqual(self._check_in(self.a, self.d1, 'QUEUE')['state'], 'ERROR')

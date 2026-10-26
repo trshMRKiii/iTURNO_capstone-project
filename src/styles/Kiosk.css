@@ -19,7 +19,6 @@
 /* One card at a time: the camera while waiting for a scan, the transaction panel afterwards. */
 .kiosk-stage--scan, .kiosk-stage--panel { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); }
 .kiosk-stage--scan { position: relative; }
-.kiosk-swap-cancel { position: absolute; top: 16px; right: 16px; z-index: 2; background: rgba(10, 18, 40, 0.85); }
 .kiosk-stage--panel .kiosk-card { position: absolute; left: -9999px; width: 320px; height: 240px; pointer-events: none; }
 
 /* Left: the one camera element for the whole session. */

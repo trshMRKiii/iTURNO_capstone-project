@@ -37,7 +37,7 @@ export function ModePanel({ vehicle, driverName, swapDriver, blocked, heading, o
       <VehicleHead vehicle={vehicle} />
       <div className={`kiosk-driver${blocked ? " kiosk-driver--blocked" : ""}`}>
         <div className="kiosk-driver-text">
-          <small>{swapDriver?.id ? "Driver · scanned QR" : "Driver · registered operator"}</small>
+          <small>{swapDriver?.id ? "Driver · swapped in" : "Driver · last on this vehicle"}</small>
           <strong>{swapDriver?.id ? swapDriver.name : driverName}</strong>
         </div>
         {!blocked && (
@@ -64,7 +64,7 @@ export function ModePanel({ vehicle, driverName, swapDriver, blocked, heading, o
   );
 }
 
-export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity, seconds }) {
+export function DriverPanel({ vehicle, mode, swapping, drivers, onPick, onBack, onActivity, seconds }) {
   const [query, setQuery] = useState("");
   const [letter, setLetter] = useState("");
   const [picked, setPicked] = useState(null);
@@ -83,7 +83,7 @@ export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity
         <div className="kiosk-actions">
           <button type="button" className="kiosk-ghost" onClick={() => setPicked(null)}>No, go back</button>
           <button type="button" className="kiosk-btn" onClick={() => onPick(picked)}>
-            Yes, {mode === "QUEUE" ? "join the queue" : "continue"}
+            {swapping ? "Yes, that's me" : `Yes, ${mode === "QUEUE" ? "join the queue" : "continue"}`}
           </button>
         </div>
       </div>
@@ -93,7 +93,7 @@ export function DriverPanel({ vehicle, mode, drivers, onPick, onBack, onActivity
   return (
     <div className="kiosk-panel kiosk-panel--left">
       <h2 className="kiosk-title">
-        Find your name <span className="kiosk-tag">{mode === "QUEUE" ? "Queue" : "Roaming"}</span>
+        Find your name {!swapping && <span className="kiosk-tag">{mode === "QUEUE" ? "Queue" : "Roaming"}</span>}
       </h2>
       <input
         className="kiosk-search"
