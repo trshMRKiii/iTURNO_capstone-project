@@ -150,32 +150,15 @@ export const apiService = {
       defaultHeaders["Authorization"] = `Bearer ${token}`;
     }
 
-    // Some forms (driver/vehicle registry, for photo upload support) always
-    // build a FormData body, even when nothing but a text field changed.
-    // The remote serverless functions only parse JSON — no multipart
-    // parser there — so convert here. Files are dropped (photo upload
-    // isn't supported remotely; see known gaps in api/remote/registry/).
-    let effectiveBody = options.body;
-    if (IS_REMOTE && typeof FormData !== "undefined" && effectiveBody instanceof FormData) {
-      const plain = {};
-      for (const [key, value] of effectiveBody.entries()) {
-        if (value instanceof File) continue;
-        plain[key] = value;
-      }
-      effectiveBody = JSON.stringify(plain);
-    }
-
-    const isFormData = typeof FormData !== "undefined" && effectiveBody instanceof FormData;
     const fetchOptions = {
       ...options,
-      body: effectiveBody,
       headers: {
         ...defaultHeaders,
         ...options.headers,
       },
     };
 
-    if (!isFormData) {
+    if (!(fetchOptions.body instanceof FormData)) {
       fetchOptions.headers["Content-Type"] = "application/json";
     }
 
@@ -441,6 +424,15 @@ export const apiService = {
 
   createVehicle(data) {
     return this.post("/vehicles/", data);
+  },
+
+  // LAN only (hidden when IS_REMOTE). `commit` false validates for the preview; true creates.
+  importVehicles(rows, commit) {
+    return this.post("/vehicles/import/", { rows, commit });
+  },
+
+  importDrivers(rows, commit) {
+    return this.post("/drivers/import/", { rows, commit });
   },
 
   getTicketPrices() {

@@ -11,7 +11,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // Everything recorded outside the system that hasn't been folded into a real remittance, newest
 // first, so a mistake can be taken back. Undoing a "marked as remitted" makes those tickets count
 // as cash still to remit again; undoing a paper range frees its numbers for the system.
-export default function BackfillRecords() {
+export default function BackfillRecords({ onChange }) {
   const { confirmAction } = useFeedback();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -60,6 +60,7 @@ export default function BackfillRecords() {
       try {
         await apiService.request(row.path, { method: "DELETE" });
         load();
+        onChange?.();
         return { success: { title: row.confirm.done } };
       } catch (err) {
         return { error: { title: "Couldn't do that", message: errorMessage(err) } };

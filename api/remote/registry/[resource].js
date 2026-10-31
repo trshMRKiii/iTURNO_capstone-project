@@ -21,7 +21,7 @@ const RESOURCES = {
     table: "api_driver",
     editableFields: [
       "iwp_number", "iwp_expiration_date", "first_name", "middle_name", "last_name", "gender", "birthdate",
-      "province", "city", "barangay", "street", "contact", "qr_code",
+      "province", "city", "barangay", "street", "contact",
     ],
   },
 };

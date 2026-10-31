@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from ..models import Ticket, Vehicle, TicketForm, TicketSeries, User, WipMode, BackfillRecord
 from ..serializers import WipModeSerializer, BackfillRecordSerializer
 from .helpers import record_audit_log, paginate_request
-from .external_remittance import _file_batches
+from .external_remittance import _file_batches, unremitted_on
 from .viewsets import IsSupervisorOrAdminForWrite, _consume_series_fifo
 
 # Column/field names, shared by the CSV header row and the manual-entry JSON
@@ -329,13 +329,27 @@ def record_batch_history(rows, results, user, name=''):
     )
 
 
+def _already_in_system(rows):
+    """Tickets from before this save that are still unremitted on the days it covers. Remittance
+    is one batch per day, so "already remitted" has to cover the whole day, not just the new trips."""
+    days = set()
+    for row in rows:
+        try:
+            _parse_ph_datetime(row[F_ISSUED_AT])
+            days.add(row[F_ISSUED_AT].strip()[:10])  # already PH-local
+        except (KeyError, AttributeError, ValueError):
+            continue  # a malformed row fails validation on its own
+    return [t for day in sorted(days) for t in unremitted_on(day)]
+
+
 @api_view(['POST'])
 @permission_classes([IsSupervisorOrAdminForWrite])
 def backfill_batch(request):
     """A batch of entries (one per vehicle per time) from the backfill screen.
     commit=false (default) previews without writing or holding any ticket numbers.
     remitted=true also files the new tickets as already remitted outside the system (EXT- batches,
-    one per day), saved together with the tickets or not at all."""
+    one per day), saved together with the tickets or not at all. That also settles the tickets the
+    system already holds, still unremitted, on the same days; `also_remitted` says how many."""
     commit = bool(request.data.get('commit'))
     remitted = bool(request.data.get('remitted'))
     rows = request.data.get('rows') or []
@@ -343,19 +357,22 @@ def backfill_batch(request):
         return Response({'outcome': 'error', 'reason': 'No entries to backfill'}, status=200)
     batches = []
     with transaction.atomic():
+        existing = _already_in_system(rows) if remitted else []  # read before the new tickets exist
         results, ok = run_batch(rows, commit)
         if ok and commit:
             ticket_ids = [i for r in results for i in r['ticket_ids']]
             record = record_batch_history(rows, results, request.user)
             if remitted:
-                batches = _file_batches(list(Ticket.objects.filter(pk__in=ticket_ids).select_related('series__ticket_form')), request.user)
+                batches = _file_batches(existing + list(Ticket.objects.filter(pk__in=ticket_ids).select_related('series__ticket_form')), request.user)
             record_audit_log(
                 user=request.user, action='CREATE', model_name='Ticket',
                 object_id=','.join(ticket_ids),
                 object_repr=f"Manual backfill: {len(ticket_ids)} ticket(s) in {len(rows)} entries" + (" (already remitted)" if remitted else ""),
-                changes={'source': 'manual_backfill', 'backfill_id': record.id, 'remitted_batches': batches},
+                changes={'source': 'manual_backfill', 'backfill_id': record.id, 'remitted_batches': batches,
+                         'also_remitted_ticket_ids': [t.id for t in existing]},
             )
-    return Response({'outcome': 'ok' if ok else 'error', 'committed': commit and ok, 'results': results, 'batches': batches})
+    return Response({'outcome': 'ok' if ok else 'error', 'committed': commit and ok, 'results': results, 'batches': batches,
+                     'also_remitted': {'ticket_count': len(existing), 'amount': sum(float(t.collection_amount or 0) for t in existing)}})
 
 
 def _read_csv_rows(file_obj):

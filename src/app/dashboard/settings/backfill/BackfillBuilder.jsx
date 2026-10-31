@@ -78,7 +78,7 @@ function VehiclePicker({ vehicles, series, onAdd, invalid }) {
 
 const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function BackfillBuilder({ vehicles, ticketSeries, busy, submitRows }) {
+export default function BackfillBuilder({ vehicles, ticketSeries, busy, submitRows, alsoRemitted }) {
   const { notify, report, confirmAction } = useFeedback();
 
   const [mode, setMode] = useState("Queue");
@@ -149,6 +149,8 @@ export default function BackfillBuilder({ vehicles, ticketSeries, busy, submitRo
     setShowErrors(false);
   };
 
+  const settled = remitted ? alsoRemitted?.ticket_count || 0 : 0;
+
   const commit = async () => {
     const results = await submitRows(rows, true, remitted);
     if (results.every((r) => r.outcome === "ok")) {
@@ -156,7 +158,7 @@ export default function BackfillBuilder({ vehicles, ticketSeries, busy, submitRo
       reset();
       return IS_REMOTE
         ? { success: { title: "Backfill queued", message: `${totalTickets} ticket(s) will be created on the LAN terminal's next sync.` } }
-        : { success: { title: "Tickets added", message: `${totalTickets} ticket(s) were added${remitted ? " and recorded as remitted" : ""}.` } };
+        : { success: { title: "Tickets added", message: `${totalTickets} ticket(s) were added${remitted ? " and recorded as remitted" : ""}${remitted && settled ? `, along with ${settled} already in the system` : ""}.` } };
     }
     // Saved all-or-nothing, so nothing was added and the form is left as it was.
     setReview(results);
@@ -337,7 +339,7 @@ export default function BackfillBuilder({ vehicles, ticketSeries, busy, submitRo
             <div className="usr-modal-body">
               <p className="set-rewards-note">
                 {mode} · {date} · Series {series?.series_no}. {reviewOk
-                  ? `This creates real records, numbered in this order${remitted ? ", and records their cash as already remitted outside the system. Undo it from Recorded so far" : ""}.`
+                  ? `This creates real records, numbered in this order${remitted ? ", and records their cash as already remitted outside the system. Undo it from Recorded so far" : ""}.${settled ? ` Remittance is once a day, so it also settles the ${settled} ticket(s) (${peso(alsoRemitted.amount)}) the system already holds as unremitted on ${date}.` : ""}`
                   : "Fix the entries in red in the form, then confirm again."}
               </p>
               <table className="set-table">

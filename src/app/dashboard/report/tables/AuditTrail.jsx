@@ -4,7 +4,7 @@ import { IS_REMOTE } from "../../../../lib/api-service";
 import BackfillDetail from "./BackfillDetail";
 import Pager from "./Pager";
 import ExportPdfButton from "./ExportPdfButton";
-import { formatAuditAction, formatAuditItem, matchesAuditRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
+import { AUDIT_CATEGORIES, auditCategoryOf, formatAuditAction, formatAuditItem, matchesAuditRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
 
 const AUDIT_COLUMNS = ["Timestamp", "Action", "Item", "User"];
 // Rows per page on the card.
@@ -12,23 +12,25 @@ const PREVIEW_SIZE = 5;
 
 export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onAuditFetchAll, onExportPDF }) {
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
   const [openId, setOpenId] = useState(null);
 
   // auditData only ever hold one loaded page — once there's an actual
-  // query, search the complete date-ranged result set instead of just that page.
-  const searchAll = useDebouncedSearchAll(onAuditFetchAll, search);
+  // query or category, filter the complete date-ranged result set instead of just that page.
+  const byCategory = category !== "all";
+  const searchAll = useDebouncedSearchAll(onAuditFetchAll, search.trim() || (byCategory ? category : ""));
 
-  const searched = searchAll
-    ? searchAll.filter((l) => matchesAuditRow(l, search))
-    : auditData.filter((l) => matchesAuditRow(l, search));
-  const filtering = Boolean(search.trim());
+  const searched = (searchAll || auditData).filter(
+    (l) => matchesAuditRow(l, search) && (!byCategory || auditCategoryOf(l) === category),
+  );
+  const filtering = Boolean(search.trim()) || byCategory;
   const total = filtering ? searched.length : auditMeta.count;
   const { rows: preview, loading, page, totalPages, setPage } = usePagedPreview({
     rows: searched,
     total,
     fetchPage: onAuditFetchPage,
     local: filtering,
-    resetKey: [onAuditFetchPage, search],
+    resetKey: [onAuditFetchPage, search, category],
     size: PREVIEW_SIZE,
   });
 
@@ -72,11 +74,19 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onA
       <div className="rpt-card-header">
         <div className="rpt-card-header-left">
           <h2 className="rpt-card-title">Audit Trail</h2>
-          <span className="rpt-record-count">
-            {preview.length} of {total} records
-          </span>
         </div>
         <div className="rpt-card-header-actions">
+          <select
+            className="rpt-search-input rpt-route-select"
+            aria-label="Category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="all">All categories</option>
+            {[...Object.entries(AUDIT_CATEGORIES), ["Other", "Other"]].map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
           <input
             type="text"
             className="rpt-search-input"
@@ -85,9 +95,9 @@ export default function AuditTrail({ auditData, auditMeta, onAuditFetchPage, onA
             onChange={(e) => setSearch(e.target.value)}
           />
           <ExportPdfButton
-            title={search ? "Export only rows matching your search" : "Export all records in range"}
-            label={search ? "Export Matches (PDF)" : "Export PDF"}
-            onExport={() => onExportPDF(search)}
+            title={filtering ? "Export only rows matching your filters" : "Export all records in range"}
+            label={filtering ? "Export Matches (PDF)" : "Export PDF"}
+            onExport={() => onExportPDF(search, category)}
           />
         </div>
       </div>

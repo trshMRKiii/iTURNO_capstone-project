@@ -99,9 +99,7 @@ class Driver(models.Model):
     city = models.CharField(max_length=100, blank=True)
     barangay = models.CharField(max_length=100, blank=True)
     street = models.CharField(max_length=255, blank=True)
-    photo = models.ImageField(upload_to='driver_photos/', blank=True, null=True)
     contact = models.CharField(max_length=20)
-    qr_code = models.CharField(max_length=255, blank=True, db_index=True)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
     is_archived = models.BooleanField(default=False, db_index=True)
@@ -110,9 +108,6 @@ class Driver(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=['status', 'is_archived'])]
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
     @property
     def iwp_expired(self):

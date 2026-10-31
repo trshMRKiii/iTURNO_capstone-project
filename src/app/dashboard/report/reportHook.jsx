@@ -63,7 +63,12 @@ export const formatTime = (dateString) => {
   }
 };
 
-const AUDIT_ACTION_LABELS = { CREATE: "Created", UPDATE: "Updated", DELETE: "Deleted" };
+// Audit entries grouped by the kind of record touched; anything unlisted is "Other".
+// Shared by the dashboard's Recent activity chips and the Audit Trail dropdown.
+export const AUDIT_CATEGORIES = { TicketSeries: "Ticket series", Requisition: "Requisitions", TicketForm: "Ticket forms" };
+export const auditCategoryOf = (log) => (AUDIT_CATEGORIES[log.model_name] ? log.model_name : "Other");
+
+const AUDIT_ACTION_LABELS ={ CREATE: "Created", UPDATE: "Updated", DELETE: "Deleted" };
 export const formatAuditAction = (log) => AUDIT_ACTION_LABELS[log.action] || log.action_display || log.action;
 
 // Item names the record that was touched in human terms ("Vehicle: DSH-6456",

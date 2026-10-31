@@ -39,6 +39,14 @@ const SORT_VALUE = {
   amount: (ts) => ts.current_value,
 };
 
+// A group's face value: the form price, else the number in its label ("Cash Tickets@10").
+const faceValue = (g) => parseFloat(g.series[0]?.ticket_form_price) || parseFloat(String(g.denom).match(/[\d.]+$/)?.[0]) || 0;
+const DENOM_SORT_VALUE = {
+  denom: faceValue,
+  qty: (g) => g.totalQty,
+  amount: (g) => g.totalValue,
+};
+
 function SortHead({ id, sort, onSort, className = "", children }) {
   const active = sort.key === id;
   return (
@@ -106,6 +114,14 @@ function Requisition() {
     [inventory, query]
   );
 
+  const [denomSort, setDenomSort] = useState({ key: "denom", dir: "desc" });
+  const onDenomSort = (key) => setDenomSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "denom" ? "desc" : "asc" }));
+  const sortedGroups = useMemo(() => {
+    const val = DENOM_SORT_VALUE[denomSort.key];
+    const sign = denomSort.dir === "asc" ? 1 : -1;
+    return [...groups].sort((a, b) => (val(a) - val(b)) * sign);
+  }, [groups, denomSort]);
+
   const toggleDenom = (denom) => setExpandedDenom((prev) => (prev === denom ? null : denom));
 
   const onSort = (key) => setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
@@ -163,9 +179,9 @@ function Requisition() {
         </div>
 
         <div className="rq-cols rq-cols--denom rq-head">
-          <span>Denomination</span>
-          <span className="rq-num">Quantity</span>
-          <span className="rq-num">Amount</span>
+          <SortHead id="denom" sort={denomSort} onSort={onDenomSort}>Denomination</SortHead>
+          <SortHead id="qty" sort={denomSort} onSort={onDenomSort} className="rq-num">Quantity</SortHead>
+          <SortHead id="amount" sort={denomSort} onSort={onDenomSort} className="rq-num">Amount</SortHead>
         </div>
 
         {loading ? (
@@ -183,7 +199,7 @@ function Requisition() {
             {query ? `No series contains ticket ${search.trim()}` : 'No ticket stock — click "+ Add requisition" to add stock'}
           </p>
         ) : (
-          groups.map((g) => {
+          sortedGroups.map((g) => {
             const open = !!query || expandedDenom === g.denom;
             return (
               <div key={g.denom}>

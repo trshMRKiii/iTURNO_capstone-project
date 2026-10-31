@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { formatAuditAction } from "../report/reportHook";
+import { auditCategoryOf, formatAuditAction } from "../report/reportHook";
 
 const PAGE_SIZE = 7;
 const DAY_MS = 86400000;
@@ -13,7 +13,7 @@ const MODELS = {
 const REQUISITION_NOTES = { PENDING: "Waiting for validation", APPROVED: "Validated", ISSUED: "Issued" };
 const STATE_LABELS = { PENDING: "Pending", APPROVED: "Validated", ISSUED: "Issued" };
 
-const categoryOf = (log) => (MODELS[log.model_name] ? log.model_name : "Other");
+const categoryOf = auditCategoryOf;
 const inThousands = (n) => Number(n).toLocaleString("en-US");
 
 // What one audit entry says in dashboard terms. Requisition and series entries carry their

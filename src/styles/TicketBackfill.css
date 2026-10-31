@@ -62,3 +62,5 @@
 .bf-undo:hover { border-color: #b42318; color: #b42318; }
 
 .bf .usr-input[aria-invalid="true"] { border-color: #b42318; }
+
+.bf-status-date { display: flex; flex-direction: column; gap: 6px; max-width: 240px; }

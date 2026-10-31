@@ -26,6 +26,8 @@ function getTransporter() {
 // Mirrors backend/api/templates/emails/password_reset.html so the remote and
 // LAN reset emails look the same.
 function passwordResetHtml(userName, resetLink) {
+  // The seal is served from the deployed site's public/ folder (the reset link's own origin).
+  const sealUrl = `${new URL(resetLink).origin}/report_templates/seal.png`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,6 +42,7 @@ function passwordResetHtml(userName, resetLink) {
         <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(26,39,68,0.12);">
           <tr>
             <td style="background:linear-gradient(135deg, #1a2744 0%, #243258 100%); background-color:#1a2744; padding:28px 32px; text-align:center;">
+              <img src="${sealUrl}" width="72" height="72" alt="City of San Fernando Official Seal" style="display:block; margin:0 auto 12px; border:0;" />
               <div style="font-size:18px; font-weight:700; color:#ffffff; letter-spacing:0.3px;">North Central Terminal</div>
               <div style="font-size:12px; color:#c7cfe0; margin-top:4px;">City Government of San Fernando</div>
             </td>

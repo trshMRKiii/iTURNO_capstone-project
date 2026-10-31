@@ -204,8 +204,10 @@
 .dispatch-move-btn:disabled { color: var(--text-secondary); opacity: 0.45; cursor: not-allowed; }
 
 .dispatch-go-btn {
+  display: block;
+  width: calc(100% - 6px);
+  margin: 6px 3px 0;
   height: 34px;
-  margin-left: 6px;
   padding: 0 14px;
   border: none;
   border-radius: 8px;

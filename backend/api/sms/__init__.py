@@ -2,7 +2,7 @@ import logging
 import threading
 
 from .philsms import send_sms, SmsError
-from .templates import queue_position_message, queue_next_message
+from .templates import queue_position_message, queue_first_message, queue_next_message
 
 logger = logging.getLogger('sms')
 
@@ -20,4 +20,4 @@ def send_sms_async(number, message):
     threading.Thread(target=_send, daemon=True).start()
 
 
-__all__ = ['send_sms', 'send_sms_async', 'SmsError', 'queue_position_message', 'queue_next_message']
+__all__ = ['send_sms', 'send_sms_async', 'SmsError', 'queue_position_message', 'queue_first_message', 'queue_next_message']

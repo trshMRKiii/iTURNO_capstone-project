@@ -200,9 +200,6 @@ export default function RequisitionRemittance({
             Requisition
           </button>
         </div>
-        <span className="rpt-record-count">
-          {preview.length} of {total} records
-        </span>
       </div>
 
       <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} emptyText={loading ? "Loading…" : undefined} centeredColumns={["Actions"]} />

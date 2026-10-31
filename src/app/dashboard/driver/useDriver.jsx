@@ -19,7 +19,6 @@ const EMPTY_FORM = {
   contact: "",
   status: "ACTIVE",
   is_archived: false,
-  photo: null,
 };
 
 // Field defined OUTSIDE component to prevent remount (fixes input deselect bug)
@@ -111,7 +110,7 @@ export function useDriver() {
       tone: "primary",
       run: async () => {
         try {
-          const payload = buildDriverPayload({ ...form, qr_code: form.iwp_number.trim() });
+          const payload = buildDriverPayload(form);
           if (editing) {
             await apiService.updateDriver(editing.id, payload);
           } else {

@@ -590,7 +590,7 @@
 
 /* ── DataTable ── */
 .rpt-table-wrap {
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 
 .rpt-table-wrap::-webkit-scrollbar {
@@ -598,7 +598,7 @@
 }
 
 .rpt-table-wrap::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
   border-radius: 3px;
 }
 

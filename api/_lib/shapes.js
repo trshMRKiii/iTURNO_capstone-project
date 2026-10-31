@@ -40,9 +40,7 @@ export function shapeDriver(d) {
     city: d.city,
     barangay: d.barangay,
     street: d.street,
-    photo: d.photo || null, // relative path — LAN-only media server, won't render remotely
     contact: d.contact,
-    qr_code: d.qr_code,
     status: d.status,
     is_archived: d.is_archived,
     created_at: d.created_at,

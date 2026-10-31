@@ -35,14 +35,6 @@ export const expiryLabel = (days) => (days === 0 ? "Expires today" : `Expires in
 
 export const getIwpStatus = (driver) => getExpiryStatus(driver?.iwp_expiration_date);
 
-// Driver photos come back as a backend-relative path (or a full URL); null when none.
-export const getDriverPhotoUrl = (photo) => {
-  if (!photo) return null;
-  if (photo.startsWith("http")) return photo;
-  const host = window.location.hostname;
-  return `http://${host === "127.0.0.1" ? "localhost" : host}:8000${photo}`;
-};
-
 const REQUIRED_FIELD_MESSAGES = {
   first_name: "Enter the first name.",
   last_name: "Enter the last name.",
@@ -95,40 +87,27 @@ export const normalizeDriverForm = (driver = {}) => ({
   barangay: driver.barangay || "",
   street: driver.street || "",
   contact: driver.contact || "",
-  qr_code: driver.qr_code || "",
   status: driver.status || "ACTIVE",
   is_archived: driver.is_archived ?? false,
   created_at: driver.created_at || null,
   updated_at: driver.updated_at || null,
-  photo: driver.photo || null,
   name: getDriverDisplayName(driver),
   code: driver.code || driver.iwp_number || "",
 });
 
-export const buildDriverPayload = (form = {}) => {
-  const payload = new FormData();
-
-  payload.append("first_name", form.first_name || "");
-  if (form.middle_name) {
-    payload.append("middle_name", form.middle_name);
-  }
-  payload.append("last_name", form.last_name || "");
-  payload.append("iwp_number", form.iwp_number || "");
-  payload.append("iwp_expiration_date", form.iwp_expiration_date || "");
-  payload.append("gender", form.gender || "");
-  payload.append("birthdate", form.birthdate || "");
-  payload.append("province", form.province || "La Union");
-  payload.append("city", form.city || "");
-  payload.append("barangay", form.barangay || "");
-  payload.append("street", form.street || "");
-  payload.append("contact", form.contact || "");
-  payload.append("qr_code", form.qr_code || "");
-  payload.append("status", form.status || "ACTIVE");
-  payload.append("is_archived", form.is_archived ? "true" : "false");
-
-  if (form.photo instanceof File) {
-    payload.append("photo", form.photo);
-  }
-
-  return payload;
-};
+export const buildDriverPayload = (form = {}) => ({
+  first_name: form.first_name || "",
+  middle_name: form.middle_name || "",
+  last_name: form.last_name || "",
+  iwp_number: form.iwp_number || "",
+  iwp_expiration_date: form.iwp_expiration_date || null,
+  gender: form.gender || "",
+  birthdate: form.birthdate || null,
+  province: form.province || "La Union",
+  city: form.city || "",
+  barangay: form.barangay || "",
+  street: form.street || "",
+  contact: form.contact || "",
+  status: form.status || "ACTIVE",
+  is_archived: !!form.is_archived,
+});

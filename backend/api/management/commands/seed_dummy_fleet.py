@@ -327,7 +327,6 @@ class Command(BaseCommand):
             if not dry_run:
                 # Small volume (100) -- normal save() so each row queues into SyncQueue like real data.
                 for d, v in zip(drivers, vehicles):
-                    d.qr_code = d.iwp_number
                     d.save()
                     v.owner_driver = v.active_driver = d
                     v.qr_code = f"QR-{v.plate_number}-{uuid.uuid4().hex[:8].upper()}"

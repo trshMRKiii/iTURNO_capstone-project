@@ -3,9 +3,9 @@ import { DataTable } from "../../../../components/ui/dataTable";
 import Pager from "./Pager";
 import ExportPdfButton from "./ExportPdfButton";
 import { matchesQueueRow, matchesRoamingRow, useDebouncedSearchAll, usePagedPreview } from "../reportHook";
-const QUEUE_COLUMNS = ["Timestamp", "Ticket ID", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
-const ROAMING_COLUMNS = ["Timestamp", "Ticket ID", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
-const ALL_COLUMNS = ["Timestamp", "Ticket ID", "Type", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
+const QUEUE_COLUMNS = ["Timestamp", "Ticket Series", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
+const ROAMING_COLUMNS = ["Timestamp", "Ticket Series", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
+const ALL_COLUMNS = ["Timestamp", "Ticket Series", "Type", "Driver", "Vehicle", "Route", "Issued By", "Dispatched By"];
 
 const withQueueType = (l) => ({ ...l, type: "Queue" });
 const roamingToLogRow = (t) => ({
@@ -233,9 +233,6 @@ export default function QueueLog({
             Roaming Logs
           </button>
         </div>
-        <span className="rpt-record-count">
-          {preview.length} of {total} records
-        </span>
       </div>
 
       <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} emptyText={loading ? "Loading…" : undefined} />

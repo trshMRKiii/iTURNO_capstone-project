@@ -114,11 +114,14 @@
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.usr-import-drop strong { font-size: 15.4px; color: var(--text-primary); }
+.usr-import-pick { padding: 9px 18px; border-radius: 8px; background: #1a2744; color: #fff; font-size: 14.3px; font-weight: 600; }
 .usr-import-drop:hover { background: var(--bg-hover); border-color: var(--text-secondary); }
 .usr-import-drop.is-busy { cursor: wait; opacity: 0.7; }
 .usr-import-note { margin: 0; font-size: 14.3px; line-height: 1.55; color: var(--text-secondary); }
 .usr-import-note b { color: var(--text-primary); }
+.usr-import-sample { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14.3px; }
+.usr-import-sample dt { font-weight: 600; color: var(--text-primary); }
+.usr-import-sample dd { margin: 0; color: var(--text-secondary); }
 .usr-import-filter {
   align-self: flex-start;
   background: none;

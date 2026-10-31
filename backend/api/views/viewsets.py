@@ -1,9 +1,10 @@
+import re
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from django.conf import settings
-from django.core.files.uploadedfile import UploadedFile
 from django.core.mail import EmailMultiAlternatives
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.db.models import Count, Q
 from django.db.models.functions import Length
@@ -77,6 +78,55 @@ LEAD_ROLES = ('SUPERVISOR', 'MANAGER')
 # sends an email, so this also bounds a single flush).
 IMPORT_FIELDS = ('username', 'first_name', 'middle_name', 'last_name', 'role')
 IMPORT_MAX_ROWS = 500
+
+DRIVER_IMPORT_FIELDS = (
+    'first_name', 'middle_name', 'last_name', 'iwp_number', 'iwp_expiration_date', 'gender',
+    'birthdate', 'province', 'city', 'barangay', 'street', 'contact',
+)
+# Same required set as the registration form (province falls back to La Union).
+DRIVER_IMPORT_REQUIRED = ('first_name', 'last_name', 'iwp_number', 'iwp_expiration_date', 'gender', 'birthdate', 'city', 'barangay', 'contact')
+VEHICLE_IMPORT_FIELDS = ('plate_number', 'route', 'transportation', 'franchise_number', 'franchise_expiration_date', 'operator_iwp')
+
+
+def _import_date(text):
+    """ISO or the MM/DD/YYYY spreadsheets export; None when it isn't a real date."""
+    for fmt in ('%Y-%m-%d', '%m/%d/%Y'):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _run_csv_import(viewset, request, serializer_class, check):
+    """Shared preview/commit loop for the fleet imports. `check(row, seen)` normalises one
+    raw row in place and returns (serializer data, reason) — reason is None when the row
+    may be created. `commit` false only validates; true creates every valid row."""
+    rows = request.data.get('rows')
+    if not isinstance(rows, list) or not rows:
+        raise ValidationError('No rows to import.')
+    if len(rows) > IMPORT_MAX_ROWS:
+        raise ValidationError(f'Import at most {IMPORT_MAX_ROWS} rows at a time.')
+
+    seen = set()
+    results = []
+    for index, raw in enumerate(rows, start=2):  # row 1 of the file is the header
+        row = dict(raw) if isinstance(raw, dict) else {}
+        line = row.pop('_line', None) or index  # the row's line in the CSV, so users can find it in Excel
+        data, reason = check(row, seen)
+        serializer = serializer_class(data=data)
+        if not reason and not serializer.is_valid():
+            reason = ' '.join(f"{k.replace('_', ' ').capitalize()}: {e}" for k, errs in serializer.errors.items() for e in errs)
+        results.append((serializer, row, {'line': line, 'outcome': 'error' if reason else 'ok', 'reason': reason, **row}))
+
+    created = 0
+    if request.data.get('commit'):
+        with transaction.atomic():
+            for serializer, row, result in results:
+                if result['outcome'] == 'ok':
+                    viewset._audit('CREATE', serializer.save(), {**row, 'imported': True})
+                    created += 1
+    return Response({'created': created, 'rows': [result for *_, result in results]})
 
 
 def is_fleet_tick(request, view):
@@ -226,8 +276,9 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
         existing = {name.lower() for name in self._staff_queryset().values_list('username', flat=True)}
         seen = set()
         results = []
-        for line, raw in enumerate(rows, start=1):
+        for index, raw in enumerate(rows, start=2):  # row 1 of the file is the header
             raw = raw if isinstance(raw, dict) else {}
+            line = raw.get('_line') or index
             row = {k: str(raw.get(k) or '').strip() for k in IMPORT_FIELDS}
             row['role'] = row['role'].upper() or 'PERSONNEL'
             serializer = UserSerializer(data=row)
@@ -237,7 +288,7 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
             elif row['role'] in ('SUPERADMIN', 'ADMIN'):
                 reason = 'Admin accounts must be added one at a time.'
             elif not serializer.is_valid():
-                reason = ' '.join(str(e) for errs in serializer.errors.values() for e in errs)
+                reason = ' '.join(f"{k.replace('_', ' ').capitalize()}: {e}" for k, errs in serializer.errors.items() for e in errs)
             elif email in existing:
                 reason = 'A user with that email already exists.'
             elif email in seen:
@@ -306,6 +357,7 @@ def send_new_account_email(user, raw_password):
         'username': user.username,
         'temp_password': raw_password,
         'login_link': login_link,
+        'seal_url': f'{login_link}/report_templates/seal.png',
     })
     email = EmailMultiAlternatives(
         subject='Your North Central Terminal account is ready',
@@ -331,6 +383,37 @@ class DriverViewSet(AuditLogMixin, viewsets.ModelViewSet):
         if is_archived is not None:
             qs = qs.filter(is_archived=is_archived.lower() in ('1', 'true', 'yes'))
         return qs
+
+    @action(detail=False, methods=['post'], url_path='import')
+    def import_drivers(self, request):
+        """Bulk-register drivers from parsed CSV rows (preview or commit, see _run_csv_import)."""
+        def check(row, seen):
+            for k in DRIVER_IMPORT_FIELDS:
+                row[k] = str(row.get(k) or '').strip()
+            row['iwp_number'] = re.sub(r'\D', '', row['iwp_number'])
+            row['gender'] = row['gender'].upper()
+            row['province'] = row['province'] or 'La Union'
+            digits = re.sub(r'\D', '', row['contact'])
+            row['contact'] = '0' + digits[2:] if digits.startswith('63') else '0' + digits if digits.startswith('9') else digits
+            dates = {k: _import_date(row[k]) for k in ('iwp_expiration_date', 'birthdate') if row[k]}
+            missing = [k.replace('_', ' ') for k in DRIVER_IMPORT_REQUIRED if not row[k]]
+            if missing:
+                return None, f"Missing {', '.join(missing)}."
+            if not re.fullmatch(r'\d{12}', row['iwp_number']):
+                return None, 'IWP number must be exactly 12 digits.'
+            if not re.fullmatch(r'09\d{9}', row['contact']):
+                return None, 'Contact must be a mobile number like 0917 123 4567.'
+            if row['gender'] not in dict(Driver.GENDER_CHOICES):
+                return None, 'Gender must be Male, Female or Other.'
+            bad = [k.replace('_', ' ') for k, v in dates.items() if v is None]
+            if bad:
+                return None, f"Invalid {' and '.join(bad)} — use YYYY-MM-DD."
+            if row['iwp_number'] in seen:
+                return None, 'IWP number appears more than once in this file.'
+            seen.add(row['iwp_number'])
+            return {**row, **dates}, None
+
+        return _run_csv_import(self, request, DriverSerializer, check)
 
 
 class Conflict(APIException):
@@ -422,6 +505,54 @@ class VehicleViewSet(AuditLogMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         expire_stale_kiosk_sessions()
         return super().list(request, *args, **kwargs)
+
+    @action(detail=False, methods=['post'], url_path='import')
+    def import_vehicles(self, request):
+        """Bulk-register vehicles from parsed CSV rows (preview or commit, see _run_csv_import).
+        Route and transportation type are matched by name and the operator by IWP number —
+        none of them are created here, so an unknown one skips the row."""
+        routes = {r.origin.lower(): r for r in Route.objects.filter(is_archived=False)}
+        types = {t.name.lower(): t for t in PUVType.objects.filter(is_archived=False)}
+        operators = {d.iwp_number: d for d in Driver.objects.filter(is_archived=False).exclude(iwp_number='')}
+        registered = set(Vehicle.objects.values_list('plate_number', flat=True))
+
+        def check(row, seen):
+            for k in VEHICLE_IMPORT_FIELDS:
+                row[k] = str(row.get(k) or '').strip()
+            row['plate_number'] = re.sub(r'^([A-Za-z]{3})-?(\d{3,4})$', r'\1-\2', row['plate_number']).upper()
+            row['franchise_number'] = re.sub(r'^(\d{2})-?(\d{5})$', r'\1-\2', row['franchise_number'])
+            row['operator_iwp'] = re.sub(r'\D', '', row['operator_iwp'])
+            expiry = _import_date(row['franchise_expiration_date'])
+            missing = [k.replace('_', ' ') for k in VEHICLE_IMPORT_FIELDS if not row[k]]
+            if missing:
+                return None, f"Missing {', '.join(missing)}."
+            if not re.fullmatch(r'[A-Z]{3}-\d{3,4}', row['plate_number']):
+                return None, 'Plate number must look like ABC-1234.'
+            if not re.fullmatch(r'\d{2}-\d{5}', row['franchise_number']):
+                return None, 'Franchise number must look like YY-NNNNN.'
+            if expiry is None:
+                return None, 'Invalid franchise expiration date — use YYYY-MM-DD.'
+            route, puv, operator = routes.get(row['route'].lower()), types.get(row['transportation'].lower()), operators.get(row['operator_iwp'])
+            if not route:
+                return None, f"Route \"{row['route']}\" doesn't exist."
+            if not puv:
+                return None, f"Transportation type \"{row['transportation']}\" doesn't exist."
+            if not operator:
+                return None, f"No driver has IWP number {row['operator_iwp']}. Import the drivers first."
+            if row['plate_number'] in registered:
+                return None, f"Plate number {row['plate_number']} is already registered."
+            if row['plate_number'] in seen:
+                return None, 'Plate number appears more than once in this file.'
+            seen.add(row['plate_number'])
+            return {
+                'plate_number': row['plate_number'], 'route': route.pk, 'transportation_id': puv.pk,
+                'franchise_number': row['franchise_number'], 'franchise_expiration_date': expiry,
+                'owner_driver': operator.pk,
+                'operator_address': ', '.join(filter(None, [operator.street, operator.barangay, operator.city, operator.province])),
+                'qr_code': f"QR-{row['plate_number'].replace('-', '')}-{uuid.uuid4().hex[:8].upper()}",
+            }, None
+
+        return _run_csv_import(self, request, VehicleSerializer, check)
 
     def perform_update(self, serializer):
         instance = serializer.save()

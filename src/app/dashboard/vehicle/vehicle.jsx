@@ -13,6 +13,7 @@ import {
 } from "./vehicleHook";
 import TicketHistoryModal from "../registry/TicketHistoryModal";
 import RowMenu from "../registry/RowMenu";
+import Pager from "../report/tables/Pager";
 import { useTableSort, SortHead } from "../registry/useTableSort";
 import { getExpiryStatus, daysUntilExpiry, expiryLabel } from "../driver/driver-utils";
 import { exportVehiclesPDF } from "../registry/registryExport";
@@ -405,26 +406,8 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
             </tbody>
           </table>
         </div>
-        {!loading && filteredVehicles.length > 0 && totalPages > 1 && (
-          <div className="veh-pagination">
-            <button
-              className="veh-page-btn"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={safePage === 1}
-            >
-              Prev
-            </button>
-            <span className="veh-page-info">
-              Page {safePage} of {totalPages}
-            </span>
-            <button
-              className="veh-page-btn"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage === totalPages}
-            >
-              Next
-            </button>
-          </div>
+        {!loading && (
+          <Pager page={safePage} totalPages={totalPages} count={filteredVehicles.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
         )}
       </div>
 

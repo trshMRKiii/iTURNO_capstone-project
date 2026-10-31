@@ -10,7 +10,7 @@ from rest_framework.status import HTTP_204_NO_CONTENT
 
 from ..models import Collection, PaperIssuance, RemittanceBatch, Ticket, TicketSeries
 from ..serializers import PaperIssuanceSerializer
-from .helpers import paper_numbers_by_series, record_audit_log
+from .helpers import paper_numbers_by_series, parse_date_end, parse_date_start, record_audit_log
 from .viewsets import IsSupervisorOrAdminForWrite
 
 REASONS = dict(PaperIssuance.REASON_CHOICES)
@@ -168,6 +168,14 @@ def external_remittance(request):
                      'ticket_ids': [t.id for t in tickets], 'paper_runs': runs},
         )
     return Response({**result, 'committed': True, 'batches': codes})
+
+
+def unremitted_on(date_str):
+    """System tickets dispatched on a PH day whose cash hasn't been remitted yet."""
+    return Ticket.objects.filter(
+        status='COLLECTED', is_verified=True, remittance_batch__isnull=True,
+        dispatched_at__gte=parse_date_start(date_str), dispatched_at__lte=parse_date_end(date_str),
+    ).select_related('series__ticket_form')
 
 
 @api_view(['GET'])

@@ -1,8 +1,8 @@
 import jwt
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
 from rest_framework import status
@@ -44,6 +44,7 @@ def forgot_password(request):
         html_body = render_to_string('emails/password_reset.html', {
             'user_name': user_name,
             'reset_link': reset_link,
+            'seal_url': f'{settings.PUBLIC_APP_URL}/report_templates/seal.png',
         })
 
         email = EmailMultiAlternatives(

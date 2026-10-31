@@ -11,6 +11,7 @@ import {
   matchesRequisitionRow,
   matchesRemittanceRow,
   matchesAuditRow,
+  auditCategoryOf,
   formatAuditItem,
   formatAuditAction,
 } from "./reportHook";
@@ -425,9 +426,9 @@ export default function Report() {
     User: l.user_name || "System",
   });
 
-  const handleExportAuditPDF = async (search = "") => {
+  const handleExportAuditPDF = async (search = "", category = "all") => {
     const rows = await fetchAuditExportRows();
-    exportTable(rows.filter((l) => matchesAuditRow(l, search)).map(buildAuditExportRow), "Audit Trail");
+    exportTable(rows.filter((l) => matchesAuditRow(l, search) && (category === "all" || auditCategoryOf(l) === category)).map(buildAuditExportRow), "Audit Trail");
   };
 
   return (

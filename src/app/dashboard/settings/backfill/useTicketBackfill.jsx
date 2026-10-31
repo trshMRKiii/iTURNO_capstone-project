@@ -11,6 +11,8 @@ export function useTicketBackfill() {
   const [ticketSeries, setTicketSeries] = useState([]);
 
   const [submitBusy, setSubmitBusy] = useState(false);
+  // Tickets already in the system that a "Save as remitted" on these days would settle too (from the last preview/save).
+  const [alsoRemitted, setAlsoRemitted] = useState(null);
 
   // Remote has no live preview (see submitManualBackfill's comment in
   // api-service.js) — this list of queued requests + their apply status is
@@ -69,6 +71,7 @@ export function useTicketBackfill() {
     setSubmitBusy(true);
     try {
       const data = await apiService.submitBackfillBatch(rows, commit, remitted);
+      setAlsoRemitted(data.also_remitted || null);
       // Remote only queues, so it has no per-row results.
       const results = rows.map((row, i) => ({ row, ...(data.results?.[i] || { outcome: data.outcome }) }));
       if (commit && data.outcome === "ok" && IS_REMOTE) await fetchRemoteRequests();
@@ -83,7 +86,7 @@ export function useTicketBackfill() {
   return {
     wipMode, wipLoading, togglingWip, toggleWipMode,
     vehicles, ticketSeries,
-    submitBusy, submitRows,
+    submitBusy, submitRows, alsoRemitted,
     remoteRequests, remoteRequestsLoading,
   };
 }

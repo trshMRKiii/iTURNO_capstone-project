@@ -4,15 +4,22 @@ import { useTicketBackfill } from "./useTicketBackfill";
 import BackfillBuilder from "./BackfillBuilder";
 import { F_PLATE, F_TICKET_TYPE, F_QUANTITY } from "./fields";
 
-export default function TicketBackfillTab() {
+export default function TicketBackfillTab({ onSaved }) {
   const { report, confirmAction } = useFeedback();
   const {
     wipMode, wipLoading, togglingWip, toggleWipMode,
-    vehicles, ticketSeries, submitBusy, submitRows,
+    vehicles, ticketSeries, submitBusy, submitRows, alsoRemitted,
     remoteRequests, remoteRequestsLoading,
   } = useTicketBackfill();
 
   const isPaused = !!wipMode?.is_active;
+
+  // A committed save changes what's owed, so the cards above the tabs reload.
+  const saveRows = async (rows, commit, remitted) => {
+    const results = await submitRows(rows, commit, remitted);
+    if (commit) onSaved?.();
+    return results;
+  };
 
   const applyWipMode = async (turningOn) => {
     try {
@@ -75,7 +82,7 @@ export default function TicketBackfillTab() {
             Ticket numbers are assigned automatically from the selected Ticket Series — they're never typed in.
           </p>
 
-          <BackfillBuilder vehicles={vehicles} ticketSeries={ticketSeries} busy={submitBusy} submitRows={submitRows} />
+          <BackfillBuilder vehicles={vehicles} ticketSeries={ticketSeries} busy={submitBusy} submitRows={saveRows} alsoRemitted={alsoRemitted} />
         </>
       )}
 

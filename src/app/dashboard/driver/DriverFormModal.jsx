@@ -1,12 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import React, { useRef } from "react";
 import { usePhilippineAddress } from "./usePhilippineAddress";
 import { formatContact, normalizeContact } from "../../../lib/contact";
 import {
   DRIVER_SECTIONS,
   REQUIRED_FIELD_COUNT,
   formatIwp,
-  getDriverPhotoUrl,
   validateDriverForm,
 } from "./driver-utils";
 
@@ -123,9 +121,6 @@ function DriverFormModal({
   onSubmit,
   onClose,
 }) {
-  const [brokenSrc, setBrokenSrc] = useState(null);
-  const [photoViewOpen, setPhotoViewOpen] = useState(false);
-
   const { provinceOptions, cityOptions, barangayOptions, handleProvinceSelect, offline } =
     usePhilippineAddress({
       active: true,
@@ -134,14 +129,6 @@ function DriverFormModal({
       onProvinceChange: (name) => setForm((f) => ({ ...f, province: name })),
       onCityChange: (name) => setForm((f) => ({ ...f, city: name, barangay: "" })),
     });
-
-  const photoPreview = useMemo(
-    () => (form.photo instanceof File ? URL.createObjectURL(form.photo) : getDriverPhotoUrl(form.photo)),
-    [form.photo],
-  );
-  useEffect(() => () => {
-    if (photoPreview?.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
-  }, [photoPreview]);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setName = (key) => (e) => setForm({ ...form, [key]: capitalizeWords(e.target.value) });
@@ -153,7 +140,6 @@ function DriverFormModal({
   const expiryHint = getExpiryHint(form.iwp_expiration_date);
   const age = getAge(form.birthdate);
   const fullName = [form.first_name, form.middle_name, form.last_name].filter(Boolean).join(" ");
-  const showPhoto = photoPreview && brokenSrc !== photoPreview;
 
   const addressField = (key, label, placeholder, options, valueKey, labelKey, onChange, disabled) => (
     <Field label={label} required error={fieldErrors[key]}>
@@ -191,47 +177,6 @@ function DriverFormModal({
         <form onSubmit={onSubmit} noValidate className="drv-modal-form">
           <div className="drv-modal-split">
             <aside className="drv-side">
-              <label className={`drv-photo${showPhoto ? "" : " drv-photo--empty"}`} title={showPhoto ? "Change photo" : "Upload photo"}>
-                {showPhoto ? (
-                  <img src={photoPreview} alt="Driver" onError={() => setBrokenSrc(photoPreview)} />
-                ) : (
-                  <span className="drv-photo-placeholder">
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    <span>Upload photo</span>
-                  </span>
-                )}
-                {showPhoto && <span className="drv-photo-overlay">Change photo</span>}
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => setForm({ ...form, photo: e.target.files?.[0] || form.photo })}
-                />
-              </label>
-              {showPhoto && (
-                <>
-                  <label className="drv-photo-btn">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                      <circle cx="12" cy="13" r="4" />
-                    </svg>
-                    Edit photo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => setForm({ ...form, photo: e.target.files?.[0] || form.photo })}
-                    />
-                  </label>
-                  <button type="button" className="drv-photo-view" onClick={() => setPhotoViewOpen(true)}>
-                    View full photo
-                  </button>
-                </>
-              )}
-
               <div className="drv-preview">
                 <span className="drv-preview-tag">Preview</span>
                 <strong className="drv-preview-name">{fullName || "New driver"}</strong>
@@ -320,16 +265,6 @@ function DriverFormModal({
                 )}
               </Section>
 
-              {editing && form.qr_code && (
-                <section className="drv-section">
-                  <h3 className="drv-section-title">Driver QR code</h3>
-                  <div className="drv-qr-display">
-                    <QRCodeSVG value={form.qr_code} size={140} level="H" includeMargin />
-                    <span className="drv-qr-label">{form.qr_code}</span>
-                  </div>
-                </section>
-              )}
-
               {error && <div className="drv-alert drv-alert--inline">{error}</div>}
             </div>
           </div>
@@ -346,18 +281,6 @@ function DriverFormModal({
           </div>
         </form>
       </div>
-
-      {photoViewOpen && showPhoto && (
-        <div className="drv-lightbox" onClick={(e) => { e.stopPropagation(); setPhotoViewOpen(false); }}>
-          <button className="drv-lightbox-close" onClick={() => setPhotoViewOpen(false)} aria-label="Close">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
-          </button>
-          <img className="drv-lightbox-img" src={photoPreview} alt="Driver full photo" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
     </div>
   );
 }

@@ -131,9 +131,6 @@ export default function FleetRecords({
               Driver Records
             </button>
           </div>
-          <span className="rpt-record-count">
-            {preview.length} of {total} records
-          </span>
         </div>
         <div className="rpt-card-header-actions">
           <input

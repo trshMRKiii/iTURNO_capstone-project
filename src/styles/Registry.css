@@ -137,9 +137,13 @@
 /* ── Tabs ── */
 .reg-tabs {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 20px;
 }
+
+.reg-tabs .reg-search-wrap { margin-left: auto; }
 
 .reg-tab {
   display: inline-flex;

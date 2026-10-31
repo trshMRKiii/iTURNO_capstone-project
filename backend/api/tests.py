@@ -17,7 +17,6 @@ class ModelSopFieldsTests(TestCase):
         self.assertTrue(hasattr(Driver, 'city'))
         self.assertTrue(hasattr(Driver, 'barangay'))
         self.assertTrue(hasattr(Driver, 'street'))
-        self.assertTrue(hasattr(Driver, 'photo'))
 
         self.assertTrue(hasattr(Vehicle, 'transportation_id'))
         self.assertTrue(hasattr(Vehicle, 'franchise_number'))
@@ -270,6 +269,68 @@ class StaffImportTests(TestCase):
         from .models import User
         self.client.force_authenticate(User.objects.create_user(username='lead', password='x', role='SUPERVISOR'))
         self.assertEqual(self.client.post('/api/users/import/', {'rows': self.rows}, format='json').status_code, 403)
+
+
+class FleetImportTests(TestCase):
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import Driver, PUVType, Route, User
+        self.client = APIClient()
+        self.client.force_authenticate(User.objects.create_user(username='adm', password='x', role='SUPERADMIN'))
+        Route.objects.create(origin='Bacnotan')
+        PUVType.objects.create(name='Jeepney')
+        Driver.objects.create(first_name='Old', last_name='Timer', iwp_number='111122223333', contact='09170000000', city='Bacnotan')
+        self.driver = {
+            'first_name': 'Ana', 'last_name': 'Cruz', 'iwp_number': '1234-5678-9012', 'iwp_expiration_date': '12/31/2030',
+            'gender': 'female', 'birthdate': '1990-05-04', 'city': 'Bauang', 'barangay': 'Payocpoc', 'contact': '+63 917 123 4567',
+        }
+
+    def test_driver_preview_normalises_flags_problems_and_creates_nothing(self):
+        from .models import Driver
+        rows = [
+            self.driver,
+            {**self.driver, 'iwp_number': '123456789012'},
+            {**self.driver, 'iwp_number': '111122223333'},
+            {**self.driver, 'iwp_number': '999988887777', 'contact': '12345'},
+            {**self.driver, 'iwp_number': '999988887777', 'last_name': ''},
+        ]
+        res = self.client.post('/api/drivers/import/', {'rows': rows}, format='json')
+        self.assertEqual([r['outcome'] for r in res.data['rows']], ['ok', 'error', 'error', 'error', 'error'])
+        self.assertEqual(res.data['rows'][0]['iwp_number'], '123456789012')
+        self.assertEqual(res.data['rows'][0]['contact'], '09171234567')
+        self.assertIn('more than once', res.data['rows'][1]['reason'])
+        self.assertIn('already exists', res.data['rows'][2]['reason'])
+        self.assertIn('Contact', res.data['rows'][3]['reason'])
+        self.assertIn('last name', res.data['rows'][4]['reason'])
+        self.assertEqual(Driver.objects.count(), 1)
+
+    def test_driver_commit_creates_valid_rows(self):
+        from .models import Driver
+        res = self.client.post('/api/drivers/import/', {'rows': [self.driver, {**self.driver, 'gender': ''}], 'commit': True}, format='json')
+        self.assertEqual(res.data['created'], 1)
+        ana = Driver.objects.get(iwp_number='123456789012')
+        self.assertEqual((ana.gender, ana.province, str(ana.iwp_expiration_date)), ('FEMALE', 'La Union', '2030-12-31'))
+
+    def test_vehicle_import_resolves_names_and_skips_unknowns(self):
+        from .models import Driver, Vehicle
+        good = {'plate_number': 'abc1234', 'route': 'bacnotan', 'transportation': 'JEEPNEY', 'franchise_number': '2158231',
+                'franchise_expiration_date': '2030-01-31', 'operator_iwp': '1111-2222-3333'}
+        rows = [good, {**good, 'plate_number': 'ABC-1234'}, {**good, 'plate_number': 'XYZ-9999', 'route': 'Nowhere'},
+                {**good, 'plate_number': 'XYZ-9998', 'operator_iwp': '000000000000'}]
+        res = self.client.post('/api/vehicles/import/', {'rows': rows, 'commit': True}, format='json')
+        self.assertEqual([r['outcome'] for r in res.data['rows']], ['ok', 'error', 'error', 'error'])
+        self.assertEqual(res.data['created'], 1)
+        v = Vehicle.objects.get()
+        self.assertEqual((v.plate_number, v.franchise_number, v.owner_driver, v.active_driver), ('ABC-1234', '21-58231', Driver.objects.get(), Driver.objects.get()))
+        self.assertTrue(v.qr_code.startswith('QR-ABC1234-'))
+
+    def test_personnel_needs_the_fleet_tick(self):
+        from .models import User
+        user = User.objects.create_user(username='p', password='x', role='PERSONNEL')
+        self.client.force_authenticate(user)
+        self.assertEqual(self.client.post('/api/drivers/import/', {'rows': [self.driver]}, format='json').status_code, 403)
+        user.can_manage_fleet = True
+        self.assertEqual(self.client.post('/api/drivers/import/', {'rows': [self.driver]}, format='json').status_code, 200)
 
 
 class OfflineSettingDeleteTests(TestCase):
@@ -746,6 +807,37 @@ class BackfillRemittedTests(TestCase):
         self.assertEqual(res.data['batches'], ['EXT-20261019'])
         batch = RemittanceBatch.objects.get()
         self.assertEqual((float(batch.total_amount), Ticket.objects.filter(remittance_batch=batch).count()), (40.0, 4))
+
+    def _existing(self, ticket_id, day_utc):
+        from datetime import datetime, timezone as tz
+        from .models import Ticket
+        return Ticket.objects.create(
+            id=ticket_id, vehicle=Vehicle.objects.get(), driver=Driver.objects.get(), series=self.series, status='COLLECTED',
+            is_verified=True, collection_amount=10, dispatched_at=datetime(*day_utc, tzinfo=tz.utc),
+        )
+
+    def test_save_as_remitted_also_settles_the_days_existing_unremitted_tickets(self):
+        from .models import RemittanceBatch
+        same_day, other_day = self._existing('90', (2026, 10, 19, 2)), self._existing('91', (2026, 10, 18, 2))
+        res = self._post(commit=True, remitted=True)
+        self.assertEqual(res.data['also_remitted'], {'ticket_count': 1, 'amount': 10.0})
+        same_day.refresh_from_db(); other_day.refresh_from_db()
+        self.assertIsNotNone(same_day.remittance_batch_id)
+        self.assertIsNone(other_day.remittance_batch_id)
+        self.assertEqual(float(RemittanceBatch.objects.get().total_amount), 50.0)  # 4 new + the existing one
+
+    def test_to_be_remitted_leaves_existing_tickets_alone(self):
+        ticket = self._existing('90', (2026, 10, 19, 2))
+        self._post(commit=True)
+        ticket.refresh_from_db()
+        self.assertIsNone(ticket.remittance_batch_id)
+
+    def test_preview_reports_the_existing_tickets_without_touching_them(self):
+        ticket = self._existing('90', (2026, 10, 19, 2))
+        res = self._post(remitted=True)
+        self.assertEqual(res.data['also_remitted']['ticket_count'], 1)
+        ticket.refresh_from_db()
+        self.assertIsNone(ticket.remittance_batch_id)
 
     def test_preview_writes_nothing_even_when_remitted(self):
         from .models import RemittanceBatch, Ticket

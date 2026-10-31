@@ -28,6 +28,7 @@ function Queue({ userRole }) {
     issueError,
 
     availableVehicles,
+    isFranchiseExpired,
     activeDrivers,
     availableSeries,
     allSeries,
@@ -155,7 +156,7 @@ function Queue({ userRole }) {
               {vehicles.length > availableVehicles.length && (
                 <p className="queue-field-hint">
                   {vehicles.length - availableVehicles.length} not available —{" "}
-                  {unavailable("QUEUED")} already in line, {unavailable("MAINTENANCE")} in maintenance.
+                  {unavailable("QUEUED")} already in line, {vehicles.filter((v) => v.status === "AVAILABLE" && isFranchiseExpired(v)).length} with expired franchise.
                 </p>
               )}
             </div>

@@ -9,7 +9,7 @@ export default function Pager({ page, totalPages, count, pageSize, onPageChange 
   return (
     <div className="rpt-pager">
       <span className="rpt-pager-info">
-        {start}–{end} of {count}
+        {start}–{end} of {count} records
       </span>
       <div className="rpt-pager-controls">
         {[

@@ -299,8 +299,11 @@ export function useQueue(userRole = "") {
   };
 
   // Computed values
+  const isFranchiseExpired = (v) =>
+    !!v.franchise_expiration_date && v.franchise_expiration_date < new Date().toLocaleDateString("en-CA");
+
   const availableVehicles = useMemo(
-    () => vehicles.filter((v) => v.status === "AVAILABLE"),
+    () => vehicles.filter((v) => v.status === "AVAILABLE" && !isFranchiseExpired(v)),
     [vehicles],
   );
 
@@ -397,6 +400,7 @@ export function useQueue(userRole = "") {
 
     // Computed
     availableVehicles,
+    isFranchiseExpired,
     activeDrivers,
     availableSeries: denominations,
     allSeries: availableSeries,

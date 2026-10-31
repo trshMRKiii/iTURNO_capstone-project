@@ -1,13 +1,12 @@
 import React, { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { useDriver } from "./useDriver";
 import DriverFormModal from "./DriverFormModal";
 import TicketHistoryModal from "../registry/TicketHistoryModal";
 import RowMenu from "../registry/RowMenu";
+import Pager from "../report/tables/Pager";
 import { useTableSort, SortHead } from "../registry/useTableSort";
 import { getDriverCode, getDriverDisplayName, getIwpStatus, daysUntilExpiry, expiryLabel } from "./driver-utils";
-import { useFeedback, SkeletonRows, HistoryIcon, ArchiveIcon, EditIcon } from "../../../components/ui/kit";
+import { SkeletonRows, HistoryIcon, ArchiveIcon, EditIcon } from "../../../components/ui/kit";
 import { exportDriversPDF } from "../registry/registryExport";
 import "../../../styles/Driver.css";
 import "../../../styles/FormModal.css";
@@ -26,7 +25,7 @@ const SORT_GETTERS = {
           : "Active",
 };
 
-function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd, exposeExportQR, exposeExportPDF }) {
+function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAdd, exposeExportPDF }) {
   const {
     drivers,
     loading,
@@ -45,7 +44,6 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
   } = useDriver();
   const canModify = useCanModifyFleet();
 
-  const { notify } = useFeedback();
   const [internalSearch, setInternalSearch] = useState("");
   const searchTerm = embedded ? externalSearch : internalSearch;
   const setSearchTerm = embedded ? onSearchChange : setInternalSearch;
@@ -91,71 +89,7 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
-  const exportQR = () => {
-    const toExport = filteredDrivers.filter((d) => d.qr_code);
-    if (!toExport.length) {
-      notify.error({
-        title: "No QR codes to export",
-        message: "Drivers registered before this feature don't have a QR code yet — edit and re-save them to generate one.",
-      });
-      return;
-    }
-
-    const items = toExport.map((d) => {
-      const svgStr = renderToStaticMarkup(
-        <QRCodeSVG value={d.qr_code} size={140} level="H" includeMargin />
-      );
-      return `<div class="qr-item">
-        ${svgStr}
-        <div class="qr-plate">${getDriverDisplayName(d)}</div>
-        <div class="qr-code">${d.qr_code}</div>
-        ${d.iwp_number ? `<div class="qr-route">${d.iwp_number}</div>` : ""}
-      </div>`;
-    }).join("");
-
-    const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<title>Driver QR Codes</title>
-<style>
-  body { font-family: Helvetica, Arial, sans-serif; margin: 24px; background: #fff; }
-  h2 { font-size: 16px; margin-bottom: 4px; }
-  .meta { font-size: 11px; color: #666; margin-bottom: 16px; }
-  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
-  .print-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; background: #1a2744; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
-  .print-btn:hover { background: #2d3e5f; }
-  .grid { display: flex; flex-wrap: wrap; gap: 20px; }
-  .qr-item { border: 1px solid #ddd; border-radius: 6px; padding: 12px; text-align: center; width: 180px; break-inside: avoid; }
-  .qr-item svg { display: block; margin: 0 auto; }
-  .qr-plate { font-weight: bold; font-size: 13px; margin-top: 8px; }
-  .qr-code { font-size: 10px; color: #555; margin-top: 2px; word-break: break-all; }
-  .qr-route { font-size: 10px; color: #888; margin-top: 2px; }
-  @media print { .toolbar { display: none; } body { margin: 12px; } }
-</style>
-</head><body>
-<div class="toolbar">
-  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
-  <span style="font-size:12px;color:#666;">${toExport.length} driver(s) &nbsp;|&nbsp; ${now}${searchTerm ? ` &nbsp;|&nbsp; Filter: "${searchTerm}"` : ""}</span>
-</div>
-<h2>Driver QR Codes</h2>
-<div class="grid">${items}</div>
-</body></html>`;
-
-    const win = window.open("", "_blank");
-    if (!win) {
-      notify.error({
-        title: "Popup blocked",
-        message: "Allow popups for this site, then try the QR export again.",
-        onRetry: exportQR,
-      });
-      return;
-    }
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-  };
-
   React.useEffect(() => {
-    if (exposeExportQR) exposeExportQR(exportQR);
     if (exposeExportPDF) exposeExportPDF(() => exportDriversPDF(sortedDrivers));
   });
 
@@ -197,20 +131,6 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
             </svg>
             Register Driver
           </button>
-          {!embedded && (
-            <button className="drv-export-qr-btn" onClick={exportQR} title="Export QR codes for filtered drivers">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-                <rect x="14" y="14" width="3" height="3" rx="0.5" />
-                <rect x="18" y="14" width="3" height="3" rx="0.5" />
-                <rect x="14" y="18" width="3" height="3" rx="0.5" />
-                <rect x="18" y="18" width="3" height="3" rx="0.5" />
-              </svg>
-              Export QR
-            </button>
-          )}
         </div>
       </div>
 
@@ -337,26 +257,8 @@ function Driver({ embedded, searchTerm: externalSearch, onSearchChange, exposeAd
             </tbody>
           </table>
         </div>
-        {!loading && filteredDrivers.length > 0 && totalPages > 1 && (
-          <div className="drv-pagination">
-            <button
-              className="drv-page-btn"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={safePage === 1}
-            >
-              Prev
-            </button>
-            <span className="drv-page-info">
-              Page {safePage} of {totalPages}
-            </span>
-            <button
-              className="drv-page-btn"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage === totalPages}
-            >
-              Next
-            </button>
-          </div>
+        {!loading && (
+          <Pager page={safePage} totalPages={totalPages} count={filteredDrivers.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
         )}
       </div>
 

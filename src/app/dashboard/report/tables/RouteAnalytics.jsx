@@ -191,13 +191,17 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
       "Route Analytics Summary",
     );
 
+  // A search that narrows to one route opens it right away; clicking it still collapses it ("" = none open).
+  const autoOpen = term && shown.length === 1 ? shown[0].route : null;
+  const openNow = openRoute ?? autoOpen;
+
   const renderRow = (r, idx, { rowClass, cellClass }) => {
-    const expanded = single || openRoute === r.route;
+    const expanded = single || openNow === r.route;
     return (
       <Fragment key={r.route}>
         <tr
           className={`${rowClass}${single ? "" : " rpt-route-row"}`}
-          onClick={single ? undefined : () => setOpenRoute(expanded ? null : r.route)}
+          onClick={single ? undefined : () => setOpenRoute(expanded ? "" : r.route)}
         >
           <td className={`${cellClass} rpt-bold`}>
             {!single && <span className={`rpt-route-caret${expanded ? " rpt-route-caret--open" : ""}`}>▸</span>}
@@ -247,7 +251,10 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
             className="rpt-search-input"
             placeholder="Search route, driver, plate…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setOpenRoute(null);
+            }}
           />
           {!single && (
             <button className="rpt-btn-export rpt-btn-export--navy" disabled={!routes.length} onClick={handleExportSummary}>
