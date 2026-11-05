@@ -3,6 +3,8 @@ import {
   DataTable, Toolbar, SearchInput, IconButton, Pagination, SectionHeader, PrimaryButton, SortSelect, TrashIcon,
 } from "../../../components/ui/kit";
 
+import StockScaleCard from "./StockScaleCard";
+
 const PAGE_SIZE = 10;
 
 // Presentational only: data, search state and handlers come from settings.jsx.
@@ -72,6 +74,7 @@ function TicketFormsSection({ ticketForms, loading, rowStates, search, onSearch,
             </>
           }
         />
+      <StockScaleCard />
     </>
   );
 }

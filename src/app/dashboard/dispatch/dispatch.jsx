@@ -31,6 +31,7 @@ function Dispatch({ seriesId, ticketFee }) {
   const [roamSessions, setRoamSessions] = useState([]);
   const [now, setNow] = useState(Date.now());
   const [baySwap, setBaySwap] = useState(null);
+  const [offZoneDispatch, setOffZoneDispatch] = useState(null);
   const [driverSwap, setDriverSwap] = useState(null);
   const [reason, setReason] = useState("");
   const [reasonOpenId, setReasonOpenId] = useState(null);
@@ -186,15 +187,21 @@ function Dispatch({ seriesId, ticketFee }) {
     }
   };
 
-  const handleDispatch = async (vehicle) => {
+  // A vehicle still waiting behind the loading bay (#1) is held for confirmation, then leaves
+  // as a roam ticket (it skips the line) instead of a queue one.
+  const handleDispatch = async (vehicle, route, roam = false) => {
     if (!seriesId) {
       setError("Pick a ticket series in Shift setup first.");
+      return;
+    }
+    if (!roam && route.vehicles[0]?.id !== vehicle.id) {
+      setOffZoneDispatch(vehicle);
       return;
     }
     setDispatchingId(vehicle.id);
     setError("");
     try {
-      await apiService.dispatchTicket(vehicle.id, {
+      await (roam ? apiService.convertToRoam : apiService.dispatchTicket).call(apiService, vehicle.id, {
         seriesId: parseInt(seriesId),
         quantity: ticketsNeeded(vehicle, ticketFee),
       });
@@ -358,7 +365,7 @@ function Dispatch({ seriesId, ticketFee }) {
                               <button
                                 type="button"
                                 className="dispatch-go-btn"
-                                onClick={() => handleDispatch(vehicle)}
+                                onClick={() => handleDispatch(vehicle, route)}
                                 disabled={dispatchingId != null}
                               >
                                 {dispatchingId === vehicle.id ? "Dispatching…" : "Dispatch"}
@@ -384,6 +391,30 @@ function Dispatch({ seriesId, ticketFee }) {
           onSwapped={() => fetchData(true)}
         />
       )}
+
+      <Dialog
+        open={!!offZoneDispatch}
+        onClose={() => setOffZoneDispatch(null)}
+        size="sm"
+        title="Dispatch as roam?"
+        subtitle={offZoneDispatch && `${offZoneDispatch.plate_number} is still waiting in the queue and hasn't reached the loading bay. Dispatching now skips the line and issues a roam ticket.`}
+        footer={
+          <>
+            <button type="button" className="ui-outline-btn ui-outline-btn--auto" onClick={() => setOffZoneDispatch(null)}>Cancel</button>
+            <button
+              type="button"
+              className="dispatch-go-btn"
+              onClick={() => {
+                const vehicle = offZoneDispatch;
+                setOffZoneDispatch(null);
+                handleDispatch(vehicle, null, true);
+              }}
+            >
+              Dispatch as roam
+            </button>
+          </>
+        }
+      />
 
       <Dialog
         open={!!baySwap}

@@ -1,6 +1,6 @@
 import re
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -23,6 +23,7 @@ from ..sync.account_emails import flush_account_emails, queue_account_email
 from ..sync.fleet_access import flush_fleet_access
 from ..sync.settings_outbox import flush_settings, next_offline_pk, park, park_delete
 from ..sms import send_sms_async, queue_next_message
+from .overstays import overstay_minutes, queue_allowance
 from .helpers import record_audit_log, expire_stale_kiosk_sessions, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
 from .remittance_export import remittance_xlsx_response
 
@@ -692,11 +693,11 @@ def _draw_plan(vehicle, plan):
 
 
 def _checkout_personnel():
-    """Name of the check-out Personnel on the Dispatch desk; no vehicle leaves without one."""
-    name = DeskDuty.get_solo().checkout_name
-    if not name:
+    """The check-out Personnel on the Dispatch desk; no vehicle leaves without one."""
+    user = DeskDuty.get_solo().checkout_user
+    if not user:
         raise ValidationError({"detail": "Pick the check-out personnel on the Dispatch board first."})
-    return name
+    return user
 
 
 def _finalize_queued_vehicle(vehicle, plan, mode, request):
@@ -708,7 +709,7 @@ def _finalize_queued_vehicle(vehicle, plan, mode, request):
 
     Returns the list of newly-created (already COLLECTED) Ticket rows.
     """
-    checked_out_by_name = _checkout_personnel()
+    checkout_user = _checkout_personnel()
 
     with transaction.atomic():
         placeholder = Ticket.objects.select_for_update().filter(
@@ -724,8 +725,10 @@ def _finalize_queued_vehicle(vehicle, plan, mode, request):
         driver = placeholder.driver
         route = placeholder.route
         loading_started_at = placeholder.loading_started_at
+        extra_loading_minutes = placeholder.extra_loading_minutes  # kept so the overstay report honors "+5m"
         checked_in_at = placeholder.issued_at
-        checked_in_by_name = placeholder.checked_in_by_name
+        overstay = overstay_minutes(dispatched_at - loading_started_at, queue_allowance(route, extra_loading_minutes)) if mode == 'QUEUE' and loading_started_at else 0
+        checkin_user, checked_in_by_name = placeholder.checked_in_by, placeholder.checked_in_by_name
         active_user = request.user if request.user.is_authenticated else None
 
         placeholder.delete()
@@ -746,9 +749,13 @@ def _finalize_queued_vehicle(vehicle, plan, mode, request):
                 dispatched_at=dispatched_at,
                 checked_out_at=dispatched_at,
                 loading_started_at=loading_started_at,
+                extra_loading_minutes=extra_loading_minutes,
+                overstay_minutes=overstay,
                 checked_in_at=checked_in_at,
+                checked_in_by=checkin_user,
                 checked_in_by_name=checked_in_by_name,
-                checked_out_by_name=checked_out_by_name,
+                checked_out_by=checkout_user,
+                checked_out_by_name=checkout_user.display_name,
                 issuance_group=issuance_group,
             )
             for series, ticket_id, price in units
@@ -790,7 +797,7 @@ def _issue_roam_tickets(vehicle, driver, plan, request, depart=True):
     numbers through the same FIFO allocator dispatch uses, so the two paths can't
     hand out the same number. `depart=False` is a kiosk roam numbered at check-in: it is
     paid but still inside, and leaves on its next scan (see kiosk_scan)."""
-    checked_out_by_name = _checkout_personnel() if depart else ''
+    checkout_user = _checkout_personnel() if depart else None
     _check_can_issue(vehicle, driver)
 
     with transaction.atomic():
@@ -822,8 +829,10 @@ def _issue_roam_tickets(vehicle, driver, plan, request, depart=True):
                 dispatched_at=dispatched_at,
                 checked_out_at=dispatched_at if depart else None,
                 checked_in_at=checked_in_at,
+                checked_in_by=desk.checkin_user,
                 checked_in_by_name=checked_in_by_name,
-                checked_out_by_name=checked_out_by_name,
+                checked_out_by=checkout_user,
+                checked_out_by_name=checkout_user.display_name if checkout_user else '',
                 issuance_group=issuance_group,
             )
             for series, ticket_id, price in units
@@ -861,6 +870,11 @@ class TicketViewSet(viewsets.ModelViewSet):
         route_origin = self.request.query_params.get('route_origin')
         if route_origin:
             qs = qs.filter(route__origin=route_origin)
+        # One person's history: who took the vehicle in ("issued"), let it out ("dispatched"), or either.
+        staff = self.request.query_params.get('staff')
+        if staff and staff.isdigit():
+            as_issuer, as_dispatcher = Q(checked_in_by_id=staff), Q(checked_out_by_id=staff)
+            qs = qs.filter({'issued': as_issuer, 'dispatched': as_dispatcher}.get(self.request.query_params.get('staff_role'), as_issuer | as_dispatcher))
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date:
@@ -1242,6 +1256,9 @@ class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
         return super().perform_update(serializer)
 
 
+SERIES_EDIT_WINDOW = timedelta(hours=24)
+
+
 class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = TicketSeries.objects.all()  # kept for router basename inference
     serializer_class = TicketSeriesSerializer
@@ -1274,6 +1291,8 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
         corrected numbers and form price."""
         with transaction.atomic():
             instance = serializer.instance
+            if instance.requisition.status != 'PENDING' and timezone.now() - instance.created_at > SERIES_EDIT_WINDOW:
+                raise ValidationError("This series can only be edited within 24 hours of being recorded, unless it's still pending validation.")
             if self._in_use(instance):
                 data = serializer.validated_data
                 if int(data.get('start_no', instance.start_no)) != int(instance.start_no):

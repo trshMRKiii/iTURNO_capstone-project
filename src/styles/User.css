@@ -122,17 +122,21 @@
 .usr-import-sample { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14.3px; }
 .usr-import-sample dt { font-weight: 600; color: var(--text-primary); }
 .usr-import-sample dd { margin: 0; color: var(--text-secondary); }
-.usr-import-filter {
-  align-self: flex-start;
+.usr-import-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+.usr-import-tab {
   background: none;
   border: none;
-  padding: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 14px;
   font-size: 14.3px;
   font-weight: 600;
-  color: #1d4ed8;
+  color: var(--text-secondary);
   cursor: pointer;
 }
-.usr-import-filter:hover { text-decoration: underline; }
+.usr-import-tab span { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: var(--bg-hover); font-size: 12.5px; }
+.usr-import-tab:hover { color: var(--text-primary); }
+.usr-import-tab.is-active { color: #1a2744; border-bottom-color: #1a2744; }
 .usr-import-role { text-transform: capitalize; }
 .usr-import-row--error td { color: #b91c1c; }
 
@@ -224,6 +228,7 @@
   border-radius: 6px;
 }
 
+.usr-td-id    { font-size: 14.3px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .usr-td-name  { font-weight: 600; }
 .usr-td-email { font-size: 14.3px; color: var(--text-secondary); }
 
@@ -296,7 +301,7 @@
   cursor: pointer;
 }
 .usr-sort-menu button:hover { background: var(--bg-hover); }
-.usr-sort-menu button.is-active { background: var(--bg-page); box-shadow: inset 3px 0 0 var(--gold); }
+.usr-sort-menu button.is-active { background: var(--bg-page); }
 .usr-sort-menu small { font-size: 12.1px; font-weight: 700; color: var(--text-secondary); }
 
 .usr-table th.usr-th-center { text-align: center; }

@@ -17,8 +17,7 @@ export function parseCsv(text) {
   };
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
-    if (c === "
-") newlines++;
+    if (c === "\n") newlines++;
     if (quoted) {
       if (c === '"' && src[i + 1] === '"') { field += '"'; i++; }
       else if (c === '"') quoted = false;

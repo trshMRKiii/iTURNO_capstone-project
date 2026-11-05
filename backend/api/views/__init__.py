@@ -27,12 +27,14 @@ from .records import (
     public_queue,
     server_time,
     supervisors,
+    staff_search,
     remittance_batches,
     amend_remittance_batch,
 )
 
 from .dashboard import dashboard_stats, dashboard_busiest
 from .route_analytics import route_analytics
+from .overstays import overstays
 
 from .kiosk import kiosk_scan,kiosk_check_in, kiosk_sessions, kiosk_cancel, kiosk_switch_roam, desk_duty
 

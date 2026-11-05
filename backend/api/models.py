@@ -244,6 +244,9 @@ class Ticket(models.Model):
     # never affects the real dispatched_at - loading_started_at duration used
     # for stats, since it only shifts the displayed/estimated deadline.
     extra_loading_minutes = models.PositiveIntegerField(default=0)
+    # Minutes this visit stayed past its allowance (queue: route estimate + extensions; roam:
+    # the roam limit), fixed at dispatch/check-out so the overstay report just reads it. 0 = on time.
+    overstay_minutes = models.PositiveIntegerField(default=0, db_index=True)
     # Manual drag-and-drop override of this vehicle's spot in its route's queue.
     # Null until the queue is reordered at least once; ties/fallback use
     # issued_at (plain FIFO) — see promote_queue_front() and the Ticket
@@ -258,9 +261,12 @@ class Ticket(models.Model):
     # Null on older rows, where readers fall back to issued_at.
     checked_in_at = models.DateTimeField(null=True, blank=True)
     # The Personnel on the Dispatch desk (see DeskDuty) who took the vehicle in and let it
-    # out — name snapshots, like active_user_name, so they outlive the account.
+    # out — name snapshots, like active_user_name, so they outlive the account. The user links
+    # (by id, never by the changeable email login) are what per-person history filters on.
     checked_in_by_name = models.CharField(max_length=150, blank=True, default="")
     checked_out_by_name = models.CharField(max_length=150, blank=True, default="")
+    checked_in_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='+', null=True, blank=True)
+    checked_out_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='+', null=True, blank=True)
     # When the vehicle actually left. A kiosk roam is paid and numbered at check-in
     # (dispatched_at) and leaves later on its own scan; null until then, and on older rows.
     checked_out_at = models.DateTimeField(null=True, blank=True)

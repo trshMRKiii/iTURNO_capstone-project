@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import UserViewSet, DriverViewSet, VehicleViewSet, RouteViewSet, TicketViewSet, CurrentUserView, TicketPriceViewSet, PUVTypeViewSet, RemittanceBatchViewSet, TicketFormViewSet, RequisitionViewSet, TicketSeriesViewSet, PaperIssuanceViewSet
-from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, audit_logs, dashboard_stats, dashboard_busiest, route_analytics, public_queue, server_time, supervisors, export_collections_csv, remittance_batches, amend_remittance_batch, system_backups, system_backup_settings, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password, change_password, wip_mode_config, backfill_batch, backfill_preview, backfill_import, backfill_history, backfill_history_detail, backfill_history_download, external_remittance, external_remittance_records, undo_external_remittance, kiosk_scan, kiosk_check_in, kiosk_sessions, kiosk_cancel, kiosk_switch_roam, desk_duty
+from .views import report_summary, report_collections, report_daily_chart, eod_reconciliation, audit_logs, dashboard_stats, dashboard_busiest, route_analytics, overstays, public_queue, server_time, supervisors, staff_search, export_collections_csv, remittance_batches, amend_remittance_batch, system_backups, system_backup_settings, system_backup_detail, system_backup_download, system_backup_restore, system_backup_restore_upload, forgot_password, reset_password, change_password, wip_mode_config, backfill_batch, backfill_preview, backfill_import, backfill_history, backfill_history_detail, backfill_history_download, external_remittance, external_remittance_records, undo_external_remittance, kiosk_scan, kiosk_check_in, kiosk_sessions, kiosk_cancel, kiosk_switch_roam, desk_duty
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -26,6 +26,7 @@ urlpatterns = [
     path('report/chart/', report_daily_chart),
     path('report/eod-reconciliation/', eod_reconciliation),
     path('report/route-analytics/', route_analytics),
+    path('report/overstays/', overstays),
     path('audit-logs/', audit_logs),
     path('dashboard/stats/', dashboard_stats),
     path('dashboard/busiest/', dashboard_busiest),
@@ -39,6 +40,7 @@ urlpatterns = [
     path('current-user/', CurrentUserView.as_view(), name='current-user'),
     path('server-time/', server_time),
     path('supervisors/', supervisors),
+    path('staff/', staff_search),
     path("report/collections/export/", export_collections_csv, name="export_collections_csv"),
     path("report/remittance/", remittance_batches, name="remittance_batches"),
     path("report/remittance/<int:batch_id>/amend/", amend_remittance_batch, name="amend_remittance_batch"),

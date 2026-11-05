@@ -25,4 +25,7 @@ def notify_queue_changed(sender, **kwargs):
     # that re-fetches the instant it gets a mid-transaction ping can read
     # pre-commit state, leaving it stuck showing a stale queue until some
     # later, unrelated change corrects it.
-    transaction.on_commit(broadcast_queue_updated)
+    # One ping per transaction: a dispatch saves ~5 rows, and each extra ping made every
+    # open board refetch everything again. run_on_commit holds (savepoint ids, func, robust).
+    if not any(entry[1] is broadcast_queue_updated for entry in transaction.get_connection().run_on_commit):
+        transaction.on_commit(broadcast_queue_updated)

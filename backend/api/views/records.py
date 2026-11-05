@@ -126,6 +126,30 @@ def supervisors(request):
     return Response([{'id': u.id, 'name': u.display_name} for u in users])
 
 
+@api_view(['GET'])
+def staff_search(request):
+    """Type-ahead for the "whose history" filter on the logs: only Personnel ever work the
+    desk, so only they are listed (inactive ones too, tagged — their history outlives the
+    account). Id, name and status only, never the email login. Personnel see just themselves;
+    the position above them can look anyone up."""
+    users = User.objects.filter(role='PERSONNEL')
+    if request.user.role == 'PERSONNEL':
+        users = users.filter(pk=request.user.pk)
+    for word in request.query_params.get('search', '').split():
+        match = Q(first_name__icontains=word) | Q(last_name__icontains=word) | Q(middle_name__icontains=word)
+        users = users.filter(match | Q(pk=word) if word.isdigit() and len(word) < 10 else match)  # the ID shown in User Management
+    users = list(users.order_by('-is_active', 'first_name', 'last_name')[:10])
+    names = {u.id: u.display_name if (u.first_name or u.last_name) else 'Unnamed' for u in users}
+    taken = [n.lower() for n in names.values()]
+    rows = []
+    for u in users:
+        name = names[u.id]
+        if taken.count(name.lower()) > 1:  # same name as someone else listed: add what tells them apart
+            name += f" ({u.middle_name or (f'contact ···{u.contact[-4:]}' if u.contact else f'ID {u.id}')})"
+        rows.append({'id': u.id, 'name': name, 'is_active': u.is_active})
+    return Response(rows)
+
+
 def _supervisor_from(data):
     prepared_by = str(data.get('prepared_by') or '')
     supervisor = User.objects.filter(pk=prepared_by, role='SUPERVISOR', is_active=True).first() if prepared_by.isdigit() else None

@@ -10,13 +10,21 @@ export const SortTh = ({ label, centered, sort, onSort }) => (
   </th>
 );
 
-export const DataTable = ({ columns, data, rowRenderer, centeredColumns = [], emptyText = "No records found.", sort, onSort }) => (
+// On hover, expose the full text of any cell that is clipped with an ellipsis as a native tooltip.
+const titleIfClipped = (e) => {
+  const cell = e.target.closest?.("td, th");
+  if (!cell || cell.colSpan > 1) return;
+  if (cell.scrollWidth > cell.clientWidth) cell.title = cell.textContent.trim();
+  else cell.removeAttribute("title");
+};
+
+export const DataTable = ({ columns, data, rowRenderer, centeredColumns = [], emptyText = "No records found.", sort, onSort, unsortable = [] }) => (
   <div className="rpt-table-wrap">
-    <table className="rpt-table">
+    <table className="rpt-table" onMouseOver={titleIfClipped}>
       <thead>
         <tr className="rpt-thead-row">
           {columns.map((h) => (
-            <SortTh key={h} label={h} centered={centeredColumns.includes(h)} sort={sort} onSort={onSort} />
+            <SortTh key={h} label={h} centered={centeredColumns.includes(h)} sort={sort} onSort={unsortable.includes(h) ? undefined : onSort} />
           ))}
         </tr>
       </thead>

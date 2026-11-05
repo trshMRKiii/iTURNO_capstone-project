@@ -34,9 +34,8 @@ export default function CsvImportModal({
     const fields = header.map((h) => fieldOf[fieldKey(h)]);
     if (!fields.includes(requiredField)) throw new Error("A required column is missing. Download the template to see the expected headers.");
     const sample = template.rows[1][template.rows[0].findIndex((h) => fieldOf[fieldKey(h)] === requiredField)].toLowerCase();
-    const left = body.find((cells) => cells[fields.indexOf(requiredField)]?.trim().toLowerCase() === sample);
-    if (left) throw new Error(`Row ${left.line} is the sample from the template. Delete it and choose your file again.`);
-    return body.map((cells) => ({ ...Object.fromEntries(fields.map((f, i) => [f, cells[i]?.trim() ?? ""]).filter(([f]) => f)), _line: cells.line }));
+    // The template's example row is skipped automatically rather than rejecting the whole file.
+    return body.filter((cells) => cells[fields.indexOf(requiredField)]?.trim().toLowerCase() !== sample).map((cells) => ({ ...Object.fromEntries(fields.map((f, i) => [f, cells[i]?.trim() ?? ""]).filter(([f]) => f)), _line: cells.line }));
   };
 
   const close = () => !busy && onClose();
@@ -64,7 +63,7 @@ export default function CsvImportModal({
       setPayload(parsed);
       setRows(preview.rows);
       setPage(1);
-      setOnlyIssues(false);
+      setOnlyIssues(!preview.rows.some((r) => r.outcome === "ok"));
       setStage("preview");
     });
   };
@@ -78,7 +77,7 @@ export default function CsvImportModal({
 
   const ready = rows.filter((r) => r.outcome === "ok").length;
   const issues = rows.length - ready;
-  const shown = onlyIssues ? rows.filter((r) => r.outcome !== "ok") : rows;
+  const shown = rows.filter((r) => (r.outcome !== "ok") === onlyIssues);
   const pageRows = shown.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
@@ -119,11 +118,14 @@ export default function CsvImportModal({
           {stage === "preview" && (
             <>
               <p className="usr-import-note">{previewNote(ready, issues)}</p>
-              {issues > 0 && (
-                <button className="usr-import-filter" onClick={() => { setOnlyIssues(!onlyIssues); setPage(1); }}>
-                  {onlyIssues ? "Show all rows" : `Show only the ${issues} skipped`}
-                </button>
-              )}
+              <div className="usr-import-tabs" role="tablist">
+                {[[false, "Will import", ready], [true, "Skipped", issues]].map(([skipped, label, n]) => (
+                  <button key={label} role="tab" aria-selected={onlyIssues === skipped} className={`usr-import-tab${onlyIssues === skipped ? " is-active" : ""}`}
+                    onClick={() => { setOnlyIssues(skipped); setPage(1); }}>
+                    {label} <span>{n}</span>
+                  </button>
+                ))}
+              </div>
               <div className="usr-table-wrap">
                 <table className="usr-table">
                   <thead>

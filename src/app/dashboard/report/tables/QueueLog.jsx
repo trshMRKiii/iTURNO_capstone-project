@@ -47,6 +47,7 @@ export default function QueueLog({
   onRoamingFetchPage,
   onRoamingFetchAll,
   onExportRoamingPDF,
+  staffFilter,
   pageSize,
 }) {
   const [activeTab, setActiveTab] = useState("all");
@@ -233,6 +234,7 @@ export default function QueueLog({
             Roaming Logs
           </button>
         </div>
+        {staffFilter}
       </div>
 
       <DataTable columns={columns} data={preview} rowRenderer={rowRenderer} emptyText={loading ? "Loading…" : undefined} />

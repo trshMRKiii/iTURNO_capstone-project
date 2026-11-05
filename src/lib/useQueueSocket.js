@@ -21,6 +21,7 @@ export function useQueueSocket(onUpdate) {
 
     let socket;
     let reconnectTimer;
+    let pingTimer;
     let cancelled = false;
 
     const connect = () => {
@@ -30,7 +31,11 @@ export function useQueueSocket(onUpdate) {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === 'queue_updated') onUpdateRef.current();
+          // Coalesce bursts (several saves per action) into one refetch.
+          if (data.type === 'queue_updated') {
+            clearTimeout(pingTimer);
+            pingTimer = setTimeout(() => onUpdateRef.current(), 100);
+          }
         } catch {
           // ignore malformed frames
         }
@@ -48,6 +53,7 @@ export function useQueueSocket(onUpdate) {
     return () => {
       cancelled = true;
       clearTimeout(reconnectTimer);
+      clearTimeout(pingTimer);
       // Closing a socket still in CONNECTING state logs a benign browser
       // warning (hit reliably under StrictMode's mount/cleanup/remount).
       // Deferring the close until it actually opens avoids the noise.

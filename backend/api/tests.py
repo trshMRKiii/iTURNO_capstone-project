@@ -1083,6 +1083,52 @@ class KioskTests(TestCase):
         self.client.post('/api/kiosk/cancel/', {'vehicle_id': self.a.id}, format='json')
         self.assertEqual(self._scan('QR-A')['state'], 'CHECK_IN')
 
+    def test_tickets_filter_by_who_issued_or_dispatched_them(self):
+        self._on_duty()
+        self._check_in(self.a, self.d1, 'QUEUE')
+        self._scan('QR-A')  # queue: Ira took it in, Olga let it out
+        self._check_in(self.b, self.d2, 'ROAM')
+        self._duty(checkin_user=self.out_desk.id)  # desk swaps before the roam leaves
+        self._scan('QR-B')
+        ids = lambda **q: sorted(t['vehicle']['plate_number'] for t in self.client.get('/api/tickets/', {**q, 'page': 1}).data['results'])
+        self.assertEqual(ids(staff=self.in_desk.id, staff_role='issued'), ['AAA111', 'BBB222'])
+        self.assertEqual(ids(staff=self.in_desk.id, staff_role='dispatched'), [])
+        self.assertEqual(ids(staff=self.out_desk.id, staff_role='dispatched'), ['AAA111', 'BBB222'])
+        self.assertEqual(ids(staff=self.out_desk.id), ['AAA111', 'BBB222'])  # either role
+        self.assertEqual(ids(staff=self.admin.id), [])
+
+    def test_ticket_keeps_its_history_when_the_staff_account_is_renamed_or_deleted(self):
+        self._on_duty()
+        self._check_in(self.a, self.d1, 'QUEUE')
+        self._scan('QR-A')
+        self.in_desk.username = 'ira.new@example.com'  # the email login changes: the link is by id
+        self.in_desk.save()
+        self.assertEqual(Ticket.objects.filter(checked_in_by=self.in_desk).count(), 1)
+        self.in_desk.delete()
+        ticket = Ticket.objects.get()
+        self.assertEqual((ticket.checked_in_by_id, ticket.checked_in_by_name), (None, 'Ira In'))
+
+    def test_staff_search_lists_only_personnel_without_emails_and_scopes_personnel_to_themselves(self):
+        from .models import User
+        User.objects.create_user(username='gone@example.com', password='x', role='PERSONNEL', first_name='Ira', last_name='Old', is_active=False)
+        User.objects.create_user(username='boss@example.com', password='x', role='MANAGER', first_name='Ira', last_name='Boss')
+        found = self.client.get('/api/staff/', {'search': 'ira'}).data
+        self.assertEqual([(s['name'], s['is_active']) for s in found], [('Ira In', True), ('Ira Old', False)])  # active first, no manager
+        self.assertTrue(all(set(s) == {'id', 'name', 'is_active'} for s in found))
+        self.assertEqual([s['name'] for s in self.client.get('/api/staff/', {'search': 'ira in'}).data], ['Ira In'])
+        self.assertEqual([s['id'] for s in self.client.get('/api/staff/', {'search': str(self.in_desk.id)}).data], [self.in_desk.id])  # by the ID in User Management
+
+    def test_staff_search_tells_same_named_personnel_apart(self):
+        from .models import User
+        a = User.objects.create_user(username='j1@example.com', password='x', role='PERSONNEL', first_name='Juan', last_name='Cruz', middle_name='Dela')
+        b = User.objects.create_user(username='j2@example.com', password='x', role='PERSONNEL', first_name='Juan', last_name='Cruz', contact='09171234567')
+        c = User.objects.create_user(username='j3@example.com', password='x', role='PERSONNEL', first_name='juan', last_name='cruz')
+        names = {s['id']: s['name'] for s in self.client.get('/api/staff/', {'search': 'juan'}).data}
+        self.assertEqual(names, {a.id: 'Juan Cruz (Dela)', b.id: 'Juan Cruz (contact ···4567)', c.id: f'juan cruz (ID {c.id})'})
+
+        self.client.force_authenticate(self.in_desk)
+        self.assertEqual([s['name'] for s in self.client.get('/api/staff/').data], ['Ira In'])
+
 
 class DashboardTests(TestCase):
     def setUp(self):
@@ -1201,3 +1247,39 @@ class DashboardTests(TestCase):
 
         self.assertEqual(sum(map(len, data['dates'])), 1)       # a single day: today is included
         self.assertEqual(sum(map(sum, data['grid'])), 1.0)
+
+
+class OverstayTests(TestCase):
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from .models import User
+        self.client = APIClient()
+        self.client.force_authenticate(User.objects.create_user(username='ov', password='x', role='SUPERADMIN'))
+        self.driver = Driver.objects.create(first_name='Juan', last_name='Cruz', contact='09170000000')
+
+    def test_overstay_is_the_time_past_the_allowance_including_extensions(self):
+        from datetime import timedelta
+        from .views.overstays import overstay_minutes, queue_allowance
+        from .models import Route
+        route = Route.objects.create(origin='Bacnotan', estimated_loading_minutes=10)
+        self.assertEqual(queue_allowance(route, 5), 15)
+        self.assertEqual(queue_allowance(None, 0), 5)
+        self.assertEqual(overstay_minutes(timedelta(minutes=14), 15), 0)  # inside the extension
+        self.assertEqual(overstay_minutes(timedelta(minutes=18), 15), 3)
+        self.assertEqual(overstay_minutes(timedelta(minutes=15, seconds=30), 15), 0)  # under a minute over
+
+    def test_report_lists_recorded_overstays_per_driver(self):
+        from datetime import datetime, timedelta, timezone as tz
+        t0 = datetime(2026, 3, 10, 2, 0, tzinfo=tz.utc)
+        for n, (mode, stay, over) in enumerate([('QUEUE', 18, 3), ('UNLOAD', 30, 25), ('QUEUE', 9, 0)]):
+            kw = {'loading_started_at': t0} if mode == 'QUEUE' else {'checked_in_at': t0, 'checked_out_at': t0 + timedelta(minutes=stay)}
+            Ticket.objects.create(
+                id=f'T{n}', vehicle=Vehicle.objects.create(plate_number=f'V{n}'), driver=self.driver, mode=mode, status='COLLECTED',
+                collection_amount=10, dispatched_at=t0 + timedelta(minutes=stay), overstay_minutes=over, **kw,
+            )
+        data = self.client.get('/api/report/overstays/').data
+        self.assertEqual(sorted(i['over_minutes'] for i in data['incidents']), [3, 25])
+        row = data['drivers'][0]
+        self.assertEqual((row['incidents'], row['queue'], row['roaming'], row['total_over_minutes'], row['worst_minutes']), (2, 1, 1, 28, 25))
+        roam = next(i for i in data['incidents'] if i['kind'] == 'Roaming')
+        self.assertEqual((roam['stay_minutes'], roam['limit_minutes']), (30, 5))

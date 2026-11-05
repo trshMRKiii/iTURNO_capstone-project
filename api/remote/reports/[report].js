@@ -143,10 +143,9 @@ async function dashboardStats(req, res, supabase) {
       .reduce((s, p) => s + (p.to_no - p.from_no + 1), 0);
     const remaining = Math.max(original - (series.tickets || []).length - paperUsed, 0);
     const name = series.ticket_form?.name || "Unspecified";
-    const row = (stockByForm[name] ||= { name, remaining: 0, original: 0, amount: 0 });
+    const row = (stockByForm[name] ||= { name, remaining: 0, amount: 0 });
     row.remaining += remaining;
     row.amount = round2(row.amount + remaining * (Number(series.ticket_form?.price) || 0));
-    if (remaining > 0) row.original += original;
   }
 
   const nowPh = phDate(now.getTime());

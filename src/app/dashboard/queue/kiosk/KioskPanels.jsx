@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { mixText } from "../../../../lib/mixText";
+import { operatorsOf } from "./useKiosk";
 
 const MODES = [
   { type: "QUEUE", title: "Queue", sub: "Turno" },
@@ -29,102 +30,71 @@ function Footer({ seconds, onCancel, cancelLabel = "Cancel" }) {
   );
 }
 
-// Plate, route and the registered operator, then the two big tiles. `blocked` greys the
-// tiles out for a vehicle that can't check in (expired papers).
-export function ModePanel({ vehicle, driverName, swapDriver, blocked, heading, onPick, onSwap, onCancel, seconds }) {
-  return (
-    <div className="kiosk-panel kiosk-panel--left">
-      <VehicleHead vehicle={vehicle} />
-      <div className={`kiosk-driver${blocked ? " kiosk-driver--blocked" : ""}`}>
-        <div className="kiosk-driver-text">
-          <small>{swapDriver?.id ? "Driver · swapped in" : "Driver · last on this vehicle"}</small>
-          <strong>{swapDriver?.id ? swapDriver.name : driverName}</strong>
-        </div>
-        {!blocked && (
-          <button type="button" className="kiosk-ghost kiosk-ghost--sm" onClick={onSwap}>Swap driver</button>
-        )}
-      </div>
-      <p className={`kiosk-prompt${blocked ? " kiosk-prompt--error" : ""}`}>{heading}</p>
-      <div className="kiosk-modes">
-        {MODES.map((m) => (
-          <button
-            key={m.type}
-            type="button"
-            disabled={blocked}
-            className={`kiosk-mode kiosk-mode--${m.type.toLowerCase()}`}
-            onClick={() => onPick(m.type)}
-          >
-            <span className="kiosk-mode-title">{m.title}</span>
-            <em>{m.sub}</em>
-          </button>
-        ))}
-      </div>
-      <Footer seconds={seconds} onCancel={onCancel} />
-    </div>
-  );
-}
+const ModeTiles = ({ disabled, onPick }) => (
+  <div className="kiosk-modes">
+    {MODES.map((m) => (
+      <button key={m.type} type="button" disabled={disabled} className={`kiosk-mode kiosk-mode--${m.type.toLowerCase()}`} onClick={() => onPick(m.type)}>
+        <span className="kiosk-mode-title">{m.title}</span>
+        <em>{m.sub}</em>
+      </button>
+    ))}
+  </div>
+);
 
-export function DriverPanel({ vehicle, mode, swapping, drivers, onPick, onBack, onActivity, seconds }) {
-  const [query, setQuery] = useState("");
-  const [letter, setLetter] = useState("");
-  const [picked, setPicked] = useState(null);
+// Plate and route, then the vehicle's drivers on the left and the two big mode tiles on the
+// right; the tap on a tile checks the highlighted driver in. `blocked` (expired papers) shows
+// the registered operator instead and greys the tiles out.
+export function ModePanel({ vehicle, drivers = [], driverName, blocked, heading, onPick, onActivity, onCancel, seconds }) {
+  const [pickedId, setPickedId] = useState(() => {
+    const only = operatorsOf(drivers);
+    return only.length === 1 && !only[0].expired ? only[0].id : null;
+  });
+  const picked = drivers.find((d) => d.id === pickedId);
 
-  const letters = useMemo(() => [...new Set(drivers.map((d) => d.name[0]?.toUpperCase()).filter(Boolean))].sort(), [drivers]);
-  const shown = drivers.filter(
-    (d) => d.name.toLowerCase().includes(query.trim().toLowerCase()) && (!letter || d.name[0]?.toUpperCase() === letter),
-  );
-
-  if (picked) {
+  if (blocked) {
     return (
       <div className="kiosk-panel kiosk-panel--left">
         <VehicleHead vehicle={vehicle} />
-        <h2 className="kiosk-title">Is this you?</h2>
-        <div className="kiosk-confirm-name">{picked.name}</div>
-        <div className="kiosk-actions">
-          <button type="button" className="kiosk-ghost" onClick={() => setPicked(null)}>No, go back</button>
-          <button type="button" className="kiosk-btn" onClick={() => onPick(picked)}>
-            {swapping ? "Yes, that's me" : `Yes, ${mode === "QUEUE" ? "join the queue" : "continue"}`}
-          </button>
+        <div className="kiosk-driver kiosk-driver--blocked">
+          <div className="kiosk-driver-text">
+            <small>Driver · last on this vehicle</small>
+            <strong>{driverName}</strong>
+          </div>
         </div>
+        <p className="kiosk-prompt kiosk-prompt--error">{heading}</p>
+        <ModeTiles disabled />
+        <Footer seconds={seconds} onCancel={onCancel} />
       </div>
     );
   }
 
   return (
     <div className="kiosk-panel kiosk-panel--left">
-      <h2 className="kiosk-title">
-        Find your name {!swapping && <span className="kiosk-tag">{mode === "QUEUE" ? "Queue" : "Roaming"}</span>}
-      </h2>
-      <input
-        className="kiosk-search"
-        placeholder="Type your last name…"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          onActivity();
-        }}
-      />
-      <div className="kiosk-letters">
-        <button type="button" className={`kiosk-letter${letter ? "" : " kiosk-letter--on"}`} onClick={() => { setLetter(""); onActivity(); }}>All</button>
-        {letters.map((l) => (
-          <button key={l} type="button" className={`kiosk-letter${letter === l ? " kiosk-letter--on" : ""}`} onClick={() => { setLetter(l); onActivity(); }}>
-            {l}
-          </button>
-        ))}
+      <VehicleHead vehicle={vehicle} />
+      <div className="kiosk-split">
+        <div className="kiosk-col">
+          <p className="kiosk-prompt">Who is driving?</p>
+          <div className="kiosk-names" onScroll={onActivity}>
+            {drivers.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={`kiosk-name${d.id === pickedId ? " kiosk-name--on" : ""}`}
+                disabled={d.expired}
+                onClick={() => { setPickedId(d.id); onActivity(); }}
+              >
+                {d.name}
+                {d.expired ? <span className="kiosk-tag kiosk-tag--expired">IWP expired</span> : d.last && <span className="kiosk-tag">Last driver</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="kiosk-col">
+          <p className="kiosk-prompt">{picked ? heading : "Pick your name first"}</p>
+          <ModeTiles disabled={!picked} onPick={(mode) => onPick(picked, mode)} />
+        </div>
       </div>
-      <div className="kiosk-names" onScroll={onActivity}>
-        {shown.length === 0 ? (
-          <div className="kiosk-empty">No matching names — ask the dispatcher for help.</div>
-        ) : (
-          shown.map((d) => (
-            <button key={d.id} type="button" className="kiosk-name" onClick={() => setPicked(d)}>
-              {d.name}
-              {d.suggested && <span className="kiosk-tag">This vehicle</span>}
-            </button>
-          ))
-        )}
-      </div>
-      <Footer seconds={seconds} onCancel={onBack} cancelLabel="← Back" />
+      <Footer seconds={seconds} onCancel={onCancel} />
     </div>
   );
 }

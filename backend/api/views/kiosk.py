@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from ..models import DeskDuty, Driver, KioskSession, Ticket, TicketForm, TicketSeries, User, Vehicle, WipMode
 from ..serializers import TicketSerializer
 from .helpers import expire_stale_kiosk_sessions, promote_queue_front
+from .overstays import overstay_minutes, ROAM_LIMIT_MINUTES
 from .viewsets import _check_can_issue, _check_plan, _consume_series_fifo, _finalize_queued_vehicle, _issue_roam_tickets
 
 # Self-service QR kiosk, two steps. The driver checks in (scan -> mode -> own name): a roam
@@ -225,7 +226,7 @@ def _driver_choices(vehicle):
         vehicle.active_driver_id, vehicle.owner_driver_id,
     }
     drivers = Driver.objects.filter(status='ACTIVE', is_archived=False).exclude(id__in=busy).order_by('last_name', 'first_name')
-    choices = [{'id': d.id, 'name': _driver_name(d), 'last': d.id == last, 'suggested': d.id in history} for d in drivers]
+    choices = [{'id': d.id, 'name': _driver_name(d), 'last': d.id == last, 'suggested': d.id in history, 'expired': d.iwp_expired} for d in drivers]
     return sorted(choices, key=lambda c: (not c['last'], not c['suggested']))
 
 
@@ -245,10 +246,11 @@ def _depart_roam(session):
     """A roam was numbered at check-in, so leaving only records the departure and who was on
     the check-out desk."""
     now = timezone.now()
+    desk = DeskDuty.get_solo()
     Ticket.objects.filter(
         vehicle=session.vehicle, mode='UNLOAD', status='COLLECTED', checked_out_at__isnull=True,
         dispatched_at__gte=session.created_at,
-    ).update(checked_out_at=now, checked_out_by_name=DeskDuty.get_solo().checkout_name, updated_at=now)
+    ).update(overstay_minutes=overstay_minutes(now - session.created_at, ROAM_LIMIT_MINUTES), checked_out_at=now, checked_out_by=desk.checkout_user, checked_out_by_name=desk.checkout_name, updated_at=now)
     session.status = 'DONE'
     session.save(update_fields=['status', 'updated_at'])  # save, not update: the Dispatch board listens for it
     return list(Ticket.objects.filter(vehicle=session.vehicle, mode='UNLOAD', checked_out_at=now))
@@ -323,6 +325,8 @@ def kiosk_check_in(request):
                 raise ValidationError({"vehicle_id": "This vehicle is already checked in."})
             if driver.id in _busy_driver_ids():
                 raise ValidationError({"driver_id": "This driver is already checked in on another vehicle."})
+            if driver.iwp_expired:
+                raise ValidationError({"driver_id": "This driver's IWP has expired — renew it before checking in."})
             _check_can_issue(vehicle, driver)
             plan = _plan_for(vehicle, desk)
 

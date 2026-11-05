@@ -196,6 +196,8 @@ class TicketSerializer(serializers.ModelSerializer):
             # Always the Dispatch desk's Personnel (see DeskDuty), never client-supplied.
             'checked_in_by_name': {'read_only': True},
             'checked_out_by_name': {'read_only': True},
+            'checked_in_by': {'read_only': True},
+            'checked_out_by': {'read_only': True},
             'checked_out_at': {'read_only': True},
             'bay_swap_reason': {'read_only': True},
         }
@@ -268,15 +270,17 @@ class TicketSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"detail": "Pick the check-in and check-out personnel on the Dispatch board first."}
                     )
-                validated_data['checked_in_by_name'] = desk.checkin_name
-                validated_data['checked_out_by_name'] = desk.checkout_name
+                validated_data.update(
+                    checked_in_by=desk.checkin_user, checked_in_by_name=desk.checkin_name,
+                    checked_out_by=desk.checkout_user, checked_out_by_name=desk.checkout_name,
+                )
             elif not is_continuation:
-                checkin_name = DeskDuty.get_solo().checkin_name
-                if not checkin_name:
+                desk = DeskDuty.get_solo()
+                if not desk.checkin_user:
                     raise serializers.ValidationError(
                         {"detail": "Pick the check-in personnel on the Dispatch board first."}
                     )
-                validated_data['checked_in_by_name'] = checkin_name
+                validated_data.update(checked_in_by=desk.checkin_user, checked_in_by_name=desk.checkin_name)
                 # Queue check-ins get a route-acronym + daily bay number
                 # (e.g. "SJ-1"), counted per route and reset every midnight.
                 route = vehicle.route

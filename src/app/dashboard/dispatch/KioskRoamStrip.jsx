@@ -3,7 +3,7 @@
 // limit the row turns red.
 import { mixText } from "../../../lib/mixText";
 
-const ROAM_LIMIT_MS = 10 * 60000;
+const ROAM_LIMIT_MS = 5 * 60000;
 
 const peso = (amount) => (amount ? `₱${Number(amount).toFixed(2)}` : "—");
 

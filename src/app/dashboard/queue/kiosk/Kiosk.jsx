@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQrScanner, SCANNER_STATUS_LABEL } from "../useQrScanner";
-import { useKiosk, operatorsOf, historyOf } from "./useKiosk";
-import { ModePanel, DriverPanel, ResultPanel, ExpiredList } from "./KioskPanels";
+import { useKiosk, historyOf } from "./useKiosk";
+import { ModePanel, ResultPanel, ExpiredList } from "./KioskPanels";
 import sfcLogo from "../../../../pictures/sfc-nobg-logo.png";
 import "../../../../styles/Kiosk.css";
 
 const ERROR_STATES = ["EXPIRED", "BLOCKED", "ERROR", "UNKNOWN"];
-
-// A lone last driver is named on the card; otherwise the name is picked after the tap.
-const operatorName = (drivers) => {
-  const operators = operatorsOf(drivers);
-  return operators.length === 1 ? operators[0].name : "Choose on the next step";
-};
 
 // Left-card look and caption for each screen: blue = ready to scan, green = go ahead, red = stop.
 function cardOf(screen) {
@@ -20,9 +14,7 @@ function cardOf(screen) {
     case "idle":
       return { tone: "idle", caption: "Scan your vehicle QR — hold it inside the frame" };
     case "mode":
-      return { tone: "go", caption: "Now tap Queue or Roaming →" };
-    case "driver":
-      return { tone: "go", caption: "Now find your name →" };
+      return { tone: "go", caption: "Pick your name, then tap Queue or Roaming →" };
     case "result":
       return ERROR_STATES.includes(screen.state)
         ? { tone: "error", caption: screen.state === "EXPIRED" ? null : "Next vehicle can scan now" }
@@ -87,24 +79,11 @@ function KioskScreen() {
           {screen.type === "mode" && (
             <ModePanel
               vehicle={screen.vehicle}
-              driverName={operatorName(screen.drivers)}
-              swapDriver={screen.swapDriver}
+              drivers={historyOf(screen.drivers)}
               heading="Tap one to check in"
-              onPick={kiosk.chooseMode}
-              onSwap={kiosk.startSwap}
-              onCancel={kiosk.reset}
-              seconds={seconds}
-            />
-          )}
-          {screen.type === "driver" && (
-            <DriverPanel
-              vehicle={screen.vehicle}
-              mode={screen.mode}
-              drivers={screen.swapping ? historyOf(screen.drivers) : operatorsOf(screen.drivers)}
-              swapping={screen.swapping}
-              onPick={screen.swapping ? kiosk.pickSwap : kiosk.checkIn}
-              onBack={kiosk.backToMode}
+              onPick={kiosk.checkIn}
               onActivity={kiosk.touch}
+              onCancel={kiosk.reset}
               seconds={seconds}
             />
           )}

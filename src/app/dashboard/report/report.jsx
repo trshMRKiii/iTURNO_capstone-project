@@ -19,7 +19,9 @@ import { exportTablePDF } from "./exportPDF";
 import { useFeedback } from "../../../components/ui/kit";
 
 import QueueLog from "./tables/QueueLog";
+import StaffFilter from "./tables/StaffFilter";
 import RouteAnalytics from "./tables/RouteAnalytics";
+import Overstays from "./tables/Overstays";
 import AuditTrail from "./tables/AuditTrail";
 import RequisitionRemittance from "./tables/RequisitionRemittance";
 import { IS_REMOTE, authFetch } from "../../../lib/api-service";
@@ -67,6 +69,11 @@ export default function Report() {
   const [remittanceData, setRemittanceData] = useState([]);
   const [remittanceMeta, setRemittanceMeta] = useState(EMPTY_PAGE_META);
 
+  // Whose issued/dispatched history the queue and roaming logs show (null = everyone).
+  const [staff, setStaff] = useState(null);
+  const [staffRole, setStaffRole] = useState("either");
+  const [staffTotals, setStaffTotals] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -77,11 +84,21 @@ export default function Report() {
     return p.toString();
   }, [filters.startDate, filters.endDate]);
 
+  // The two ticket logs also narrow to one person; everything else on the page ignores it.
+  const buildTicketParams = useCallback(() => {
+    const p = new URLSearchParams(buildParams());
+    if (staff) {
+      p.set("staff", staff.id);
+      p.set("staff_role", staffRole);
+    }
+    return p.toString();
+  }, [buildParams, staff, staffRole]);
+
   // Raw page fetchers — return data instead of touching state, so the "View All"
   // modal in each table can browse further pages without disturbing the
   // top-30 preview shown on the main card.
   const fetchQueueRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
-    const qs = buildParams();
+    const qs = buildTicketParams();
     const res = await authFetch(
       `/tickets/?mode=QUEUE&page=${page}&page_size=${size}${qs ? `&${qs}` : ""}`,
     );
@@ -92,10 +109,10 @@ export default function Report() {
       totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / size), 1),
       page: data.page || page,
     };
-  }, [buildParams]);
+  }, [buildTicketParams]);
 
   const fetchRoamingRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
-    const qs = buildParams();
+    const qs = buildTicketParams();
     const res = await authFetch(
       `/tickets/?mode=UNLOAD&page=${page}&page_size=${size}${qs ? `&${qs}` : ""}`,
     );
@@ -106,7 +123,7 @@ export default function Report() {
       totalPages: data.total_pages || Math.max(Math.ceil((data.count || 0) / size), 1),
       page: data.page || page,
     };
-  }, [buildParams]);
+  }, [buildTicketParams]);
 
   const fetchAuditRaw = useCallback(async (page = 1, size = PAGE_SIZE) => {
     const qs = buildParams();
@@ -233,22 +250,22 @@ export default function Report() {
   }, []);
 
   const fetchQueueExportRows = useCallback(async (search = "", onProgress) => {
-    const qs = buildParams();
+    const qs = buildTicketParams();
     const list = await fetchAllPages(
       `/tickets/?mode=QUEUE${search ? `&search=${encodeURIComponent(search)}` : ""}${qs ? `&${qs}` : ""}`,
       onProgress,
     );
     return newestFirst(list.map(mapTicketToLogRow), "timestamp");
-  }, [buildParams, fetchAllPages]);
+  }, [buildTicketParams, fetchAllPages]);
 
   const fetchRoamingExportRows = useCallback(async (search = "", onProgress) => {
-    const qs = buildParams();
+    const qs = buildTicketParams();
     const list = await fetchAllPages(
       `/tickets/?mode=UNLOAD${search ? `&search=${encodeURIComponent(search)}` : ""}${qs ? `&${qs}` : ""}`,
       onProgress,
     );
     return newestFirst(list, "issued_at");
-  }, [buildParams, fetchAllPages]);
+  }, [buildTicketParams, fetchAllPages]);
 
   const fetchAuditExportRows = useCallback(async () => {
     const qs = buildParams();
@@ -280,7 +297,7 @@ export default function Report() {
     return [...list].sort((a, b) => String(b.issued_at || "").localeCompare(String(a.issued_at || "")));
   }, [buildParams]);
 
-  // Filters apply live: any change to the date range refetches every table.
+  // Filters apply live: any change to the date range (or the staff pick) refetches every table.
   useEffect(() => {
     setLoading(true);
     setError("");
@@ -292,7 +309,30 @@ export default function Report() {
       fetchRemittancePage(),
     ]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.startDate, filters.endDate]);
+  }, [filters.startDate, filters.endDate, staff?.id, staffRole]);
+
+  // Issued/dispatched counts for the picked person: the ticket list's own paginated `count`
+  // (one row per request), so no extra endpoint and nothing tallied in the browser. Keyed by
+  // person + date range so a stale pair is never shown for a different pick.
+  const totalsKey = staff ? `${staff.id}|${buildParams()}` : "";
+  useEffect(() => {
+    if (!totalsKey) return undefined;
+    const [id, qs] = totalsKey.split("|");
+    let stale = false;
+    const count = async (as) => {
+      const res = await authFetch(`/tickets/?${qs}&staff=${id}&staff_role=${as}&page=1&page_size=1`);
+      return (await res.json()).count || 0;
+    };
+    Promise.all([count("issued"), count("dispatched")])
+      .then(([issued, dispatched]) => { if (!stale) setStaffTotals({ key: totalsKey, issued, dispatched }); })
+      .catch(() => {});
+    return () => { stale = true; };
+  }, [totalsKey]);
+
+  const handleStaffChange = (person, role) => {
+    setStaff(person);
+    setStaffRole(role);
+  };
 
   const handlePeriodChange = (key) => {
     setPeriod(key);
@@ -325,7 +365,7 @@ export default function Report() {
   });
 
   const exportTable = (data, title) => {
-    if (!exportTablePDF(data, title)) notify.error({ title: "Nothing to export", message: "No records match the current filters." });
+    if (!exportTablePDF(data, staff && /Log/.test(title) ? `${title} — ${staff.name}` : title)) notify.error({ title: "Nothing to export", message: "No records match the current filters." });
   };
 
   const handleExportRequisitionsPDF = async (search = "") => {
@@ -416,6 +456,14 @@ export default function Report() {
     const p = new URLSearchParams(buildParams());
     Object.entries(extra).forEach(([k, v]) => v && p.set(k, v));
     const res = await authFetch(`/report/route-analytics/?${p}`);
+    return res.json();
+  }, [buildParams]);
+
+  const fetchOverstays = useCallback(async (extra = {}) => {
+    const p = new URLSearchParams(buildParams());
+    Object.entries(extra).forEach(([k, v]) => v && p.set(k, v));
+    const res = await authFetch(`/report/overstays/?${p}`);
+    if (!res.ok) throw new Error("overstays unavailable");
     return res.json();
   }, [buildParams]);
 
@@ -530,6 +578,7 @@ export default function Report() {
         onExportRoamingPDF={handleExportRoamingPDF}
         onQueueFetchAll={fetchQueueExportRows}
         onRoamingFetchAll={fetchRoamingExportRows}
+        staffFilter={<StaffFilter staff={staff} role={staffRole} totals={staffTotals?.key === totalsKey ? staffTotals : null} onChange={handleStaffChange} />}
         pageSize={PAGE_SIZE}
       />
 
@@ -537,6 +586,8 @@ export default function Report() {
         onFetch={fetchRouteAnalytics}
         onExportPDF={handleExportRouteAnalyticsPDF}
       />
+
+      <Overstays onFetch={fetchOverstays} onExportPDF={exportTable} />
 
       <AuditTrail
         auditData={auditData}

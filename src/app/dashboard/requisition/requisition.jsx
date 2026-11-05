@@ -17,6 +17,7 @@ function formatDate(val) {
   return isNaN(d) ? "—" : d.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 }
 
+const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000; // mirrors SERIES_EDIT_WINDOW on the backend
 const fmt = (n) => Number(n || 0).toLocaleString();
 const serial = (n) => String(n ?? "");
 // Number the next ticket will take: one past the last used, or the start if none yet.
@@ -239,6 +240,8 @@ function Requisition() {
                     {sortSeries(g.shown).map((ts) => {
                       const total = ts.pcs || ts.remaining;
                       const pct = total > 0 ? Math.min(100, (ts.remaining / total) * 100) : 0;
+                      const canValidateRow = ts.pending && canValidate;
+                      const editable = ts.pending || Date.now() - new Date(ts.created_at) <= EDIT_WINDOW_MS;
                       return (
                         <div key={ts.id} className="rq-cols rq-cols--series rq-series-row">
                           <span>
@@ -256,11 +259,11 @@ function Requisition() {
                           </span>
                           <span className="rq-num">{formatCurrency(ts.current_value)}</span>
                           <span className="rq-num">
-                            {!IS_REMOTE && (
+                            {!IS_REMOTE && (canValidateRow || editable) && (
                               <RowMenu
                                 items={[
-                                  { label: "Validate", icon: <CheckIcon size={14} />, onClick: () => handleValidate(ts.requisition_id), hidden: !ts.pending || !canValidate },
-                                  { label: "Edit", icon: <EditIcon size={14} />, onClick: () => startEdit(ts) },
+                                  { label: "Validate", icon: <CheckIcon size={14} />, onClick: () => handleValidate(ts.requisition_id), hidden: !canValidateRow },
+                                  { label: "Edit", icon: <EditIcon size={14} />, onClick: () => startEdit(ts), hidden: !editable },
                                 ]}
                               />
                             )}

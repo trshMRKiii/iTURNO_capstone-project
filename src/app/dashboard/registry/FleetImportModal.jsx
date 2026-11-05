@@ -12,7 +12,7 @@ const CONFIGS = {
       filename: "driver-import-template.csv",
       rows: [
         ["First Name", "Middle Name", "Last Name", "IWP Number", "IWP Expiration Date", "Gender", "Birthdate", "Province", "City", "Barangay", "Street", "Contact"],
-        ["Juan", "Reyes", "Dela Cruz", "1234-5678-9012", "2030-12-31", "Male", "1985-05-04", "La Union", "Bauang", "Payocpoc Norte", "Purok 3", "09171234567"],
+        ["Juan", "Reyes", "Dela Cruz", "1234-5678-9012", "2030-12-31 (YYYY-MM-DD)", "Male", "1985-05-04", "La Union", "Bauang", "Payocpoc Norte", "Purok 3", "09171234567"],
       ],
     },
     aliases: {

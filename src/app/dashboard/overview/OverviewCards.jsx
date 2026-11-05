@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { formatWait, peso, plural } from "./format";
+import { readStockScale } from "./stockScale";
 
 const COLLAPSED_ROWS = 2;
 // A vehicle waiting this long is flagged.
 const LONG_WAIT_MIN = 15;
-// A denomination is "low" once under this share of its batch is left, but never
-// needing more than STOCK_LOW_MAX_PCS tickets left, so huge batches don't flag early.
-const STOCK_LOW_PCT = 20;
-const STOCK_LOW_MAX_PCS = 1000;
-// The whole stock is "low" once its combined cash value on hand drops under this (₱).
-const STOCK_LOW_TOTAL = 30000;
 
 const FORM_COLORS = ["var(--series-queued)","#e8b94a", "#3b82f6", "#22c55e", "#ef4444"];
 const SPLIT = [
@@ -139,20 +134,20 @@ export function QueueCard({ routes }) {
 }
 
 export function StockCard({ stats }) {
+  const { fullPesos, lowPct, lowTotal } = readStockScale();
   const used = Object.fromEntries(stats.collections_by_form.map((f) => [f.name, f.count]));
   // Anything low or out comes first so it is never tucked behind "+N more"; the rest by use.
   // A denomination with nothing left is dropped; when none are left the pill says "Out of stock".
   const forms = stats.stock_by_form
     .filter((f) => f.remaining > 0)
     .map((f) => {
-      const pct = (f.remaining / f.original) * 100;
-      const lowAt = Math.min((f.original * STOCK_LOW_PCT) / 100, STOCK_LOW_MAX_PCS);
-      return { ...f, pct, tone: f.remaining < lowAt ? "warn" : "good", used: used[f.name] || 0 };
+      const pct = Math.min(f.amount / fullPesos, 1) * 100;
+      return { ...f, pct, tone: pct < lowPct ? "warn" : "good", used: used[f.name] || 0 };
     })
     .sort((a, b) => (a.tone === "good") - (b.tone === "good") || b.used - a.used || a.name.localeCompare(b.name));
   const flagged = forms.filter((f) => f.tone !== "good").length;
   const total = forms.reduce((sum, f) => sum + f.amount, 0);
-  const totalLow = total < STOCK_LOW_TOTAL;
+  const totalLow = total < lowTotal;
   const status =
     forms.length === 0
       ? { label: "Out of stock", tone: "bad" }
@@ -176,7 +171,7 @@ export function StockCard({ stats }) {
         {peso(total)}
         <span className="ov-unit"> Worth</span>
       </div>
-      {totalLow && total > 0 && <div className="ov-total-note">Below {peso(STOCK_LOW_TOTAL)} overall.</div>}
+      {totalLow && total > 0 && <div className="ov-total-note">Below {peso(lowTotal)} overall.</div>}
       <QuickList
         title={flagged > 0 ? "Needs attention" : "Most used"}
         items={forms}
@@ -194,7 +189,7 @@ export function StockCard({ stats }) {
             </div>
             <div
               className={`ov-bar ov-bar--${f.tone}`}
-              title={`${f.remaining} of ${f.original} tickets left`}
+              title={`${f.remaining.toLocaleString()} tickets left · full bar = ${peso(fullPesos)}`}
             >
               <span className="ov-bar-left" style={{ flexBasis: `${f.pct}%` }} />
               <span className="ov-bar-used" style={{ flexBasis: `${100 - f.pct}%` }} />

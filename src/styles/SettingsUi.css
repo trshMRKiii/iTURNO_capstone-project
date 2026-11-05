@@ -1244,3 +1244,31 @@
   .ab-body { grid-template-columns: 1fr; }
   .ab-aside { border-left: 0; border-top: 1px solid var(--border, #e5e7eb); }
 }
+
+/* Ticket forms: dashboard stock bar scale */
+.tf-scale {
+  margin-top: 20px;
+  padding: 20px 22px;
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.tf-scale-title { margin: 0; font-size: 1rem; }
+.tf-scale-desc, .tf-scale-note { margin: 4px 0 0; font-size: 0.85rem; color: var(--ui-muted); }
+.tf-scale-note { margin: 0; }
+.tf-scale-fields { display: flex; flex-wrap: wrap; gap: 16px; }
+.tf-scale-fields label { display: grid; gap: 6px; font-size: 0.8rem; color: var(--ui-muted); }
+.tf-scale-fields input {
+  width: 180px;
+  height: var(--ui-control-h);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+}
+.tf-scale-actions { display: flex; justify-content: flex-end; gap: 10px; }

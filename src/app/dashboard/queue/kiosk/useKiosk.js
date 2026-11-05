@@ -4,7 +4,7 @@ import { apiService } from "../../../../lib/api-service";
 const IDLE = { type: "idle" };
 
 // How long an unattended screen waits before falling back to the idle camera.
-export const TIMEOUT_MS = { mode: 30000, driver: 45000, result: 9000 };
+export const TIMEOUT_MS = { mode: 45000, result: 9000 };
 
 const UNREACHABLE = "Can't reach the terminal right now — please see the dispatcher.";
 
@@ -18,10 +18,10 @@ const toScreen = (reply, text) =>
 // The vehicle's last driver; with none on record, everyone free.
 export const operatorsOf = (drivers) => (drivers.some((d) => d.last) ? drivers.filter((d) => d.last) : drivers);
 
-// Swap driver offers only drivers who have driven this vehicle before.
+// The driver list offers only drivers who have driven this vehicle before.
 export const historyOf = (drivers) => (drivers.some((d) => d.suggested) ? drivers.filter((d) => d.suggested) : drivers);
 
-// Self-service flow: scan -> (new visit) tap Queue/Roam -> last driver (or Swap driver by name) -> result.
+// Self-service flow: scan -> (new visit) pick a driver and tap Queue/Roam -> result.
 // A scan for an existing visit goes straight to a result (pay first / wait / checked out).
 export function useKiosk() {
   const [screen, setScreen] = useState(IDLE);
@@ -35,7 +35,7 @@ export function useKiosk() {
     screenRef.current = screen;
   });
 
-  // Idle fallback; typing/scrolling on the name list re-arms it via touch().
+  // Idle fallback; scrolling/picking on the name list re-arms it via touch().
   useEffect(() => {
     const ms = TIMEOUT_MS[screen.type];
     if (!ms) return undefined;
@@ -75,28 +75,12 @@ export function useKiosk() {
     [call],
   );
 
-  const backToMode = () => setScreen((s) => ({ ...s, type: "mode", mode: undefined, swapping: false }));
-  // Swap driver opens the full name list; the pick comes back to the mode screen, and the
-  // check-in then saves them as the vehicle's last driver.
-  const startSwap = () => setScreen((s) => ({ ...s, type: "driver", mode: undefined, swapping: true }));
-  const pickSwap = (swapDriver) => setScreen((s) => ({ ...s, type: "mode", swapping: false, swapDriver }));
-  const checkIn = (driver, mode = screen.mode) =>
+  const checkIn = (driver, mode) =>
     call("/kiosk/check-in/", { vehicle_id: screen.vehicle.id, driver_id: driver.id, mode }, screen.text);
-  // The tap picks the mode; a swapped-in driver or a lone last driver is checked in
-  // straight away, otherwise the driver is found by name.
-  const chooseMode = (mode) => {
-    if (screen.swapDriver?.id) return checkIn(screen.swapDriver, mode);
-    const operators = operatorsOf(screen.drivers);
-    return operators.length === 1 ? checkIn(operators[0], mode) : setScreen((s) => ({ ...s, type: "driver", mode }));
-  };
 
   return {
     screen,
     scan,
-    chooseMode,
-    startSwap,
-    pickSwap,
-    backToMode,
     checkIn,
     secondsLeft,
     switchToRoam: () => call("/kiosk/switch-roam/", { text: screen.text }, screen.text),

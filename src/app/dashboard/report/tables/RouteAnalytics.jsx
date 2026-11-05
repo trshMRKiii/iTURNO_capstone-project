@@ -229,7 +229,6 @@ export default function RouteAnalytics({ onFetch, onExportPDF }) {
         <div className="rpt-card-header-left">
           <h2 className="rpt-card-title">Route Analytics</h2>
           <span className="rpt-record-count">
-            {loading ? "Loading…" : `${routes.length} routes · ${single ? "showing one route" : "click a route"} to see who took queue / roaming`}
           </span>
         </div>
         <div className="rpt-card-header-actions">

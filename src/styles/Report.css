@@ -345,6 +345,20 @@
   flex-wrap: wrap;
 }
 
+.rpt-staff {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rpt-staff-totals {
+  font-size: 14.3px;
+  color: var(--text-secondary);
+}
+.rpt-staff-totals strong {
+  color: var(--text-primary);
+}
+
 .rpt-card-header-actions {
   display: flex;
   align-items: center;

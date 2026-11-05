@@ -88,8 +88,7 @@ def _queue_routes(now):
 
 def _stock_by_form():
     """Physical ticket stock left across active requisitions, per denomination: pcs and cash
-    left, plus the original size of the series still in stock (the Requisition page's
-    "x of y" bar, summed). Same "remaining" math as TicketSeriesSerializer.get_remaining."""
+    left. Same "remaining" math as TicketSeriesSerializer.get_remaining."""
     stock = {}
     paper = paper_numbers_by_series()
     series_list = TicketSeries.objects.filter(requisition__is_archived=False).select_related('ticket_form').annotate(issued_count=Count('tickets'))
@@ -98,11 +97,9 @@ def _stock_by_form():
         remaining = max(original - series.issued_count - len(paper.get(series.id, ())), 0)
         name = series.ticket_form.name if series.ticket_form else 'Unspecified'
         price = float(series.ticket_form.price or 0) if series.ticket_form else 0
-        row = stock.setdefault(name, {'name': name, 'remaining': 0, 'original': 0, 'amount': 0.0})
+        row = stock.setdefault(name, {'name': name, 'remaining': 0, 'amount': 0.0})
         row['remaining'] += remaining
         row['amount'] = round(row['amount'] + remaining * price, 2)
-        if remaining > 0:
-            row['original'] += original
     return list(stock.values())
 
 

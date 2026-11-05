@@ -103,6 +103,25 @@ const RESOURCES = {
     limit: 200,
     shape: (rows) => rows.map(shapeTicket),
   },
+  // Type-ahead for the logs' "whose history" filter — mirrors staff_search
+  // (backend/api/views/records.py): Personnel only, id/name/status, never the email.
+  staff: {
+    table: "api_user",
+    select: "id,first_name,last_name,middle_name,contact,is_active",
+    order: [{ column: "is_active", ascending: false }, { column: "first_name", ascending: true }],
+    limit: 10,
+    shape: (rows) => {
+      const names = rows.map((u) => `${u.first_name || ""} ${u.last_name || ""}`.trim() || "Unnamed");
+      return rows.map((u, i) => ({
+        id: u.id,
+        // Same name as someone else listed: add what tells them apart (middle name, contact tail, id).
+        name: names.filter((n) => n.toLowerCase() === names[i].toLowerCase()).length > 1
+          ? `${names[i]} (${u.middle_name || (u.contact ? `contact ···${u.contact.slice(-4)}` : `ID ${u.id}`)})`
+          : names[i],
+        is_active: u.is_active,
+      }));
+    },
+  },
   "ticket-series": {
     table: "api_ticketseries",
     select: "*, ticket_form:api_ticketform(id,name,price), issued_to:api_user(id,username)",
@@ -145,8 +164,9 @@ export default async function handler(req, res) {
     return;
   }
 
+  let auth;
   try {
-    requireAuth(req);
+    auth = requireAuth(req);
   } catch (err) {
     res.status(err.status || 401).json({ detail: err.message || "Not authenticated" });
     return;
@@ -183,6 +203,23 @@ export default async function handler(req, res) {
       const { start_date: startDate, end_date: endDate } = filters;
       if (startDate) query = query.gte(resource.dateField, `${startDate}T00:00:00+08:00`);
       if (endDate) query = query.lte(resource.dateField, `${endDate}T23:59:59.999+08:00`);
+    }
+
+    // Mirrors TicketViewSet's `staff`/`staff_role`: one person's issued/dispatched history.
+    if (key === "tickets" && /^\d+$/.test(filters.staff || "")) {
+      const id = filters.staff;
+      query = filters.staff_role === "issued" ? query.eq("checked_in_by_id", id)
+        : filters.staff_role === "dispatched" ? query.eq("checked_out_by_id", id)
+        : query.or(`checked_in_by_id.eq.${id},checked_out_by_id.eq.${id}`);
+    }
+
+    if (key === "staff") {
+      query = query.eq("role", "PERSONNEL");
+      if (auth.role === "PERSONNEL") query = query.eq("id", auth.sub); // Personnel see only themselves
+      for (const word of String(filters.search || "").replace(/[,()%]/g, " ").split(/\s+/).filter(Boolean)) {
+        const byId = /^\d{1,9}$/.test(word) ? `,id.eq.${word}` : ""; // the ID shown in User Management
+        query = query.or(`first_name.ilike.%${word}%,last_name.ilike.%${word}%,middle_name.ilike.%${word}%${byId}`);
+      }
     }
 
     // Mirrors TicketViewSet.get_queryset's `search` (backend/api/views/viewsets.py) —

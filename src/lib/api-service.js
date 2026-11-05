@@ -32,6 +32,7 @@ const REMOTE_GET_MAP = {
   "/vehicles/": "/resource/vehicles",
   "/drivers/": "/resource/drivers",
   "/tickets/": "/resource/tickets",
+  "/staff/": "/resource/staff",
   "/routes/": "/settings/routes",
   "/users/": "/settings/users",
   "/puvtypes/": "/settings/puv-types",

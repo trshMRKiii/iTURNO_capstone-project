@@ -54,6 +54,7 @@ const fullNameOf = (u) => [u.first_name, u.middle_name, u.last_name].filter(Bool
 // Name/email columns toggle A–Z / Z–A. Role and status open a menu to pick which value is
 // listed first (scales to any number of roles); the rest follow in the order listed above.
 const COLUMNS = [
+  { label: "ID", sortValue: (u) => u.id },
   { label: "Full Name", sortValue: (u) => fullNameOf(u).toLowerCase() },
   { label: "Username (Email)", sortValue: (u) => (u.username || "").toLowerCase() },
   { label: "Role", options: ROLES, valueOf: (u) => u.role },
@@ -499,7 +500,7 @@ function User({ userRole }) {
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="usr-row">
-                   
+                    <td className="usr-td-id">{user.id}</td>
                     <td className="usr-td-name">{fullNameOf(user)}</td>
                     <td className="usr-td-email">{user.username}</td>
                     <td>
