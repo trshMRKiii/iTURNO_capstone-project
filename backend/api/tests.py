@@ -943,6 +943,80 @@ class KioskTests(TestCase):
         self.assertEqual((waiting['state'], waiting['position']), ('WAIT_TURN', 2))
         self.assertTrue(Ticket.objects.filter(vehicle=self.b, status='QUEUED').exists())
 
+    def _check_in_unregistered(self, vehicle, mode='QUEUE'):
+        return self.client.post('/api/kiosk/check-in/', {'vehicle_id': vehicle.id, 'unregistered': True, 'mode': mode}, format='json').data
+
+    def test_unregistered_driver_holds_the_spot_but_cannot_leave_until_attached(self):
+        from datetime import date, timedelta
+        from unittest import mock
+        self._on_duty()
+        self.a.active_driver = self.d2
+        self.a.save()
+        with mock.patch('api.serializers.send_sms_async') as sms, self.captureOnCommitCallbacks(execute=True):
+            first = self._check_in_unregistered(self.a)
+            self._check_in(self.b, self.d1, 'QUEUE')
+        sms.assert_called_once()  # only B's driver was texted; A has nobody to text yet
+        self.assertEqual((first['state'], first['position'], first['driver']), ('CHECKED_IN', 1, None))
+        ticket = Ticket.objects.get(vehicle=self.a, status='QUEUED')
+        self.assertIsNone(ticket.driver)
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.active_driver_id, self.d2.id)  # last driver untouched until attached
+
+        # At the front, but with no driver it can neither check out nor be dispatched.
+        self.assertEqual(self._scan('QR-A')['state'], 'ERROR')
+        res = self.client.post('/api/tickets/dispatch/', {'vehicle_id': self.a.id, 'series_id': self.series.id, 'quantity': 1}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertTrue(Ticket.objects.filter(vehicle=self.a, status='QUEUED').exists())
+        self.assertEqual(self._scan('QR-B')['state'], 'WAIT_TURN')  # B still waits behind A
+
+        # An expired IWP can't be attached; a valid driver can, and is texted their place at last.
+        self.d1.iwp_expiration_date = date.today() - timedelta(days=1)
+        self.d1.save()
+        self.d2.iwp_expiration_date = None
+        self.d2.save()
+        attach = lambda driver: self.client.post(f'/api/tickets/{ticket.id}/reassign_driver/', {'driver_id': driver.id}, format='json')
+        new_driver = Driver.objects.create(first_name='Cara', last_name='Eve', contact='09170000003')
+        self.assertEqual(attach(self.d1).status_code, 400)
+        with mock.patch('api.views.viewsets.send_sms_async') as sms, self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(attach(new_driver).status_code, 200)
+        sms.assert_called_once()
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.driver_id, new_driver.id)
+        self.assertEqual(self._scan('QR-A')['state'], 'DEPARTED')
+
+    def test_unregistered_roam_is_numbered_and_can_leave_only_once_the_desk_attaches_a_driver(self):
+        self._on_duty()
+        res = self._check_in_unregistered(self.a, 'ROAM')
+        self.assertEqual((res['state'], res['mode'], res['driver']), ('CHECKED_IN', 'ROAM', None))
+        self.assertFalse(Ticket.objects.filter(vehicle=self.a).exists())  # nothing numbered, no queue turn taken
+        self.assertEqual(self._scan('QR-A')['state'], 'ERROR')  # can't leave without a driver
+        self.assertEqual([s['driver'] for s in self.client.get('/api/kiosk/sessions/').data], [None])
+
+        attach = lambda driver: self.client.post('/api/kiosk/attach-roam-driver/', {'vehicle_id': self.a.id, 'driver_id': driver.id}, format='json')
+        new_driver = Driver.objects.create(first_name='Cara', last_name='Eve', contact='09170000003')
+        self.assertEqual(attach(new_driver).status_code, 200)
+        self.assertTrue(Ticket.objects.filter(vehicle=self.a, mode='UNLOAD', driver=new_driver, checked_out_at__isnull=True).exists())
+        self.assertEqual(attach(new_driver).status_code, 400)  # already attached
+        self.assertEqual(self._scan('QR-A')['state'], 'DEPARTED')
+
+    def test_expired_driver_iwp_offers_change_driver_but_expired_vehicle_papers_do_not(self):
+        from datetime import date, timedelta
+        self._on_duty()
+        yesterday = date.today() - timedelta(days=1)
+        self.d1.iwp_expiration_date = yesterday
+        self.d1.save()
+        self.a.active_driver = self.d1
+        self.a.save()
+        scan = self._scan('QR-A')
+        self.assertEqual(scan['state'], 'EXPIRED')
+        self.assertEqual({d['name']: d['expired'] for d in scan['drivers']}, {'Cruz, Ana': True, 'Diaz, Ben': False})
+
+        self.a.franchise_expiration_date = yesterday
+        self.a.save()
+        scan = self._scan('QR-A')
+        self.assertEqual(scan['state'], 'EXPIRED')
+        self.assertNotIn('drivers', scan)  # a lapsed vehicle can't be fixed by another driver
+
     def test_roam_is_numbered_at_check_in_and_scans_out_under_the_check_out_personnel(self):
         self._on_duty()
         self.assertEqual(self._check_in(self.a, self.d1, 'ROAM')['state'], 'CHECKED_IN')

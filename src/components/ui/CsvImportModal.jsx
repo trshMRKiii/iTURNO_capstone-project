@@ -34,8 +34,12 @@ export default function CsvImportModal({
     const fields = header.map((h) => fieldOf[fieldKey(h)]);
     if (!fields.includes(requiredField)) throw new Error("A required column is missing. Download the template to see the expected headers.");
     const sample = template.rows[1][template.rows[0].findIndex((h) => fieldOf[fieldKey(h)] === requiredField)].toLowerCase();
-    // The template's example row is skipped automatically rather than rejecting the whole file.
-    return body.filter((cells) => cells[fields.indexOf(requiredField)]?.trim().toLowerCase() !== sample).map((cells) => ({ ...Object.fromEntries(fields.map((f, i) => [f, cells[i]?.trim() ?? ""]).filter(([f]) => f)), _line: cells.line }));
+    // The template's example row is flagged (shown as skipped, never sent) rather than rejecting the whole file.
+    return body.map((cells) => ({
+      ...Object.fromEntries(fields.map((f, i) => [f, cells[i]?.trim() ?? ""]).filter(([f]) => f)),
+      _line: cells.line,
+      _sample: cells[fields.indexOf(requiredField)]?.trim().toLowerCase() === sample,
+    }));
   };
 
   const close = () => !busy && onClose();
@@ -57,13 +61,16 @@ export default function CsvImportModal({
     e.target.value = "";
     if (!file) return;
     run(async () => {
-      const parsed = rowsFromCsv(await file.text());
-      if (parsed.length === 0) throw new Error(`The file has a header row but no ${noun}s.`);
-      const preview = await importFn(parsed, false);
+      const all = rowsFromCsv(await file.text());
+      const parsed = all.filter((r) => !r._sample);
+      if (all.length === 0) throw new Error(`The file has a header row but no ${noun}s.`);
+      const preview = parsed.length ? await importFn(parsed, false) : { rows: [] };
+      const samples = all.filter((r) => r._sample).map((r) => ({ ...r, line: r._line, outcome: "skip", reason: "Template example row." }));
+      const merged = [...preview.rows, ...samples].sort((a, b) => a.line - b.line);
       setPayload(parsed);
-      setRows(preview.rows);
+      setRows(merged);
       setPage(1);
-      setOnlyIssues(!preview.rows.some((r) => r.outcome === "ok"));
+      setOnlyIssues(!merged.some((r) => r.outcome === "ok"));
       setStage("preview");
     });
   };

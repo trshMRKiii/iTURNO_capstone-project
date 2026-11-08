@@ -306,6 +306,9 @@
 }
 .dispatch-swap-item:hover:not(:disabled) { background: var(--bg-hover); }
 .dispatch-swap-item:disabled { opacity: 0.5; cursor: wait; }
+.dispatch-swap-item--new { width: 100%; margin-top: 8px; border-style: dashed; color: var(--primary, #2563eb); font-weight: 600; }
+.dispatch-driver-swap--attach { font-weight: 700; color: var(--warning, #b45309); }
+.dispatch-unregistered { color: var(--warning, #b45309); font-weight: 600; }
 
 .dispatch-reason {
   display: flex;

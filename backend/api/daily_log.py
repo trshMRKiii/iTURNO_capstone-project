@@ -69,7 +69,7 @@ def _new_visit(ticket):
     return [
         _fmt(ticket.issued_at), "", ticket.status, ticket.queue_code, "", ticket.mode,
         ticket.vehicle.plate_number,
-        f"{driver.last_name}, {driver.first_name}".strip(", "),
+        f"{driver.last_name}, {driver.first_name}".strip(", ") if driver else "Unregistered driver",
         ticket.route_name, "", ticket.active_user_name,
     ]
 

@@ -402,6 +402,10 @@ export const apiService = {
     return this.patch("/desk-duty/", fields);
   },
 
+  attachRoamDriver(vehicleId, driverId) {
+    return this.post("/kiosk/attach-roam-driver/", { vehicle_id: vehicleId, driver_id: driverId });
+  },
+
   cancelKioskVisit(vehicleId) {
     return this.post("/kiosk/cancel/", { vehicle_id: vehicleId });
   },

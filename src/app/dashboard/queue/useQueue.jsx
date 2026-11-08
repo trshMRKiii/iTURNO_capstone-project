@@ -37,6 +37,7 @@ export function useQueue(userRole = "") {
   const [issueError, setIssueError] = useState("");
 
   const [ticketSeries, setTicketSeries] = useState([]);
+  const [seriesLoaded, setSeriesLoaded] = useState(false);
   const [chosenSeriesId, setSelectedSeriesId] = useState(
     () => localStorage.getItem("lastSelectedSeriesId") || ""
   );
@@ -82,6 +83,8 @@ export function useQueue(userRole = "") {
       setTicketSeries(data);
     } catch {
       /* silent */
+    } finally {
+      setSeriesLoaded(true);
     }
   };
 
@@ -108,7 +111,14 @@ export function useQueue(userRole = "") {
     localStorage.setItem("lastSelectedSeriesId", id);
   };
 
-  const saveDriverForVehicle = (vehicleId, driverId) => {
+  // The desk's saved series (possibly a specific one within its denomination) wins on load.
+  const adoptDeskSeries = (id) => {
+    setSelectedSeriesId(id);
+    setSeriesOverrideId(id);
+    localStorage.setItem("lastSelectedSeriesId", id);
+  };
+
+  const saveDriverForVehicle =(vehicleId, driverId) => {
     setVehicleDriverMap((prev) => {
       const next = { ...prev, [vehicleId]: driverId };
       localStorage.setItem("vehicleDriverMap", JSON.stringify(next));
@@ -354,14 +364,16 @@ export function useQueue(userRole = "") {
   }, [ticketSeries, denominations, chosenSeriesId]);
 
   const selectedSeriesId = useMemo(() => {
-    const chosen = availableSeries.find((s) => String(s.id) === String(chosenSeriesId));
-    if (!chosen) return denominations[0] ? String(denominations[0].id) : "";
-    const label = chosen.ticket_form_label || "Unspecified";
+    // The choice is a denomination: look it up among all series, so one running out of stock
+    // moves on to the next series of the same denomination instead of resetting the pick.
+    const chosen = ticketSeries.find((s) => String(s.id) === String(chosenSeriesId));
+    const label = chosen?.ticket_form_label || "Unspecified";
+    const head = chosen && denominations.find((s) => (s.ticket_form_label || "Unspecified") === label);
+    if (!head) return denominations[0] ? String(denominations[0].id) : "";
     const override = availableSeries.find((s) => String(s.id) === String(seriesOverrideId));
     if (override && (override.ticket_form_label || "Unspecified") === label) return String(override.id);
-    const head = denominations.find((s) => (s.ticket_form_label || "Unspecified") === label);
     return String(head.id);
-  }, [availableSeries, denominations, chosenSeriesId, seriesOverrideId]);
+  }, [ticketSeries, availableSeries, denominations, chosenSeriesId, seriesOverrideId]);
 
   const ticketFee = useMemo(() => {
     const series = availableSeries.find((s) => String(s.id) === String(selectedSeriesId));
@@ -409,6 +421,8 @@ export function useQueue(userRole = "") {
     setSeriesOverrideId,
     selectedSeriesId,
     setSelectedSeriesId: updateSelectedSeriesId,
+    adoptDeskSeries,
+    seriesLoaded,
     issuePlan,
     // Actions
     fetchTickets,

@@ -80,6 +80,7 @@ function KioskScreen() {
             <ModePanel
               vehicle={screen.vehicle}
               drivers={historyOf(screen.drivers)}
+              expired={screen.expired}
               heading="Tap one to check in"
               onPick={kiosk.checkIn}
               onActivity={kiosk.touch}

@@ -10,9 +10,11 @@ const UNREACHABLE = "Can't reach the terminal right now — please see the dispa
 
 // Server replies carry a `state`; only CHECK_IN continues the flow, every other
 // state is a finished screen the driver just reads.
+// An expired driver IWP alone (the server sends `drivers` only then) goes to the same name
+// list, with a banner: the vehicle may be lent to someone else, whose own papers are checked.
 const toScreen = (reply, text) =>
-  reply.state === "CHECK_IN"
-    ? { type: "mode", text, vehicle: reply.vehicle, drivers: reply.drivers }
+  reply.state === "CHECK_IN" || (reply.state === "EXPIRED" && reply.drivers)
+    ? { type: "mode", text, vehicle: reply.vehicle, drivers: reply.drivers, expired: reply.expired }
     : { type: "result", text, ...reply };
 
 // The vehicle's last driver; with none on record, everyone free.
@@ -76,7 +78,11 @@ export function useKiosk() {
   );
 
   const checkIn = (driver, mode) =>
-    call("/kiosk/check-in/", { vehicle_id: screen.vehicle.id, driver_id: driver.id, mode }, screen.text);
+    call(
+      "/kiosk/check-in/",
+      { vehicle_id: screen.vehicle.id, mode, ...(driver.unregistered ? { unregistered: true } : { driver_id: driver.id }) },
+      screen.text,
+    );
 
   return {
     screen,

@@ -221,7 +221,9 @@ class Ticket(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
 
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='tickets')
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='tickets')
+    # Null only on a QUEUED ticket whose driver isn't registered yet (kiosk "Unregistered
+    # driver"); it keeps its place in line but can't be dispatched until a driver is attached.
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='tickets', null=True, blank=True)
     active_user = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='tickets', null=True, blank=True)
     active_user_name = models.CharField(max_length=150, blank=True, default="")
 
@@ -351,7 +353,7 @@ class KioskSession(models.Model):
     OPEN_STATUSES = ('PAID',)
 
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='kiosk_sessions')
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='kiosk_sessions')
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='kiosk_sessions', null=True, blank=True)
     mode = models.CharField(max_length=10, choices=MODE_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PAID', db_index=True)
     # Fixed at check-in from the desk (see kiosk._plan_for) and drawn from at checkout:

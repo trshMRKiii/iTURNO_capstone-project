@@ -41,7 +41,7 @@ def _paused():
 
 
 def _driver_name(driver):
-    return f"{driver.last_name}, {driver.first_name}".strip()
+    return f"{driver.last_name}, {driver.first_name}".strip() if driver else None  # None = not registered yet
 
 
 def _find_vehicle(text):
@@ -106,6 +106,17 @@ def _adopt_front_desk_queue(vehicle):
     )
 
 
+EXPIRY_WARNING_DAYS = 30
+
+
+def _days_left(date):
+    """Whole days before a still-valid paper lapses, when that is within the warning window; else None."""
+    if not date:
+        return None
+    days = (date - timezone.localdate()).days
+    return days if 0 <= days <= EXPIRY_WARNING_DAYS else None
+
+
 def _vehicle_info(vehicle):
     price = vehicle.transportation_id.terminal_price if vehicle.transportation_id else None
     return {
@@ -113,6 +124,7 @@ def _vehicle_info(vehicle):
         'plate': vehicle.plate_number,
         'route': vehicle.route.origin if vehicle.route else None,
         'amount': float(price) if price else None,
+        'franchise_days_left': _days_left(vehicle.franchise_expiration_date),
     }
 
 
@@ -120,12 +132,12 @@ def _expired_documents(vehicle, operator):
     """Lapsed papers that stop a check-in, for the kiosk's expired screen."""
     today = timezone.localdate()
     papers = [
-        ("Vehicle registration", vehicle.franchise_expiration_date),
-        ("Driver IWP permit", operator.iwp_expiration_date if operator else None),
+        ("Vehicle registration", vehicle.franchise_expiration_date, False),
+        ("Driver IWP permit", operator.iwp_expiration_date if operator else None, True),
     ]
     return [
-        {'label': label, 'date': date, 'days_ago': (today - date).days}
-        for label, date in papers if date and date < today
+        {'label': label, 'date': date, 'days_ago': (today - date).days, 'driver_paper': driver_paper}
+        for label, date, driver_paper in papers if date and date < today
     ]
 
 
@@ -151,9 +163,9 @@ def _reply(state, vehicle, session=None, **extra):
 
 
 def _busy_driver_ids():
-    return set(Ticket.objects.filter(status='QUEUED').values_list('driver_id', flat=True)) | set(
+    return (set(Ticket.objects.filter(status='QUEUED').values_list('driver_id', flat=True)) | set(
         KioskSession.objects.filter(status__in=OPEN).values_list('driver_id', flat=True)
-    )
+    )) - {None}
 
 
 def _quantity_for(vehicle, series):
@@ -226,7 +238,7 @@ def _driver_choices(vehicle):
         vehicle.active_driver_id, vehicle.owner_driver_id,
     }
     drivers = Driver.objects.filter(status='ACTIVE', is_archived=False).exclude(id__in=busy).order_by('last_name', 'first_name')
-    choices = [{'id': d.id, 'name': _driver_name(d), 'last': d.id == last, 'suggested': d.id in history, 'expired': d.iwp_expired} for d in drivers]
+    choices = [{'id': d.id, 'name': _driver_name(d), 'last': d.id == last, 'suggested': d.id in history, 'expired': d.iwp_expired, 'iwp_days_left': _days_left(d.iwp_expiration_date)} for d in drivers]
     return sorted(choices, key=lambda c: (not c['last'], not c['suggested']))
 
 
@@ -259,6 +271,8 @@ def _depart_roam(session):
 def _switch_out(session, request):
     """A queued vehicle cutting the line to roam pays at check-out like any queue vehicle, so
     its roam tickets are drawn and it leaves now, under the check-out Personnel."""
+    if session.driver_id is None:
+        raise ValidationError({"driver_id": "Your driver isn't registered yet — please see the desk."})
     rows = _rows(session)
     session.vehicle.refresh_from_db()  # the switch just freed it from QUEUED
     return _issue_roam_tickets(session.vehicle, session.driver, rows, request)
@@ -285,11 +299,16 @@ def kiosk_scan(request):
         operator = vehicle.active_driver or vehicle.owner_driver
         expired = _expired_documents(vehicle, operator)
         if expired:
-            return _reply('EXPIRED', vehicle, expired=expired, driver=_driver_name(operator) if operator else None)
+            # Only the last driver's IWP lapsed: the vehicle may be lent to someone else, so
+            # the screen can offer Change driver (their own papers are checked at check-in).
+            others = {'drivers': _driver_choices(vehicle)} if all(e['driver_paper'] for e in expired) else {}
+            return _reply('EXPIRED', vehicle, expired=expired, driver=_driver_name(operator) if operator else None, **others)
         if _paused():
             return _reply('BLOCKED', vehicle, message=PAUSED_MESSAGE)
         return _reply('CHECK_IN', vehicle, drivers=_driver_choices(vehicle))
 
+    if session.driver_id is None:
+        return _reply('ERROR', vehicle, session, message="Your driver isn't registered yet — please see the desk.")
     # A queue vehicle leaves only when it reaches the front of its line.
     if session.mode == 'QUEUE' and _queue_position(vehicle) > 1:
         return _reply('WAIT_TURN', vehicle, session)
@@ -306,10 +325,13 @@ def kiosk_scan(request):
 def kiosk_check_in(request):
     """Driver picked a mode and their own name. Queue joins the line right away; roam only
     opens a pending visit. They pay the check-in Personnel now, which fixes the ticket series
-    (the desk's) and quantity that checkout draws."""
+    (the desk's) and quantity that checkout draws. `unregistered` queues the vehicle with no
+    driver yet, holding its place while the desk registers them (it can't leave until then). An
+    unregistered roam isn't numbered until the desk attaches the driver (kiosk_attach_roam_driver)."""
     mode = request.data.get('mode')
     if mode not in ('QUEUE', 'ROAM'):
         raise ValidationError({"mode": "Pick Queue or Roam."})
+    unregistered = bool(request.data.get('unregistered'))
     try:
         if _paused():
             raise ValidationError({"detail": PAUSED_MESSAGE})
@@ -320,12 +342,12 @@ def kiosk_check_in(request):
             vehicle = Vehicle.objects.select_for_update().select_related('route', 'transportation_id').get(
                 id=request.data.get('vehicle_id'), is_archived=False,
             )
-            driver = Driver.objects.get(id=request.data.get('driver_id'), is_archived=False)
+            driver = None if unregistered else Driver.objects.get(id=request.data.get('driver_id'), is_archived=False)
             if _open_session(vehicle):
                 raise ValidationError({"vehicle_id": "This vehicle is already checked in."})
-            if driver.id in _busy_driver_ids():
+            if driver and driver.id in _busy_driver_ids():
                 raise ValidationError({"driver_id": "This driver is already checked in on another vehicle."})
-            if driver.iwp_expired:
+            if driver and driver.iwp_expired:
                 raise ValidationError({"driver_id": "This driver's IWP has expired — renew it before checking in."})
             _check_can_issue(vehicle, driver)
             plan = _plan_for(vehicle, desk)
@@ -333,15 +355,15 @@ def kiosk_check_in(request):
             queue_code = ''
             if mode == 'QUEUE':
                 serializer = TicketSerializer(data={
-                    'id': f"Q-{uuid.uuid4()}", 'vehicle_id': vehicle.id, 'driver_id': driver.id,
-                    'route': vehicle.route_id, 'status': 'QUEUED', 'mode': 'QUEUE', 'is_verified': False,
+                    'id': f"Q-{uuid.uuid4()}", 'vehicle_id': vehicle.id, 'driver_id': driver.id if driver else None,
+                    'driverless': unregistered, 'route': vehicle.route_id, 'status': 'QUEUED', 'mode': 'QUEUE', 'is_verified': False,
                 }, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 queue_code = serializer.save(active_user=_staff(request)).queue_code
             session = KioskSession.objects.create(
                 vehicle=vehicle, driver=driver, mode=mode, plan=_stored(plan), checked_in_by_name=desk.checkin_name,
             )
-            if mode == 'ROAM':
+            if mode == 'ROAM' and driver:
                 _issue_roam_tickets(vehicle, driver, plan, request, depart=False)
     except (Vehicle.DoesNotExist, Driver.DoesNotExist):
         return Response({'state': 'ERROR', 'message': "That vehicle or driver wasn't found."})
@@ -466,6 +488,32 @@ def kiosk_switch_roam(request):
         return _reply('ERROR', vehicle, session, message=_error_text(exc))
     promote_queue_front(route)
     return _reply('DEPARTED', vehicle, session, tickets=[t.id for t in tickets])
+
+
+@api_view(['POST'])
+def kiosk_attach_roam_driver(request):
+    """The desk registers the driver of an unregistered roam visit: they are attached and the
+    roam is numbered now, as a registered roam is at check-in."""
+    try:
+        with transaction.atomic():
+            session = KioskSession.objects.select_for_update().select_related('vehicle').filter(
+                vehicle_id=request.data.get('vehicle_id'), mode='ROAM', status__in=OPEN, driver__isnull=True,
+            ).first()
+            if session is None:
+                raise ValidationError({"vehicle_id": "No unregistered roam visit for that vehicle."})
+            driver = Driver.objects.filter(id=request.data.get('driver_id'), is_archived=False, status='ACTIVE').first()
+            if driver is None:
+                raise ValidationError({"driver_id": "Driver not found or not active."})
+            if driver.iwp_expired:
+                raise ValidationError({"driver_id": "This driver's IWP has expired — renew it before attaching them."})
+            if driver.id in _busy_driver_ids():
+                raise ValidationError({"driver_id": "This driver is already checked in on another vehicle."})
+            _issue_roam_tickets(session.vehicle, driver, _rows(session), request, depart=False)
+            session.driver = driver
+            session.save(update_fields=['driver', 'updated_at'])
+    except ValidationError as exc:
+        raise ValidationError({"detail": _error_text(exc)})
+    return Response({'ok': True})
 
 
 @api_view(['POST'])

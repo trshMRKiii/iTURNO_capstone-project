@@ -13,7 +13,7 @@ const roamStay = (checkedInAt, now) => {
   return { label: `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`, over: ms > ROAM_LIMIT_MS };
 };
 
-export default function KioskRoamStrip({ sessions, now }) {
+export default function KioskRoamStrip({ sessions, now, onAttach }) {
   if (sessions.length === 0) return null;
   return (
     <div className="dispatch-roam-strip">
@@ -24,10 +24,15 @@ export default function KioskRoamStrip({ sessions, now }) {
           <div key={s.vehicle_id} className={`dispatch-roam-row${stay?.over ? " dispatch-roam-row--over" : ""}`}>
             <span className="dispatch-plate">{s.plate}</span>
             <span className="dispatch-roam-info">
-              {s.driver} · {s.route || "No route"} · {peso(s.amount)}
+              <span className={s.driver ? undefined : "dispatch-unregistered"}>{s.driver || "Unregistered driver"}</span> · {s.route || "No route"} · {peso(s.amount)}
               {mixText(s.breakdown) && ` (${mixText(s.breakdown)})`}
               {s.checked_in_by && ` · In: ${s.checked_in_by}`}
             </span>
+            {!s.driver && (
+              <button type="button" className="dispatch-driver-swap dispatch-driver-swap--attach" onClick={() => onAttach(s)}>
+                Register &amp; attach driver
+              </button>
+            )}
             {stay && (
               <span
                 className={`dispatch-roam-timer${stay.over ? " dispatch-roam-timer--over" : ""}`}

@@ -106,7 +106,7 @@ async function dashboardStats(req, res, supabase) {
       .eq("status", "QUEUED").order("issued_at", { ascending: true }),
     supabase.from("api_ticketprice").select("amount,effective_date").order("effective_date", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("api_route").select("origin").eq("is_archived", false).eq("is_active", true),
-    supabase.from("api_ticketseries").select("id,start_no,end_no,tickets:api_ticket(id),requisition:api_requisition(is_archived),ticket_form:api_ticketform(name,price)"),
+    supabase.from("api_ticketseries").select("id,start_no,end_no,tickets:api_ticket(id),requisition:api_requisition(is_archived,status),ticket_form:api_ticketform(name,price)"),
     supabase.from("api_paperissuance").select("series_id,from_no,to_no"),
   ]);
   for (const err of [qErr, pErr, rErr, sErr, ppErr]) if (err) throw err;
@@ -137,7 +137,7 @@ async function dashboardStats(req, res, supabase) {
 
   const stockByForm = {};
   for (const series of allSeries || []) {
-    if (series.requisition?.is_archived) continue;
+    if (series.requisition?.is_archived || series.requisition?.status === "PENDING") continue; // unvalidated stock isn't usable yet
     const original = Math.max((Number(series.end_no) || 0) - (Number(series.start_no) || 0) + 1, 0);
     const paperUsed = (allPaper || []).filter((p) => p.series_id === series.id)
       .reduce((s, p) => s + (p.to_no - p.from_no + 1), 0);

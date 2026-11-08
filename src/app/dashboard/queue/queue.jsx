@@ -4,7 +4,7 @@ import Dispatch from "../dispatch/dispatch";
 import { useDeskDuty } from "../dispatch/useDeskDuty";
 import SeriesPicker from "./SeriesPicker";
 import TicketRecipes from "./TicketRecipes";
-import { SupervisorPicker } from "../../../components/ui/kit";
+import { SupervisorPicker, SkeletonList } from "../../../components/ui/kit";
 import { getIwpStatus, getExpiryStatus } from "../driver/driver-utils";
 import "../../../styles/Queue.css";
 import { RouteIcon, SearchIcon } from "./queueIcon";
@@ -37,6 +37,8 @@ function Queue({ userRole }) {
     setSeriesOverrideId,
     selectedSeriesId,
     setSelectedSeriesId,
+    adoptDeskSeries,
+    seriesLoaded,
     issuePlan,
     ticketFee,
     selectVehicleById,
@@ -45,7 +47,7 @@ function Queue({ userRole }) {
     driverHasActiveTicket,
   } = useQueue(userRole);
 
-  const desk = useDeskDuty(selectedSeriesId);
+  const desk = useDeskDuty(selectedSeriesId, adoptDeskSeries);
   const canAssignDesk = DESK_ASSIGNERS.includes(userRole);
   // What the Issue button hands out: the vehicle's recipe, or the single series.
   const ticketCount = issuePlan(desk.recipes).reduce((n, row) => n + row.quantity, 0);
@@ -58,7 +60,12 @@ function Queue({ userRole }) {
       ? "A supervisor or admin needs to pick the check-out personnel in Shift setup first."
       : "";
 
-  const [recipesOpen, setRecipesOpen] = useState(false);
+  // Mix Values mode is remembered, so a reload or page switch lands back where the desk left it.
+  const [recipesOpen, setRecipesOpenState] = useState(() => localStorage.getItem("queueMixOpen") === "1");
+  const setRecipesOpen = (open) => {
+    localStorage.setItem("queueMixOpen", open ? "1" : "0");
+    setRecipesOpenState(open);
+  };
   const [vehicleSearch, setVehicleSearch] = useState("");
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
   const [driverSearch, setDriverSearch] = useState("");
@@ -379,7 +386,9 @@ function Queue({ userRole }) {
           <section className="queue-shift">
             <h2 className="queue-card-title">Shift setup</h2>
             {/* Mix Values swaps the default series for the fare recipes. */}
-            {recipesOpen ? (
+            {!seriesLoaded || !desk.loaded ? (
+              <SkeletonList rows={3} h={40} />
+            ) : recipesOpen ? (
               <TicketRecipes
                 prices={farePrices}
                 denominations={availableSeries}

@@ -91,7 +91,7 @@ def _stock_by_form():
     left. Same "remaining" math as TicketSeriesSerializer.get_remaining."""
     stock = {}
     paper = paper_numbers_by_series()
-    series_list = TicketSeries.objects.filter(requisition__is_archived=False).select_related('ticket_form').annotate(issued_count=Count('tickets'))
+    series_list = TicketSeries.objects.filter(requisition__is_archived=False).exclude(requisition__status='PENDING').select_related('ticket_form').annotate(issued_count=Count('tickets'))  # unvalidated stock isn't usable yet
     for series in series_list:
         original = max(int(series.end_no or 0) - int(series.start_no or 0) + 1, 0)
         remaining = max(original - series.issued_count - len(paper.get(series.id, ())), 0)

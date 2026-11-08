@@ -356,8 +356,7 @@ function Vehicle({ embedded, searchTerm: externalSearch, onSearchChange, exposeA
                         vehicle.route_detail.full_name
                       ) : (
                         <span className="veh-na">No route</span>
-                      )}
-                    </td>
+                      )}                    </td>
                     <td className="veh-td-route">
                       {vehicle.transportation_name || vehicle.transportation_id || (
                         <span className="veh-na">—</span>

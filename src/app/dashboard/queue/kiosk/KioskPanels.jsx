@@ -12,11 +12,14 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // Which paper the desk hands over, only worth a line when the fare is mixed.
 const mixLine = (r) => (mixText(r.breakdown) ? [`Your tickets: ${mixText(r.breakdown)}`] : []);
 
+const soonText = (days) => (days === 0 ? "expires today" : `expires in ${days}d`);
+
 function VehicleHead({ vehicle }) {
   return (
     <div className="kiosk-vehicle">
       <span className="kiosk-plate">{vehicle.plate}</span>
       {vehicle.route && <span className="kiosk-route">{vehicle.route}</span>}
+      {vehicle.franchise_days_left != null && <span className="kiosk-tag kiosk-tag--warn">Registration {soonText(vehicle.franchise_days_left)}</span>}
     </div>
   );
 }
@@ -29,6 +32,9 @@ function Footer({ seconds, onCancel, cancelLabel = "Cancel" }) {
     </div>
   );
 }
+
+// A driver with no record yet: the visit is held while the desk registers them.
+const UNREGISTERED = { id: "unregistered", name: "Unregistered driver", unregistered: true };
 
 const ModeTiles = ({ disabled, onPick }) => (
   <div className="kiosk-modes">
@@ -44,12 +50,12 @@ const ModeTiles = ({ disabled, onPick }) => (
 // Plate and route, then the vehicle's drivers on the left and the two big mode tiles on the
 // right; the tap on a tile checks the highlighted driver in. `blocked` (expired papers) shows
 // the registered operator instead and greys the tiles out.
-export function ModePanel({ vehicle, drivers = [], driverName, blocked, heading, onPick, onActivity, onCancel, seconds }) {
+export function ModePanel({ vehicle, drivers = [], driverName, blocked, expired = [], heading, onPick, onActivity, onCancel, seconds }) {
   const [pickedId, setPickedId] = useState(() => {
     const only = operatorsOf(drivers);
     return only.length === 1 && !only[0].expired ? only[0].id : null;
   });
-  const picked = drivers.find((d) => d.id === pickedId);
+  const picked = pickedId === UNREGISTERED.id ? UNREGISTERED : drivers.find((d) => d.id === pickedId);
 
   if (blocked) {
     return (
@@ -71,6 +77,12 @@ export function ModePanel({ vehicle, drivers = [], driverName, blocked, heading,
   return (
     <div className="kiosk-panel kiosk-panel--left">
       <VehicleHead vehicle={vehicle} />
+      {expired.map((e) => (
+        <div key={e.label} className="kiosk-alert">
+          <strong>⚠ {e.label} expired</strong>
+          <span>{e.days_ago === 0 ? "today" : `${plural(e.days_ago, "day")} ago`} — pick another driver, or register this one at the desk</span>
+        </div>
+      ))}
       <div className="kiosk-split">
         <div className="kiosk-col">
           <p className="kiosk-prompt">Who is driving?</p>
@@ -84,9 +96,21 @@ export function ModePanel({ vehicle, drivers = [], driverName, blocked, heading,
                 onClick={() => { setPickedId(d.id); onActivity(); }}
               >
                 {d.name}
-                {d.expired ? <span className="kiosk-tag kiosk-tag--expired">IWP expired</span> : d.last && <span className="kiosk-tag">Last driver</span>}
+                <span className="kiosk-tags">
+                  {d.last && !d.expired && <span className="kiosk-tag">Last driver</span>}
+                  {d.expired && <span className="kiosk-tag kiosk-tag--expired">IWP expired</span>}
+                  {d.iwp_days_left != null && <span className="kiosk-tag kiosk-tag--warn">IWP {soonText(d.iwp_days_left)}</span>}
+                </span>
               </button>
             ))}
+            <button
+              type="button"
+              className={`kiosk-name kiosk-name--new${pickedId === UNREGISTERED.id ? " kiosk-name--on" : ""}`}
+              onClick={() => { setPickedId(UNREGISTERED.id); onActivity(); }}
+            >
+              {UNREGISTERED.name}
+              <span className="kiosk-tag">Not on the list</span>
+            </button>
           </div>
         </div>
         <div className="kiosk-col">
@@ -107,13 +131,15 @@ const RESULTS = {
           tone: "ok",
           title: "You're in the queue",
           big: r.queue_code,
-          lines: [r.position > 1 ? `${plural(r.position - 1, "vehicle")} ahead of you` : "You're next in line", `Pay ${peso(r.vehicle.amount) || "the terminal fee"} at the check-out desk when you leave`, ...mixLine(r)],
+          lines: [r.position > 1 ? `${plural(r.position - 1, "vehicle")} ahead of you` : "You're next in line", `Pay ${peso(r.vehicle.amount) || "the terminal fee"} at the check-out desk when you leave`, ...mixLine(r), ...(r.driver ? [] : ["Please see the desk to register your driver details — you can't leave until then"])],
         }
       : {
           tone: "roam",
           title: "You're checked in to roam",
           big: "ROAMING",
-          lines: [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} to ${r.checked_in_by} to get your ticket`, ...mixLine(r), "Scan your QR again when you leave"],
+          lines: r.driver
+            ? [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} to ${r.checked_in_by} to get your ticket`, ...mixLine(r), "Scan your QR again when you leave"]
+            : ["Please see the desk to register your driver details — you can't get your ticket or leave until then"],
         },
   WAIT_TURN: (r) => ({
     tone: "info",

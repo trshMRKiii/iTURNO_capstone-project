@@ -88,6 +88,10 @@
 .kiosk-driver-text strong { font-size: calc(var(--u) * 2.8); }
 .kiosk-driver-text span { font-size: calc(var(--u) * 1.6); opacity: 0.8; }
 .kiosk-prompt { margin: 0; font-weight: 600; opacity: 0.8; }
+.kiosk-alert { display: flex; flex-direction: column; gap: 4px; padding: calc(var(--u) * 1.6) calc(var(--u) * 2); border-radius: calc(var(--u) * 1.2);
+  background: rgba(220, 38, 38, 0.25); border: 2px solid #ef4444; color: #fecaca; }
+.kiosk-alert strong { font-size: calc(var(--u) * 3.2); color: #fff; letter-spacing: 0.02em; }
+.kiosk-alert span { font-size: calc(var(--u) * 1.8); }
 .kiosk-prompt--error { color: #fca5a5; opacity: 1; }
 
 .kiosk-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 2); }
@@ -112,28 +116,35 @@
 .kiosk-tag { font-family: Helvetica, Arial, sans-serif; font-size: calc(var(--u) * 1.5); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px;
   background: rgba(37, 99, 235, 0.35); border: 1px solid rgba(147, 197, 253, 0.6); }
 .kiosk-tag--expired { background: rgba(220, 38, 38, 0.3); border-color: rgba(252, 165, 165, 0.7); }
+.kiosk-tag--warn { background: rgba(245, 158, 11, 0.28); border-color: rgba(252, 211, 77, 0.7); }
+.kiosk-tags { display: flex; gap: 8px; }
 .kiosk-name:disabled { opacity: 0.55; cursor: not-allowed; }
 .kiosk-names { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr; gap: 10px; align-content: start; }
 .kiosk-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: calc(var(--u) * 1.8); border-radius: calc(var(--u) * 1.2); border: 0;
   background: rgba(255, 255, 255, 0.1); color: #fff; font-size: calc(var(--u) * 2.4); font-weight: 600; text-align: left; cursor: pointer; }
 .kiosk-name:active, .kiosk-name--on { background: #2563eb; }
+.kiosk-name--new { border: 2px dashed rgba(255, 255, 255, 0.45); background: transparent; }
+.kiosk-name--new.kiosk-name--on { border-style: solid; background: #2563eb; }
 .kiosk-empty { padding: 24px; opacity: 0.8; }
 
 /* Result cards take the whole right side in the colour of the outcome. */
-.kiosk-result { align-items: center; justify-content: center; text-align: center; }
+/* `safe` keeps the top in view if a long message ever overflows; sizes below are kept small enough that it fits. */
+.kiosk-result { align-items: center; justify-content: safe center; text-align: center; gap: calc(var(--u) * 1.3); }
 .kiosk-result .kiosk-vehicle { flex-direction: column; justify-content: center; }
 .kiosk-result .kiosk-route { font-size: calc(var(--u) * 2.4); padding: calc(var(--u) * 0.8) calc(var(--u) * 2.2); }
 .kiosk-result .kiosk-title { justify-content: center; }
-.kiosk-result .kiosk-foot { flex-direction: column; justify-content: center; gap: calc(var(--u) * 1.4); margin-top: calc(var(--u) * 2); }
-.kiosk-result .kiosk-foot .kiosk-ghost { padding: calc(var(--u) * 2) calc(var(--u) * 10); font-size: calc(var(--u) * 3); font-weight: 700; background: rgba(255, 255, 255, 0.15); }
+.kiosk-result .kiosk-foot { flex-direction: column; justify-content: center; gap: calc(var(--u) * 1); margin-top: calc(var(--u) * 1); }
+.kiosk-result .kiosk-foot .kiosk-ghost { padding: calc(var(--u) * 1.5) calc(var(--u) * 10); font-size: calc(var(--u) * 3); font-weight: 700; background: rgba(255, 255, 255, 0.15); }
 .kiosk-result--ok { background: #166534; }
 .kiosk-result--roam { background: #0f766e; }
 .kiosk-result--info { background: #1e40af; }
 .kiosk-result--error { background: #991b1b; }
 .kiosk-big { font-size: calc(var(--u) * 16); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
 .kiosk-line { margin: 0; font-size: calc(var(--u) * 2.4); opacity: 0.95; }
-.kiosk-result .kiosk-line { font-size: calc(var(--u) * 4); font-weight: 700; opacity: 1; }
-.kiosk-result .kiosk-line + .kiosk-line { font-size: calc(var(--u) * 3.2); font-weight: 600; opacity: 0.9; }
+.kiosk-result .kiosk-big { font-size: calc(var(--u) * 12); }
+.kiosk-result .kiosk-line { font-size: calc(var(--u) * 3.4); font-weight: 700; opacity: 1; }
+.kiosk-result .kiosk-line + .kiosk-line { font-size: calc(var(--u) * 2.8); font-weight: 600; opacity: 0.9; }
+.kiosk-result .kiosk-line + .kiosk-line + .kiosk-line { font-size: calc(var(--u) * 2.4); }
 .kiosk-pill { align-self: stretch; padding: calc(var(--u) * 2); border-radius: calc(var(--u) * 1.4); background: rgba(255, 255, 255, 0.14); font-size: calc(var(--u) * 2.4); font-weight: 700; }
 
 /* Short landscape screens: tighten the step card so tiles keep room. */

@@ -98,8 +98,15 @@ function Dispatch({ seriesId, ticketFee }) {
   // Drivers already in line can't take over another vehicle.
   const busyDriverIds = useMemo(() => new Set(tickets.map((t) => t.driver?.id).filter(Boolean)), [tickets]);
 
+  // A kiosk "Unregistered driver" entry has a ticket but no driver yet; the vehicle's own last
+  // driver would be the wrong name to show for it.
+  const isUnregistered = (vehicle) => {
+    const ticket = ticketByVehicleId.get(vehicle.id);
+    return !!ticket && !ticket.driver;
+  };
+
   const getDriverName = (vehicle) =>
-    vehicle.active_driver_name || ticketByVehicleId.get(vehicle.id)?.driver?.name || "—";
+    isUnregistered(vehicle) ? "Unregistered driver" : vehicle.active_driver_name || ticketByVehicleId.get(vehicle.id)?.driver?.name || "—";
 
   // Only the loading-bay vehicle has an estimate: loading start + the route's minutes (+ any
   // "+5m" extension). Mirrors public_queue's departure_time on the backend.
@@ -247,7 +254,7 @@ function Dispatch({ seriesId, ticketFee }) {
 
         {error && <div className="dispatch-error">{error}</div>}
 
-        <KioskRoamStrip sessions={roamSessions} now={now} />
+        <KioskRoamStrip sessions={roamSessions} now={now} onAttach={(s) => setDriverSwap({ roam: true, vehicle: { id: s.vehicle_id, plate_number: s.plate } })} />
 
         <div className="dispatch-panel-body">
           {loading ? (
@@ -309,13 +316,13 @@ function Dispatch({ seriesId, ticketFee }) {
                               )}
                             </td>
                             <td>
-                              {getDriverName(vehicle)}
+                              <span className={isUnregistered(vehicle) ? "dispatch-unregistered" : undefined}>{getDriverName(vehicle)}</span>
                               <button
                                 type="button"
-                                className="dispatch-driver-swap"
+                                className={`dispatch-driver-swap${isUnregistered(vehicle) ? " dispatch-driver-swap--attach" : ""}`}
                                 onClick={() => setDriverSwap({ vehicle, ticket: ticketByVehicleId.get(vehicle.id) })}
                               >
-                                Swap driver
+                                {isUnregistered(vehicle) ? "Register & attach driver" : "Swap driver"}
                               </button>
                             </td>
                             <td>
@@ -366,7 +373,8 @@ function Dispatch({ seriesId, ticketFee }) {
                                 type="button"
                                 className="dispatch-go-btn"
                                 onClick={() => handleDispatch(vehicle, route)}
-                                disabled={dispatchingId != null}
+                                disabled={dispatchingId != null || isUnregistered(vehicle)}
+                                title={isUnregistered(vehicle) ? "Attach a driver first" : undefined}
                               >
                                 {dispatchingId === vehicle.id ? "Dispatching…" : "Dispatch"}
                               </button>

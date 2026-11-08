@@ -22,7 +22,7 @@ from ..serializers import UserSerializer, SelfProfileSerializer, DriverSerialize
 from ..sync.account_emails import flush_account_emails, queue_account_email
 from ..sync.fleet_access import flush_fleet_access
 from ..sync.settings_outbox import flush_settings, next_offline_pk, park, park_delete
-from ..sms import send_sms_async, queue_next_message
+from ..sms import send_sms_async, queue_first_message, queue_next_message, queue_position_message
 from .overstays import overstay_minutes, queue_allowance
 from .helpers import record_audit_log, expire_stale_kiosk_sessions, supabase_reachable, can_write_remote, remote_db, mirror_user, paper_numbers_by_series, parse_date_start, parse_date_end, paginate_request, promote_queue_front
 from .remittance_export import remittance_xlsx_response
@@ -717,6 +717,8 @@ def _finalize_queued_vehicle(vehicle, plan, mode, request):
         ).order_by('queue_rank', 'issued_at').first()
         if not placeholder:
             raise ValidationError({"vehicle_id": "No open ticket found for this vehicle."})
+        if placeholder.driver_id is None:
+            raise ValidationError({"driver_id": "This vehicle's driver isn't registered yet — the desk must attach one before it can leave."})
 
         units = _draw_plan(vehicle, plan)
 
@@ -773,7 +775,7 @@ def _finalize_queued_vehicle(vehicle, plan, mode, request):
             new_first = Ticket.objects.filter(
                 route=route, mode='QUEUE', status='QUEUED',
             ).order_by('queue_rank', 'issued_at').first()
-            if new_first:
+            if new_first and new_first.driver:  # a driverless entry is texted once a driver is attached
                 message = queue_next_message(route.full_name)
                 transaction.on_commit(lambda: send_sms_async(new_first.driver.contact, message))
 
@@ -781,14 +783,15 @@ def _finalize_queued_vehicle(vehicle, plan, mode, request):
 
 
 def _check_can_issue(vehicle, driver):
-    """Shared by roam issuance and kiosk check-in: can this driver take this vehicle out?"""
+    """Shared by roam issuance and kiosk check-in: can this driver take this vehicle out?
+    `driver` is None for an unregistered driver, so only the vehicle is checked."""
     if vehicle.status != 'AVAILABLE':
         raise ValidationError({"vehicle_id": f"Vehicle is {vehicle.status} — cannot issue ticket."})
-    if driver.status != 'ACTIVE':
+    if driver and driver.status != 'ACTIVE':
         raise ValidationError({"driver_id": "Selected driver is not active."})
     if vehicle.franchise_expired:
         raise ValidationError({"vehicle_id": f"{vehicle.plate_number}'s franchise has expired."})
-    if driver.iwp_expired:
+    if driver and driver.iwp_expired:
         raise ValidationError({"driver_id": "Selected driver's IWP has expired."})
 
 
@@ -1153,6 +1156,9 @@ class TicketViewSet(viewsets.ModelViewSet):
 
         if new_driver.status != 'ACTIVE':
             raise ValidationError({"driver_id": "Selected driver is not active and cannot be assigned."})
+        attaching = ticket.driver_id is None  # registering a kiosk "Unregistered driver" entry
+        if attaching and new_driver.iwp_expired:
+            raise ValidationError({"driver_id": "This driver's IWP has expired — renew it before attaching them."})
 
         conflict = Ticket.objects.filter(driver=new_driver, status='QUEUED').exclude(vehicle=ticket.vehicle).exists()
         if conflict:
@@ -1171,14 +1177,26 @@ class TicketViewSet(viewsets.ModelViewSet):
 
             vehicle.active_driver = new_driver
             vehicle.save(update_fields=['active_driver', 'updated_at'])
+            KioskSession.objects.filter(vehicle=vehicle, status__in=KioskSession.OPEN_STATUSES).update(driver=new_driver)
+
+            if attaching and ticket.route_id:
+                # The SMS held back at check-in: where they stand in line now (their original spot).
+                line = list(
+                    Ticket.objects.filter(route_id=ticket.route_id, mode='QUEUE', status='QUEUED')
+                    .order_by('queue_rank', 'issued_at').values_list('vehicle_id', flat=True)
+                )
+                position = line.index(vehicle.id) + 1 if vehicle.id in line else 1
+                route_name = ticket.route.full_name
+                message = queue_position_message(position, route_name) if position > 1 else queue_first_message(route_name)
+                transaction.on_commit(lambda: send_sms_async(new_driver.contact, message))
 
         record_audit_log(
             user=request.user,
             action='UPDATE',
             model_name='Ticket',
             object_id=ticket.id,
-            object_repr=f"Reassigned driver on {ticket}",
-            changes={'driver': f"{old_driver} -> {new_driver}"},
+            object_repr=f"{'Attached driver to' if attaching else 'Reassigned driver on'} {ticket}",
+            changes={'driver': f"{old_driver or 'Unregistered'} -> {new_driver}"},
         )
 
         ticket.refresh_from_db()

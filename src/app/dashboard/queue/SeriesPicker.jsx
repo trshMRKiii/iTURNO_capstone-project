@@ -46,11 +46,6 @@ function SeriesPicker({
   const [open, setOpen] = useState(false);
   const selected = allSeries.find((s) => String(s.id) === String(selectedSeriesId));
 
-  const toggle = () => {
-    if (open) setSeriesOverrideId("");
-    setOpen(!open);
-  };
-
   return (
     <div className="queue-roam-series">
       <div className="queue-roam-series-row">
@@ -62,7 +57,7 @@ function SeriesPicker({
         </div>
         {selectedSeriesId && (
           <div className="queue-series-actions">
-            <button type="button" className="queue-change-series-btn" onClick={toggle}>
+            <button type="button" className="queue-change-series-btn" onClick={() => setOpen(!open)}>
               {open ? "Done" : "Change Series"}
             </button>
             {onMix && availableSeries.length > 1 && (
@@ -70,7 +65,6 @@ function SeriesPicker({
                 type="button"
                 className="queue-change-series-btn"
                 onClick={() => {
-                  setSeriesOverrideId("");
                   setOpen(false);
                   onMix();
                 }}

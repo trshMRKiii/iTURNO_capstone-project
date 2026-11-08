@@ -170,7 +170,9 @@ class TicketSerializer(serializers.ModelSerializer):
 
     # For writing (creating): accept just IDs
     vehicle_id = serializers.IntegerField(write_only=True, required=True)
-    driver_id = serializers.IntegerField(write_only=True, required=True)
+    driver_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    # A kiosk queue check-in whose driver isn't registered yet: joins the line with no driver.
+    driverless = serializers.BooleanField(write_only=True, required=False, default=False)
 
     # For reading: return full nested objects
     vehicle = VehicleSerializer(read_only=True)
@@ -204,7 +206,8 @@ class TicketSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         vehicle_id = validated_data.pop('vehicle_id')
-        driver_id = validated_data.pop('driver_id')
+        driver_id = validated_data.pop('driver_id', None)
+        driverless = validated_data.pop('driverless', False)
         series_id = validated_data.pop('series_id', None)
         issuance_group = validated_data.get('issuance_group', '')
         is_roam = validated_data.get('mode') == 'UNLOAD'
@@ -212,10 +215,14 @@ class TicketSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             vehicle = Vehicle.objects.get(id=vehicle_id)
 
-            if not driver_id and vehicle.active_driver_id:
-                driver_id = vehicle.active_driver_id
-
-            driver = Driver.objects.get(id=driver_id)
+            if driverless:
+                if is_roam:
+                    raise serializers.ValidationError({"driver_id": "A roaming ticket needs a registered driver."})
+                driver = None
+            else:
+                if not driver_id and vehicle.active_driver_id:
+                    driver_id = vehicle.active_driver_id
+                driver = Driver.objects.get(id=driver_id)
 
             open_tickets = list(Ticket.objects.filter(vehicle=vehicle, status='QUEUED'))
             # A quantity>1 issuance makes several sequential create() calls that share one
@@ -234,7 +241,7 @@ class TicketSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"vehicle_id": f"Vehicle is currently {vehicle.status} and cannot be checked in."}
                     )
-                if driver.status != 'ACTIVE':
+                if driver and driver.status != 'ACTIVE':
                     raise serializers.ValidationError(
                         {"driver_id": "Selected driver is not active and cannot be assigned."}
                     )
@@ -242,7 +249,7 @@ class TicketSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"vehicle_id": f"{vehicle.plate_number}'s franchise has expired — renew it before checking in."}
                     )
-                if driver.iwp_expired:
+                if driver and driver.iwp_expired:
                     raise serializers.ValidationError(
                         {"driver_id": "Selected driver's IWP has expired — renew it before checking in."}
                     )
@@ -314,7 +321,8 @@ class TicketSerializer(serializers.ModelSerializer):
                 vehicle.save(update_fields=['active_driver', 'updated_at'])
             else:
                 vehicle.status = 'QUEUED'
-                vehicle.active_driver = driver
+                if driver:  # an unregistered driver leaves the vehicle's last driver alone until attached
+                    vehicle.active_driver = driver
                 vehicle.save(update_fields=['status', 'active_driver', 'updated_at'])
 
                 # One SMS per check-in (not per physical ticket unit, so a
@@ -322,7 +330,7 @@ class TicketSerializer(serializers.ModelSerializer):
                 # driver their spot in line (or that they're first, when the
                 # queue was empty). Sent async, after commit, so the check-in
                 # request doesn't block on PhilSMS's HTTP round trip.
-                if not is_continuation and route:
+                if not is_continuation and route and driver:  # a driverless entry is texted once a driver is attached
                     position = Ticket.objects.filter(
                         route=route, mode='QUEUE', status='QUEUED',
                     ).count()

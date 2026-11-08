@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.db import transaction
-from django.db.models import Min, Q
+from django.db.models import Count, Min, Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -85,6 +85,8 @@ def public_queue(request):
         # public board keeps counting down to a time the terminal already
         # knows it will miss.
         _extra_minutes=Min('tickets__extra_loading_minutes', filter=Q(tickets__status='QUEUED')),
+        # A kiosk "Unregistered driver" entry: the vehicle's last driver isn't who's driving it now.
+        _no_driver=Count('tickets', filter=Q(tickets__status='QUEUED', tickets__driver__isnull=True)),
     ).order_by('_queue_rank', '_queue_time')
 
     data = []
@@ -104,7 +106,7 @@ def public_queue(request):
         data.append({
             'id': vehicle.id,
             'plate_number': vehicle.plate_number,
-            'driver': f"{vehicle.active_driver.last_name}, {vehicle.active_driver.first_name}".strip() if vehicle.active_driver else '',
+            'driver': f"{vehicle.active_driver.last_name}, {vehicle.active_driver.first_name}".strip() if vehicle.active_driver and not vehicle._no_driver else '',
             'route': route_name,
             'departure_time': departure_time,
         })
