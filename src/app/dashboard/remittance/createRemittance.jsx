@@ -10,8 +10,8 @@ function formatCurrency(val) {
   return "₱" + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const Field = ({ label, children }) => (
-  <div className="rem-field">
+const Field = ({ label, children, id }) => (
+  <div className="rem-field" id={id}>
     <label className="rem-label">{label}</label>
     {children}
   </div>
@@ -216,8 +216,17 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
   const nothingToRemit = totalRemittances <= 0;
   const saveBlocked = amountsMismatch || nothingToRemit || !certified || !preparedBy;
 
+  // Save stays clickable when something is missing: it scrolls to the first thing to fix instead.
+  const firstProblemId = !preparedBy ? "rem-officer" : nothingToRemit || amountsMismatch ? "rem-deposits" : !certified ? "rem-cert" : null;
+
   const handleSave = async () => {
-    if (saveBlocked || saving) return;
+    if (saving) return;
+    if (firstProblemId) {
+      const el = document.getElementById(firstProblemId);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.querySelector("input")?.focus({ preventScroll: true });
+      return;
+    }
     const payload = {
       id: batchId,
       prepared_by: preparedBy,
@@ -317,8 +326,8 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
             <Field label={isLate ? "Covering Date" : "Date Issued"}>
               <input type="date" className="rem-input" value={dateIssued} disabled />
             </Field>
-            <Field label="Accountable Officer">
-              <input type="text" className="rem-input" value={preparedByName} placeholder="Choose who prepared this below" disabled />
+            <Field id="rem-officer" label={<>Accountable Officer<span className="rem-required" aria-hidden="true">*</span></>}>
+              <SupervisorPicker className="rem-input" supervisors={supervisors} value={preparedBy} onChange={setPickedPreparer} disabled={saving} />
             </Field>
           </div>
 
@@ -381,7 +390,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
           </table>
 
           {/* Deposits */}
-          <div>
+          <div id="rem-deposits">
             <h3 className="rem-section-title">
               Remittances / Deposits
             </h3>
@@ -458,15 +467,12 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
           </div>
 
           {/* Certification */}
-          <div className="rem-cert">
+          <div className="rem-cert" id="rem-cert">
             <label className="rem-cert-check">
               <input type="checkbox" checked={certified} disabled={saving} onChange={(e) => setCertified(e.target.checked)} />
               <span>I certify that the above collections and deposits are accurate.</span>
             </label>
             <div className="rem-info-grid" style={{ gridTemplateColumns: "1fr" }}>
-              <Field label={<>Prepared By <span className="rem-required" aria-hidden="true">*</span></>}>
-                <SupervisorPicker className="rem-input" supervisors={supervisors} value={preparedBy} onChange={setPickedPreparer} disabled={saving} />
-              </Field>
               <Field label="Cashier / Treasurer">
                 <CashierNameInput {...cashier} disabled={saving} className="rem-input" />
               </Field>
@@ -490,7 +496,7 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
           )}
           {!preparedBy && (
             <div className="rem-alert" style={{ marginBottom: 12 }}>
-              Choose the supervisor who prepared this remittance.
+              Choose the accountable officer (supervisor) who prepared this remittance.
             </div>
           )}
           <div className="rem-modal-footer">
@@ -498,9 +504,9 @@ const CreateBatchForm = ({ targetDate, onSaved }) => {
               type="button"
               className="rem-modal-btn rem-modal-btn--submit"
               onClick={handleSave}
-              disabled={saveBlocked || saving}
+              disabled={saving}
               aria-busy={saving || undefined}
-              style={saveBlocked ?{ opacity: 0.5, cursor: "not-allowed" } : {}}
+              style={saveBlocked ? { opacity: 0.5 } : {}}
             >
               <ButtonLabel busy={saving} busyLabel="Saving...">{amending ? "Save Changes" : "Save Batch"}</ButtonLabel>
             </button>

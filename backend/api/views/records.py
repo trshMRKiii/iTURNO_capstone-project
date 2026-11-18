@@ -213,7 +213,7 @@ def remittance_batches(request):
         _write_batch_lines(batch, data)
         return Response({'id': batch.id, 'status': 'created'}, status=201)
 
-    batches = RemittanceBatch.objects.select_related('issued_by').order_by('-issued_at')
+    batches = RemittanceBatch.objects.select_related('issued_by').prefetch_related('collections', 'deposits').order_by('-issued_at')
 
     is_archived = request.query_params.get('is_archived')
     if is_archived is not None:

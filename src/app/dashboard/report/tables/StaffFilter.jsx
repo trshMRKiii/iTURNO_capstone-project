@@ -3,7 +3,7 @@ import { authFetch } from "../../../../lib/api-service";
 import "../../../../styles/SupervisorPicker.css";
 
 const ROLES = [
-  ["either", "Issued or dispatched"],
+  ["either", "All"],
   ["issued", "Issued"],
   ["dispatched", "Dispatched"],
 ];
@@ -45,7 +45,11 @@ export default function StaffFilter({ staff, role, totals, onChange }) {
 
   return (
     <div className="rpt-staff" ref={ref}>
-      <div className="sup-combo">
+      <div className="rpt-staff-row">
+      <div className={`sup-combo rpt-staff-combo${staff ? " is-set" : ""}`}>
+        <svg className="rpt-staff-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+        </svg>
         <input
           className="rpt-search-input"
           value={open ? query : staff?.name ?? ""}
@@ -53,10 +57,13 @@ export default function StaffFilter({ staff, role, totals, onChange }) {
           onFocus={() => setOpen(true)}
           onClick={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === "Escape") close(); }}
-          placeholder="Filter by staff…"
+          placeholder="All staff"
           aria-label="Filter by staff member"
           spellCheck={false}
         />
+        {staff && (
+          <button type="button" className="rpt-staff-clear" aria-label="Clear staff filter" onClick={() => { onChange(null, "either"); close(); }}>✕</button>
+        )}
         {open && (
           <ul className="sup-combo-list" role="listbox">
             {options.length === 0 && <li className="sup-combo-empty">No staff found</li>}
@@ -71,22 +78,20 @@ export default function StaffFilter({ staff, role, totals, onChange }) {
         )}
       </div>
       {staff && (
-        <>
-          <select
-            className="rpt-date-input"
-            aria-label="Count tickets this person"
-            value={role}
-            onChange={(e) => onChange(staff, e.target.value)}
-          >
-            {ROLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-          <button type="button" className="rpt-link-btn" onClick={() => onChange(null, "either")}>Clear</button>
-          {totals && (
-            <span className="rpt-staff-totals">
-              <strong>{totals.issued}</strong> issued · <strong>{totals.dispatched}</strong> dispatched
-            </span>
-          )}
-        </>
+        <select
+          className="rpt-date-input"
+          aria-label="Count tickets this person"
+          value={role}
+          onChange={(e) => onChange(staff, e.target.value)}
+        >
+          {ROLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      )}
+      </div>
+      {staff && totals && (
+        <span className="rpt-staff-totals">
+          <strong>{totals.issued}</strong> issued · <strong>{totals.dispatched}</strong> dispatched
+        </span>
       )}
     </div>
   );

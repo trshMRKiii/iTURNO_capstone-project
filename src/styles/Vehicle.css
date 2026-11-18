@@ -582,7 +582,15 @@
 
 .veh-ledger-body {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0; /* lets the table scroll while summary + pager stay visible */
 }
+.veh-ledger-body .veh-table-wrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.veh-ledger-body .veh-ledger-summary,
+.veh-ledger-body .rpt-pager { flex-shrink: 0; }
+.veh-ledger-body .veh-table thead th { position: sticky; top: 0; z-index: 1; background: var(--bg-page); }
 
 .veh-ledger-summary {
   display: flex;

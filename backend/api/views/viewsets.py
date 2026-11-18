@@ -1,13 +1,13 @@
 import re
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.db.models import Count, Q
-from django.db.models.functions import Length
+from django.db.models import Count, OuterRef, Prefetch, Q, Subquery
+from django.db.models.functions import Coalesce, Length
 from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import viewsets
@@ -851,8 +851,8 @@ def _issue_roam_tickets(vehicle, driver, plan, request, depart=True):
 
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.select_related(
-        'vehicle', 'vehicle__route', 'vehicle__active_driver', 'vehicle__transportation_id',
-        'driver', 'series', 'series__ticket_form',
+        'vehicle', 'vehicle__route', 'vehicle__active_driver', 'vehicle__owner_driver', 'vehicle__transportation_id',
+        'driver', 'series', 'series__ticket_form', 'route', 'active_user',
     )
     serializer_class = TicketSerializer
 
@@ -1219,12 +1219,25 @@ class TicketFormViewSet(OfflineSettingWriteMixin, AuditLogMixin, viewsets.ModelV
     serializer_class = TicketFormSerializer
 
 
+def with_issue_counts(series):
+    """Series rows with everything TicketSeriesSerializer reads preloaded, so listing them
+    costs a fixed handful of queries however many tickets or series there are. The counts are
+    per-series subqueries on the ticket.series index, not a join over every ticket."""
+    day_start = timezone.make_aware(datetime.combine(date.today(), time.min))
+
+    before_today = Ticket.objects.filter(series=OuterRef('pk'), issued_at__lt=day_start).order_by().values('series').annotate(n=Count('pk')).values('n')
+    return series.select_related('ticket_form', 'issued_to', 'requisition').prefetch_related('paper_issuances').annotate(
+        _issued_before_today=Coalesce(Subquery(before_today), 0),
+    )
+
+
 class RequisitionViewSet(AuditLogMixin, viewsets.ModelViewSet):
-    queryset = Requisition.objects.all()
+    queryset = Requisition.objects.all()  # kept for router basename inference
     serializer_class = RequisitionSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = Requisition.objects.select_related('requested_by').prefetch_related(
+            Prefetch('ticket_series', queryset=with_issue_counts(TicketSeries.objects.all())))
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date:
@@ -1282,13 +1295,7 @@ class TicketSeriesViewSet(AuditLogMixin, viewsets.ModelViewSet):
     serializer_class = TicketSeriesSerializer
 
     def get_queryset(self):
-        today = date.today()
-        return TicketSeries.objects.filter(requisition__is_archived=False).select_related(
-            'ticket_form', 'issued_to'
-        ).prefetch_related('paper_issuances').annotate(
-            _total_issued=Count('tickets'),
-            _issued_before_today=Count('tickets', filter=Q(tickets__issued_at__date__lt=today)),
-        )
+        return with_issue_counts(TicketSeries.objects.filter(requisition__is_archived=False))
 
     def get_permissions(self):
         # Correcting a mis-keyed series is a lead action; reads stay open.
@@ -1398,7 +1405,7 @@ class PaperIssuanceViewSet(AuditLogMixin, viewsets.ModelViewSet):
 
 
 class RemittanceBatchViewSet(AuditLogMixin, viewsets.ModelViewSet):
-    queryset = RemittanceBatch.objects.all()
+    queryset = RemittanceBatch.objects.select_related('issued_by').prefetch_related('collections', 'deposits')
     serializer_class = RemittanceBatchSerializer
 
     @action(detail=True, methods=["get"], url_path="export-xlsx")

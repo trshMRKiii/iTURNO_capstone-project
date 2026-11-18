@@ -256,7 +256,7 @@ class Ticket(models.Model):
     queue_rank = models.IntegerField(null=True, blank=True, db_index=True)
     # Why this vehicle was swapped out of the loading bay (#1); set by reorder-queue.
     bay_swap_reason = models.CharField(max_length=255, blank=True, default='')
-    dispatched_at = models.DateTimeField(null=True, blank=True)
+    dispatched_at = models.DateTimeField(null=True, blank=True, db_index=True)
     # When the vehicle actually checked in. Dispatch and roam checkout create a fresh
     # COLLECTED ticket (issued_at = now), so without this the real arrival time is lost
     # and dispatched_at - checked_in_at (the stay, queue or roam) can't be recovered.
@@ -276,7 +276,7 @@ class Ticket(models.Model):
     issuance_group = models.CharField(max_length=40, blank=True, db_index=True)
     queue_code = models.CharField(max_length=20, blank=True, db_index=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -346,10 +346,57 @@
 }
 
 .rpt-staff {
+  margin-left: auto;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.rpt-staff-row {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+.rpt-staff-combo .rpt-search-input {
+  padding-left: 38px;
+  padding-right: 34px;
+}
+.rpt-staff-combo.is-set .rpt-search-input {
+  border-color: var(--gold);
+}
+.rpt-staff-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.rpt-staff-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.rpt-staff-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 .rpt-staff-totals {
   font-size: 14.3px;

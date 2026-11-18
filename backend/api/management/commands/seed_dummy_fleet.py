@@ -1,7 +1,7 @@
 """Wipe transactional/fleet data and reseed North Central Terminal (San Fernando,
 La Union) with a dummy fleet: 100 Jeepney vehicles, each owned by one of 100
 ACTIVE drivers, spread across the routes already registered in Settings ->
-Routes (never created or renamed here), and 2 months of backdated ticket
+Routes (never created or renamed here), and 1 year of backdated ticket
 history by default for scale/stress testing.
 
 Drivers and vehicles are filled in exactly as the Driver / Vehicle registry
@@ -20,7 +20,7 @@ app's own "check-out" count, see checkout_count in views/reports.py). Tickets
 land in the buckets the Queue page groups them in: mostly COLLECTED (queue wait
 centered on the vehicle's route loading-time estimate) and mode=UNLOAD ("roam")
 tickets collected on the spot. Days are Philippine days (UTC+8, like every report in the app) and
-history runs through yesterday, so nothing is dated in the future; each day has
+history runs through today (up to the current hour), so nothing is dated in the future; each day has
 a remittance batch whose tickets are linked to it (Ticket.remittance_batch).
 
 Every COLLECTED transaction is issued as however many ticket units hit the
@@ -48,9 +48,10 @@ from django.db.models import F, Max
 from django.utils import timezone
 
 from api.models import (
-    AuditLog, Collection, Deposit, Driver, PUVType, RemittanceBatch, Requisition,
-    Route, SyncQueue, Ticket, TicketForm, TicketSeries, User, Vehicle,
+    AuditLog, BackfillRecord, Collection, Deposit, Driver, PUVType, RemittanceBatch, Requisition,
+    KioskSession, Route, SyncQueue, Ticket, TicketForm, TicketSeries, User, Vehicle,
 )
+from api.views.overstays import ROAM_LIMIT_MINUTES, overstay_minutes, queue_allowance
 
 # Real PSGC municipality -> barangay names, as the registry form's address selects return them.
 ADDRESSES = {
@@ -140,6 +141,9 @@ def _rand_contact():
 # wait fallback for a route with no estimated_loading_minutes configured.
 DEFAULT_ESTIMATED_LOADING_MINUTES = 5
 
+# Busy-hour weighting for 5am-7pm check-outs.
+HOUR_WEIGHTS = [3, 5, 8, 8, 5, 4, 4, 4, 4, 4, 5, 6, 8, 6, 3]
+
 # Tickets per series/booklet, e.g. 1020101001-1020102000.
 SERIES_SIZE = 1000
 
@@ -169,7 +173,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--dry-run", action="store_true", help="Print what would happen without writing anything.")
-        parser.add_argument("--months", type=int, default=2, help="How many months of ticket history to backdate.")
+        parser.add_argument("--days", type=int, default=365, help="How many days of ticket history to backdate, through today.")
         parser.add_argument("--daily-min", type=int, default=130, help="Minimum physical Ticket rows (check-outs) per day.")
         parser.add_argument("--daily-max", type=int, default=210, help="Maximum physical Ticket rows (check-outs) per day.")
         parser.add_argument(
@@ -180,7 +184,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
-        months = options["months"]
+        days = options["days"]
         daily_min = options["daily_min"]
         daily_max = options["daily_max"]
         keep_fleet = options["keep_fleet"]
@@ -191,7 +195,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             ctx = self._setup(dry_run, keep_fleet)
             if ctx is not None and not dry_run:
-                ticket_stats = self._generate_history(ctx, months, daily_min, daily_max)
+                ticket_stats = self._generate_history(ctx, days, daily_min, daily_max)
             if dry_run:
                 transaction.set_rollback(True)
 
@@ -279,6 +283,9 @@ class Command(BaseCommand):
         RemittanceBatch.objects.all().delete()
         Requisition.objects.all().delete()
         AuditLog.objects.all().delete()
+        # Report-module leftovers that referenced the wiped tickets.
+        BackfillRecord.objects.all().delete()
+        KioskSession.objects.all().delete()
 
         # Routes are whatever Settings -> Routes already has; nothing is created here.
         today = timezone.localtime().date()
@@ -354,7 +361,7 @@ class Command(BaseCommand):
             "route_count": len(routes),
         }
 
-    def _generate_history(self, ctx, months, daily_min, daily_max):
+    def _generate_history(self, ctx, days, daily_min, daily_max):
         # Every COLLECTED transaction must total exactly the configured terminal
         # price (see dispatch_ticket / roam check-in's price*quantity ==
         # terminal_price guard in views/viewsets.py) -- so a form only ever gets
@@ -363,8 +370,8 @@ class Command(BaseCommand):
         form_quantities = self._compute_form_quantities(ctx["ticket_forms"])
         available_vehicles = [v for v in ctx["vehicles"] if v.active_driver_id]
         ph_today = (timezone.now() + timedelta(hours=8)).date()
-        start_day = ph_today - timedelta(days=months * 30)
-        last_day = ph_today - timedelta(days=1)
+        start_day = ph_today - timedelta(days=days)
+        last_day = ph_today
 
         ticket_stats = {"created": 0, "days": 0}
 
@@ -417,7 +424,20 @@ class Command(BaseCommand):
         TicketSeries.objects.filter(pk=series.pk).update(created_at=issued, updated_at=issued)
         ctx["requisitions"].append(req)
         ctx["series_count"] += 1
+        # The audit trail the app would have written: request, validation, issuance, series creation.
+        self._audit(ctx, issued - timedelta(hours=2), "CREATE", "Requisition", req.pk, f"Requisition #{req.pk} - PENDING", {"total_value": float(total)})
+        self._audit(ctx, issued - timedelta(hours=1), "UPDATE", "Requisition", req.pk, f"Requisition #{req.pk} - APPROVED", {"status": "APPROVED"})
+        self._audit(ctx, issued, "UPDATE", "Requisition", req.pk, f"Requisition #{req.pk} - ISSUED", {"status": "ISSUED"})
+        self._audit(ctx, issued, "CREATE", "TicketSeries", series.pk, f"Series {series.series_no}", {"series_no": series.series_no, "total_value": float(total)})
         return series
+
+    def _audit(self, ctx, when, action, model_name, object_id, object_repr, changes):
+        log = AuditLog.objects.create(
+            user=ctx["admin_user"], action=action, model_name=model_name,
+            object_id=str(object_id), object_repr=object_repr, changes=changes,
+        )
+        AuditLog.objects.filter(pk=log.pk).update(created_at=when)
+        SyncQueue.objects.get_or_create(model_label="api.AuditLog", object_id=str(log.pk), defaults={"synced_at": None})
 
     def _generate_day(self, day, daily_min, daily_max, form_quantities,
                        available_vehicles, ctx, ticket_stats):
@@ -429,7 +449,15 @@ class Command(BaseCommand):
         # transaction still produces 5 of those rows, not 1, so the loop below
         # keeps adding transactions until their rows add up to the target,
         # rather than just counting transactions.
-        target_rows = random.randint(daily_min, daily_max)
+        now = timezone.now()
+        # Today only runs up to the current Philippine hour; earlier days use the full 5am-7pm spread.
+        last_hour = min(19, (now + timedelta(hours=8)).hour) if day == (now + timedelta(hours=8)).date() else 19
+        hours = list(range(5, last_hour + 1))
+        if not hours:
+            return
+        weights = HOUR_WEIGHTS[:len(hours)]
+        # A partial day (today) only gets its share of the usual volume.
+        target_rows = round(random.randint(daily_min, daily_max) * sum(weights) / sum(HOUR_WEIGHTS))
 
         # --- Pass 1: decide each transaction's shape (mode/timing/outcome/
         # form) before any ticket numbers are drawn.
@@ -439,12 +467,11 @@ class Command(BaseCommand):
             vehicle = random.choice(available_vehicles)
             mode = "UNLOAD" if random.random() < 0.1 else "QUEUE"
 
-            hour = random.choices(
-                range(5, 20),
-                weights=[3, 5, 8, 8, 5, 4, 4, 4, 4, 4, 5, 6, 8, 6, 3],
-            )[0]
+            hour = random.choices(hours, weights=weights)[0]
             minute = random.randint(0, 59)
             dispatched_at = _ph(day, hour, minute)
+            if dispatched_at > now:
+                continue  # today's still-to-come minutes
 
             if mode == "QUEUE":
                 # Queue wait (check-in to dispatch) is centered on this route's
@@ -458,6 +485,14 @@ class Command(BaseCommand):
                 # Roam check-in collects on the spot -- no queue to wait in.
                 wait_minutes = 0
             issued_at = dispatched_at - timedelta(minutes=wait_minutes)
+            # Stay measured the way the app records it: queue = loading start -> dispatch,
+            # roam = check-in -> check-out (a roam is numbered at check-in, leaves a few minutes later).
+            if mode == "QUEUE":
+                checked_out_at = None
+                over = overstay_minutes(dispatched_at - issued_at, queue_allowance(vehicle.route, 0))
+            else:
+                checked_out_at = dispatched_at + timedelta(minutes=max(1, round(random.gauss(4, 2))), seconds=random.randint(0, 59))
+                over = overstay_minutes(checked_out_at - dispatched_at, ROAM_LIMIT_MINUTES)
 
             form = random.choice(ticket_forms)
             quantity = form_quantities.get(form.id, 1)
@@ -469,6 +504,9 @@ class Command(BaseCommand):
                 "vehicle": vehicle,
                 "mode": mode,
                 "on_duty": random.choice(staff_users),
+                "out_duty": random.choice(staff_users),
+                "checked_out_at": checked_out_at,
+                "overstay": over,
                 "issued_at": issued_at,
                 "dispatched_at": dispatched_at,
                 "form": form,
@@ -483,7 +521,9 @@ class Command(BaseCommand):
         for t in txns:
             vehicle, mode, on_duty = t["vehicle"], t["mode"], t["on_duty"]
             issued_at = t["issued_at"]
+            out_duty = t["out_duty"]
             active_user_name = f"{on_duty.first_name} {on_duty.last_name}".strip() or on_duty.username
+            out_name = f"{out_duty.first_name} {out_duty.last_name}".strip() or out_duty.username
             issuance_group = uuid.uuid4().hex
 
             # COLLECTED -- issued as a group of whatever quantity of this form
@@ -507,6 +547,14 @@ class Command(BaseCommand):
                     is_verified=True,
                     issued_at=issued_at,
                     dispatched_at=t["dispatched_at"],
+                    checked_in_at=issued_at,
+                    loading_started_at=issued_at if mode == "QUEUE" else None,
+                    checked_out_at=t["checked_out_at"],
+                    checked_in_by=on_duty,
+                    checked_in_by_name=active_user_name,
+                    checked_out_by=out_duty,
+                    checked_out_by_name=out_name,
+                    overstay_minutes=t["overstay"],
                     issuance_group=issuance_group,
                 )
                 ticket._issued_at_fix = issued_at
@@ -554,6 +602,7 @@ class Command(BaseCommand):
         # and dates the batch to that evening instead of the moment this command ran.
         Ticket.objects.filter(pk__in=[t.id for t in day_tickets if t.status == "COLLECTED"]).update(remittance_batch=batch)
         RemittanceBatch.objects.filter(pk=batch.pk).update(issued_at=_ph(day, 20, 30))
+        self._audit(ctx, _ph(day, 20, 30), "CREATE", "RemittanceBatch", batch.pk, batch_code, {"total_amount": float(total_amount)})
         for form_id, (amount, min_no, _max_no) in day_form_totals.items():
             form = next(f for f in ticket_forms if f.id == form_id)
             # Like the real remittance form (createRemittance.jsx): From/To are the

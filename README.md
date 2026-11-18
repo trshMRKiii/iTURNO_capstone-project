@@ -97,18 +97,25 @@ in the sidebar:
 - **Queue Management** (`queue/`) — Issue tickets to vehicles/drivers as they
   queue, track ticket/queue status, and manage per-route ticket pricing.
 - **Dispatch** (`dispatch/`) — Track vehicle dispatch out of the terminal
-  (live-updated over WebSockets).
+  (live-updated over WebSockets): desk-duty assignment, kiosk roaming strip,
+  driver swap, and on-the-spot registration of unregistered drivers.
+- **Kiosk** (`queue/kiosk/`, route `/kiosk`) — Offline-capable QR
+  self-service flow for drivers to check in; payment is confirmed by the
+  cashier (Mark-paid gate).
 - **Transaction** (`collection/`) — Record cash collected from tickets sold.
 - **Remittance** (`remittance/`) — Review and export remittance batches
   (bills/coins deposits reconciled against collections).
 - **Fleet & Driver** (`registry/`) — Combined registry for vehicles (status,
   active driver assignment, archiving) and driver profiles (status, photo,
-  barangay address, archiving).
+  barangay address, archiving), with CSV/fleet import.
 - **User Management** (`user/`) — Manage staff accounts and roles.
 - **Reports** (`report/`) — Reporting and analytics: fleet, collections,
-  remittance, EOD reconciliation, queue/roaming logs, and audit trail tables.
+  remittance, EOD reconciliation, queue/roaming logs, route analytics,
+  overstays (vehicles exceeding their route's loading allowance, filterable by
+  staff), and audit trail tables, with PDF export.
 - **Settings** (`settings/`) — Configure ticket pricing, terminal price,
-  routes/PUV types, and the ticket backfill tool (`settings/backfill/`, for
+  routes/PUV types, ticket forms, stock-scale thresholds, automatic backups,
+  and the ticket backfill tool (`settings/backfill/`, for
   retroactively entering physically-issued tickets that missed live entry).
 
 ## Core Workflows
@@ -121,8 +128,9 @@ physical ticket stock issued to the terminal.
 
 ### 2. Queue & Ticketing
 A vehicle queues at the terminal → staff issues a ticket tied to the
-vehicle, driver, and route → ticket can be verified, dispatched, or
-cancelled. Missed physical tickets can be entered retroactively via the
+vehicle, driver, and route → ticket can be verified or dispatched (the
+cancelled status has been removed). Stay beyond the route's allowance is
+recorded as an overstay. Missed physical tickets can be entered retroactively via the
 Settings backfill tool.
 
 ### 3. Dispatch
@@ -138,6 +146,13 @@ records (bills and coins) → batches are reviewed and exported as reports.
 Aggregated views of fleet, collections, remittances, queue/roaming activity,
 and audit trail are available in the Report module, with export utilities
 for remittance and reconciliation reports.
+
+### 6. Kiosk & Daily Log
+Drivers can check in at `/kiosk` by QR. As a fallback for downtime, every
+vehicle visit is also mirrored to `backend/daily_transactions.csv`
+(`api/daily_log.py`), which resets each PH day, so staff can still tally for
+remittance without the app. SMS notices are sent via PhilSMS
+(`backend/api/sms/`).
 
 ## LAN + Remote Architecture
 
@@ -233,18 +248,23 @@ backend/
         models.py                    # Driver, Vehicle, Route, Ticket, Requisition,
                                       # TicketSeries, TicketForm, TicketPrice, PUVType,
                                       # TerminalPrice, WipMode, RemittanceBatch, Deposit,
-                                      # Collection, AuditLog, BackupRecord, BackfillRecord,
-                                      # SyncQueue, RemoteBackfillRequest
-        views/                        # API endpoints (viewsets, records, reports, backfill, auth)
+                                      # Collection, AuditLog, BackupRecord, BackupSettings,
+                                      # BackfillRecord, DeskDuty, KioskSession, PaperIssuance,
+                                      # SyncQueue, RemoteBackfillRequest, Pending* outboxes
+        views/                        # API endpoints (viewsets, records, reports, kiosk, overstays,
+                                      # route analytics, backfill, auth)
+        daily_log.py                  # Daily CSV fallback of ticket transactions
+        auto_backup.py                # Scheduled JSON backups (backend/backup/)
+        sms/                          # PhilSMS client + message templates
         sync/                         # Supabase push/pull sync engine
-        management/commands/         # sync_worker, seed_supabase, backfill_driver_qr, etc.
+        management/commands/         # sync_worker, seed_supabase, backfill_overstays, seed_dummy_fleet, wipe_transactions, etc.
         migrations/
     backend/
         settings.py                   # Django settings (CORS, JWT, DB, sync interval)
     manage.py
 
 api/                                  # Vercel serverless functions (remote deployment)
-    _lib/                              # auth, mailer, shapes, dateRange, Supabase admin client
+    _lib/                              # auth, mailer, shapes, dateRange, remittanceXlsx, Supabase admin client
     remote/                            # auth, registry, reports, resource, settings endpoints
 
 src/

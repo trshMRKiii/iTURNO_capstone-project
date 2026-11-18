@@ -206,7 +206,7 @@ function TicketHistoryModal({ vehicle, driver, route, onClose }) {
                 </button>
               </div>
 
-              <div className="veh-table-wrap" style={{ maxHeight: 420, overflowY: "auto" }}>
+              <div className="veh-table-wrap">
                 <table className="veh-table">
                   <thead>
                     <tr>

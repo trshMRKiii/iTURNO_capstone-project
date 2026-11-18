@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { mixText } from "../../../../lib/mixText";
 import { operatorsOf } from "./useKiosk";
 
 const MODES = [
@@ -9,8 +8,6 @@ const MODES = [
 
 const peso = (amount) => (amount ? `₱${Number(amount).toFixed(2)}` : null);
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-// Which paper the desk hands over, only worth a line when the fare is mixed.
-const mixLine = (r) => (mixText(r.breakdown) ? [`Your tickets: ${mixText(r.breakdown)}`] : []);
 
 const soonText = (days) => (days === 0 ? "expires today" : `expires in ${days}d`);
 
@@ -131,14 +128,14 @@ const RESULTS = {
           tone: "ok",
           title: "You're in the queue",
           big: r.queue_code,
-          lines: [r.position > 1 ? `${plural(r.position - 1, "vehicle")} ahead of you` : "You're next in line", `Pay ${peso(r.vehicle.amount) || "the terminal fee"} at the check-out desk when you leave`, ...mixLine(r), ...(r.driver ? [] : ["Please see the desk to register your driver details — you can't leave until then"])],
+          lines: [r.position > 1 ? `${plural(r.position - 1, "vehicle")} ahead of you` : "You're next in line", `Pay ${peso(r.vehicle.amount) || "the terminal fee"} at the check-out desk when you leave`, ...(r.driver ? [] : ["Please see the desk to register your driver details — you can't leave until then"])],
         }
       : {
           tone: "roam",
           title: "You're checked in to roam",
           big: "ROAMING",
           lines: r.driver
-            ? [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} to ${r.checked_in_by} to get your ticket`, ...mixLine(r), "Scan your QR again when you leave"]
+            ? [`Pay ${peso(r.vehicle.amount) || "the terminal fee"} to ${r.checked_in_by} to get your ticket`, "Scan your QR again when you leave"]
             : ["Please see the desk to register your driver details — you can't get your ticket or leave until then"],
         },
   WAIT_TURN: (r) => ({

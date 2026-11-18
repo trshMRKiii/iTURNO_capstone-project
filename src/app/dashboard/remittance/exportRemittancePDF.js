@@ -232,7 +232,9 @@ export function normalizeCollection(c) {
 export async function loadSeries() {
   try {
     const data = await apiService.request("/ticket-series/");
-    return Array.isArray(data) ? data : data?.results || [];
+    const list = Array.isArray(data) ? data : data?.results || [];
+    // Same rule as the dashboard's Ticket Stock: unvalidated (pending) requisitions aren't usable stock yet.
+    return list.filter((s) => s.requisition_status !== "PENDING");
   } catch (err) {
     console.error("Failed to load ticket series for the accountability section:", err);
     return [];

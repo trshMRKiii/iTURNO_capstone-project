@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
-from django.db.models import Count
-from django.db.models.functions import Coalesce
+from django.db.models import Case, Count, DecimalField, Sum, Value, When
+from django.db.models.functions import Coalesce, ExtractHour
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -13,43 +13,62 @@ from .helpers import parse_date_start, parse_date_end, paper_numbers_by_series
 MODE_KEY = {'QUEUE': 'queued', 'UNLOAD': 'roamed'}
 HEATMAP_WEEKS = 4
 
-TICKET_FIELDS = ('dispatched_at', 'mode', 'collection_amount', 'route__origin', 'series__ticket_form__name')
+PH = dt_timezone(timedelta(hours=8))
 
 
-def _dispatched(start, end):
-    return Ticket.objects.filter(dispatched_at__gte=start, dispatched_at__lte=end).values_list(*TICKET_FIELDS)
+class PhHour(ExtractHour):
+    """Hour of day in Philippine time. SQLite gets plain SQL: Django's own version calls a
+    Python function for every row, which is what made a year of tickets slow."""
+
+    def as_sqlite(self, compiler, connection, **extra):
+        lhs, params = compiler.compile(self.lhs)
+        return f"CAST(strftime('%%H', {lhs}, '+8 hours') AS INTEGER)", params
+
+
+def _dispatched(start, end, fallback):
+    """Dispatched tickets grouped in SQL by (PH hour, mode, route, denomination) with their
+    count and cash — one row per group, not per ticket, so the page stays fast as history grows.
+    A ticket with no amount counts at the fallback price."""
+    amount = Case(When(collection_amount__gt=0, then='collection_amount'),
+                  default=Value(fallback), output_field=DecimalField())
+    return (
+        Ticket.objects.filter(dispatched_at__gte=start, dispatched_at__lte=end)
+        .annotate(hour=PhHour('dispatched_at', tzinfo=PH))
+        .values_list('hour', 'mode', 'route__origin', 'series__ticket_form__name')
+        .annotate(n=Count('pk'), total=Sum(amount))
+        .order_by()
+    )
 
 
 def _blank_hour(hour):
     return {'hour': hour, 'queued': 0, 'roamed': 0, 'queued_total': 0.0, 'roamed_total': 0.0}
 
 
-def _tally(rows, fallback):
-    """One pass over dispatched tickets: the queued/roamed split, the per-hour-of-day
+def _tally(rows):
+    """One pass over the grouped dispatched tickets: the queued/roamed split, the per-hour-of-day
     breakdown, and the per-route (with its own hourly breakdown) and per-denomination
     totals. Everything counts a ticket on the same dispatched_at basis, so the cards on
     the page always agree."""
     split = {key: {'count': 0, 'total': 0.0} for key in MODE_KEY.values()}
     hourly = [_blank_hour(h) for h in range(24)]
     routes, forms = {}, {}
-    for dispatched_at, mode, amount, route, form in rows:
+    for hour, mode, route, form, n, amount in rows:
         key = MODE_KEY.get(mode, 'queued')
-        amount = float(amount) if amount and float(amount) > 0 else fallback
-        split[key]['count'] += 1
+        amount = float(amount or 0)
+        split[key]['count'] += n
         split[key]['total'] += amount
         # Hours and routes keep the queued/roamed split so the page can filter by it.
-        hour = (dispatched_at + timedelta(hours=8)).hour
         route_name = route or 'No Route'
         route_row = routes.setdefault(route_name, {
             'name': route_name, 'queued': 0, 'roamed': 0, 'queued_total': 0.0, 'roamed_total': 0.0,
             'hourly': [_blank_hour(h) for h in range(24)],
         })
         for row in (hourly[hour], route_row['hourly'][hour], route_row):
-            row[key] += 1
+            row[key] += n
             row[f'{key}_total'] += amount
         form_name = form or 'Unspecified'
         row = forms.setdefault(form_name, {'name': form_name, 'count': 0, 'total': 0.0})
-        row['count'] += 1
+        row['count'] += n
         row['total'] += amount
     for route_row in routes.values():
         route_row['hourly'] = [h for h in route_row['hourly'] if h['queued'] or h['roamed']]  # only the hours that had tickets
@@ -91,10 +110,11 @@ def _stock_by_form():
     left. Same "remaining" math as TicketSeriesSerializer.get_remaining."""
     stock = {}
     paper = paper_numbers_by_series()
-    series_list = TicketSeries.objects.filter(requisition__is_archived=False).exclude(requisition__status='PENDING').select_related('ticket_form').annotate(issued_count=Count('tickets'))  # unvalidated stock isn't usable yet
+    issued = dict(Ticket.objects.filter(series__isnull=False).values_list('series_id').annotate(n=Count('pk')).order_by())
+    series_list = TicketSeries.objects.filter(requisition__is_archived=False).exclude(requisition__status='PENDING').select_related('ticket_form')  # unvalidated stock isn't usable yet
     for series in series_list:
         original = max(int(series.end_no or 0) - int(series.start_no or 0) + 1, 0)
-        remaining = max(original - series.issued_count - len(paper.get(series.id, ())), 0)
+        remaining = max(original - issued.get(series.id, 0) - len(paper.get(series.id, ())), 0)
         name = series.ticket_form.name if series.ticket_form else 'Unspecified'
         price = float(series.ticket_form.price or 0) if series.ticket_form else 0
         row = stock.setdefault(name, {'name': name, 'remaining': 0, 'amount': 0.0})
@@ -137,11 +157,11 @@ def dashboard_stats(request):
     span = days - 1 if trimmed else days
     compare_end = range_end - timedelta(days=1) if trimmed else range_end
     shift = timedelta(days=span)
-    previous, _, previous_routes, _ = _tally(_dispatched(range_start - shift, min(compare_end, now) - shift), fallback)
+    previous, _, previous_routes, _ = _tally(_dispatched(range_start - shift, min(compare_end, now) - shift, fallback))
 
-    summary, hourly, routes, forms = _tally(_dispatched(range_start, range_end), fallback)
+    summary, hourly, routes, forms = _tally(_dispatched(range_start, range_end, fallback))
     if trimmed:
-        current, _, current_routes, _ = _tally(_dispatched(range_start, compare_end), fallback)
+        current, _, current_routes, _ = _tally(_dispatched(range_start, compare_end, fallback))
     else:
         current, current_routes = summary, routes
 
